@@ -4,15 +4,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.authservice.dto.AuthResponse;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
+import com.ecommerce.authservice.dto.UpdateProfileRequest;
 import com.ecommerce.authservice.dto.UserProfileResponse;
 import com.ecommerce.authservice.entity.User;
 import com.ecommerce.authservice.security.JwtUtil;
@@ -20,6 +22,7 @@ import com.ecommerce.authservice.service.AuthService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 
 
 
@@ -59,6 +62,16 @@ public class AuthController {
         UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
 
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateUserProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = authService.updateUserProfile(email, request);
+
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
+
+        return ResponseEntity.ok(response);
     }
     
 }
