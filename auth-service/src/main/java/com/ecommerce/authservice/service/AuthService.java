@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
+import com.ecommerce.authservice.dto.UpdateProfileRequest;
 import com.ecommerce.authservice.entity.User;
 import com.ecommerce.authservice.repository.UserRepository;
 
@@ -58,5 +59,19 @@ public class AuthService {
             throw new RuntimeException("User not found");
         }
         return user;
+    }
+
+    @Transactional
+    public User updateUserProfile(String email, UpdateProfileRequest request) {
+        User user = getUserByEmail(email);
+
+        if(!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())){
+            throw new RuntimeException("Email already exists");
+        }
+
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+
+        return userRepository.save(user);
     }
 }
