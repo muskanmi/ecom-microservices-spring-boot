@@ -5,10 +5,13 @@ import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
 import com.ecommerce.authservice.dto.UpdateProfileRequest;
+import com.ecommerce.authservice.entity.SellerProfile;
 import com.ecommerce.authservice.entity.User;
+import com.ecommerce.authservice.repository.SellerProfileRepository;
 import com.ecommerce.authservice.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
@@ -20,6 +23,7 @@ public class AuthService {
     
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SellerProfileRepository sellerProfileRepository;
 
     @Transactional
     public User registerUser(RegisterRequest request){
@@ -73,5 +77,27 @@ public class AuthService {
         user.setEmail(request.getEmail());
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public SellerProfile createSellerProfile(String email, CreateSellerProfileRequest request){
+        User user = getUserByEmail(email);
+
+        if(!user.getRole().equals("SELLER")){
+            throw new RuntimeException("Only Seller can create a seller profile");
+        }
+
+        if(sellerProfileRepository.existsByUserId(user.getId())){
+            throw new RuntimeException("Seller Profile already exists");
+        }
+        
+            SellerProfile sellerProfile = new SellerProfile();
+
+            sellerProfile.setShopName(request.getShopName());
+            sellerProfile.setUserId(user.getId());
+            sellerProfile.setApprovalStatus("PENDING");
+            sellerProfile.setCreatedAt(LocalDateTime.now());
+
+            return sellerProfileRepository.save(sellerProfile);
     }
 }
