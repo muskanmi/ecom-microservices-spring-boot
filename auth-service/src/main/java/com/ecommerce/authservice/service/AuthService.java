@@ -50,4 +50,13 @@ public class AuthService {
 
         return user;
     }
+
+    @Transactional
+    public User getUserByEmail(String email){
+        User user = userRepository.findByEmail(email);
+        if(user == null) {
+            throw new RuntimeException("User not found");
+        }
+        return user;
+    }
 }
