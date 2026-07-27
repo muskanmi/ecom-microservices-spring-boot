@@ -2,20 +2,25 @@ package com.ecommerce.authservice.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.authservice.dto.AuthResponse;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
+import com.ecommerce.authservice.dto.UserProfileResponse;
 import com.ecommerce.authservice.entity.User;
 import com.ecommerce.authservice.security.JwtUtil;
 import com.ecommerce.authservice.service.AuthService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 
 
 @RestController
@@ -46,5 +51,14 @@ public class AuthController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
     
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = authService.getUserByEmail(email);
+
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
     
 }
