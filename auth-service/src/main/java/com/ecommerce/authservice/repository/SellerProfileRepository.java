@@ -9,4 +9,6 @@ import com.ecommerce.authservice.entity.SellerProfile;
 public interface SellerProfileRepository extends JpaRepository<SellerProfile, Long> {
     
     public boolean existsByUserId(Long userId);
+
+    public SellerProfile findByUserId(Long userId);
 }

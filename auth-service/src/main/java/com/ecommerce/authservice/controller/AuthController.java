@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +25,7 @@ import com.ecommerce.authservice.service.AuthService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 
 
 
@@ -86,5 +88,13 @@ public class AuthController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
     
-    
+    @PutMapping("/seller-profile")
+    public ResponseEntity<SellerProfileResponse> updateSellerProfile(@Valid @RequestBody CreateSellerProfileRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        SellerProfile sellerProfile = authService.updateSellerProfile(email, request);
+
+        SellerProfileResponse response = new SellerProfileResponse(sellerProfile.getId(), sellerProfile.getUserId(), sellerProfile.getShopName(), sellerProfile.getApprovalStatus());
+
+        return ResponseEntity.ok(response);
+    }
 }

@@ -100,4 +100,26 @@ public class AuthService {
 
             return sellerProfileRepository.save(sellerProfile);
     }
+
+    @Transactional
+    public SellerProfile updateSellerProfile(String email, CreateSellerProfileRequest request){
+        User user = getUserByEmail(email);
+
+        if(!user.getRole().equals("SELLER")){
+            throw new RuntimeException("Only Seller can update a seller profile");
+        }
+        
+        if(!sellerProfileRepository.existsByUserId(user.getId())){
+            throw new RuntimeException("Seller does not exist");
+        }
+
+        SellerProfile sellerProfile = sellerProfileRepository.findByUserId(user.getId());
+        if(sellerProfile == null) {
+            throw new RuntimeException("Seller Profile does not exist");
+        }
+        
+        sellerProfile.setShopName(request.getShopName());
+
+        return sellerProfileRepository.save(sellerProfile);
+    }
 }
