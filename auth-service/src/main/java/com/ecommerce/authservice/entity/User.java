@@ -28,6 +28,10 @@ public class User {
 
     private String role;
 
+    private String resetToken;
+
+    private LocalDateTime resetTokenExpiry;
+
     private LocalDateTime createdAt;
 
 }
