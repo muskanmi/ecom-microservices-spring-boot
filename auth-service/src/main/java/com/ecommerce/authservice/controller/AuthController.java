@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.authservice.dto.AuthResponse;
 import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
+import com.ecommerce.authservice.dto.ForgotPasswordRequest;
+import com.ecommerce.authservice.dto.ForgotPasswordResponse;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
 import com.ecommerce.authservice.dto.SellerProfileResponse;
@@ -99,4 +101,10 @@ public class AuthController {
 
     // Reset Passowrd
     // Forgot Password
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        ForgotPasswordResponse response = authService.forgotPassword(request);
+        return ResponseEntity.ok(response);
+    }
+    
 }
