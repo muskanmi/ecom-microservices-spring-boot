@@ -7,11 +7,13 @@ import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.ecommerce.authservice.client.NotificationClient;
 import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordResponse;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
+import com.ecommerce.authservice.dto.SendEmailRequest;
 import com.ecommerce.authservice.dto.UpdateProfileRequest;
 import com.ecommerce.authservice.entity.SellerProfile;
 import com.ecommerce.authservice.entity.User;
@@ -28,6 +30,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final SellerProfileRepository sellerProfileRepository;
+    private final NotificationClient notificationClient;
+    private final String internalServiceKey = "INTERNAL_SERVICE_KEY";
 
     @Transactional
     public User registerUser(RegisterRequest request) {
@@ -140,6 +144,11 @@ public class AuthService {
             user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
             userRepository.save(user);
         }
+
+        notificationClient.sendEmail(
+                internalServiceKey,
+                new SendEmailRequest(request.getEmail(), "Password Reset Request",
+                        "Use this token to reset your password: " + token));
 
         return new ForgotPasswordResponse(
                 "If that email exists, a reset link has been sent.",
