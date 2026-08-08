@@ -16,6 +16,8 @@ import com.ecommerce.authservice.dto.ForgotPasswordRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordResponse;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
+import com.ecommerce.authservice.dto.ResetPasswordRequest;
+import com.ecommerce.authservice.dto.ResetPasswordResponse;
 import com.ecommerce.authservice.dto.SellerProfileResponse;
 import com.ecommerce.authservice.dto.UpdateProfileRequest;
 import com.ecommerce.authservice.dto.UserProfileResponse;
@@ -27,15 +29,11 @@ import com.ecommerce.authservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-
-
-
-
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
-    
+
     private final AuthService authService;
     private final JwtUtil jwtUtil;
 
@@ -46,25 +44,26 @@ public class AuthController {
         String token = jwtUtil.generateToken(user.getEmail());
 
         AuthResponse response = new AuthResponse(token, user.getId(), user.getRole());
-        
+
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> loginUser( @Valid @RequestBody LoginRequest request) {
-       User user = authService.loginUser(request);
-       String token = jwtUtil.generateToken(user.getEmail());
-       AuthResponse response = new AuthResponse(token, user.getId(), user.getRole());
-        
+    public ResponseEntity<AuthResponse> loginUser(@Valid @RequestBody LoginRequest request) {
+        User user = authService.loginUser(request);
+        String token = jwtUtil.generateToken(user.getEmail());
+        AuthResponse response = new AuthResponse(token, user.getId(), user.getRole());
+
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
-    
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.getUserByEmail(email);
 
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(),
+                user.getRole());
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -74,37 +73,48 @@ public class AuthController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.updateUserProfile(email, request);
 
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
+        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(),
+                user.getRole());
 
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/seller-profile")
-    public ResponseEntity<SellerProfileResponse> createSellerProfile( @Valid @RequestBody CreateSellerProfileRequest request) {
+    public ResponseEntity<SellerProfileResponse> createSellerProfile(
+            @Valid @RequestBody CreateSellerProfileRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         SellerProfile sellerProfile = authService.createSellerProfile(email, request);
 
-        SellerProfileResponse response = new SellerProfileResponse(sellerProfile.getId(), sellerProfile.getUserId(), sellerProfile.getShopName(), sellerProfile.getApprovalStatus());
+        SellerProfileResponse response = new SellerProfileResponse(sellerProfile.getId(), sellerProfile.getUserId(),
+                sellerProfile.getShopName(), sellerProfile.getApprovalStatus());
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
-    
+
     @PutMapping("/seller-profile")
-    public ResponseEntity<SellerProfileResponse> updateSellerProfile(@Valid @RequestBody CreateSellerProfileRequest request) {
+    public ResponseEntity<SellerProfileResponse> updateSellerProfile(
+            @Valid @RequestBody CreateSellerProfileRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         SellerProfile sellerProfile = authService.updateSellerProfile(email, request);
 
-        SellerProfileResponse response = new SellerProfileResponse(sellerProfile.getId(), sellerProfile.getUserId(), sellerProfile.getShopName(), sellerProfile.getApprovalStatus());
+        SellerProfileResponse response = new SellerProfileResponse(sellerProfile.getId(), sellerProfile.getUserId(),
+                sellerProfile.getShopName(), sellerProfile.getApprovalStatus());
 
         return ResponseEntity.ok(response);
     }
 
     // Reset Passowrd
+    @PostMapping("/reset-password")
+    public ResponseEntity<ResetPasswordResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        ResetPasswordResponse response = authService.resetPassword(request);
+        return ResponseEntity.ok(response);
+    }
+
     // Forgot Password
     @PostMapping("/forgot-password")
     public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         ForgotPasswordResponse response = authService.forgotPassword(request);
         return ResponseEntity.ok(response);
     }
-    
+
 }

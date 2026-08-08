@@ -13,6 +13,8 @@ import com.ecommerce.authservice.dto.ForgotPasswordRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordResponse;
 import com.ecommerce.authservice.dto.LoginRequest;
 import com.ecommerce.authservice.dto.RegisterRequest;
+import com.ecommerce.authservice.dto.ResetPasswordRequest;
+import com.ecommerce.authservice.dto.ResetPasswordResponse;
 import com.ecommerce.authservice.dto.SendEmailRequest;
 import com.ecommerce.authservice.dto.UpdateProfileRequest;
 import com.ecommerce.authservice.entity.SellerProfile;
@@ -153,5 +155,26 @@ public class AuthService {
         return new ForgotPasswordResponse(
                 "If that email exists, a reset link has been sent.",
                 token);
+    }
+
+    @Transactional
+    public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
+        // step 1
+        User user = userRepository.findByResetToken(request.getToken())
+                .orElseThrow(() -> new RuntimeException("Invalid or expired reset token"));
+
+        // step 2
+        if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invalid or expired reset token");
+        }
+
+        // step 3
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+
+        return new ResetPasswordResponse(
+                "Successfully reset password");
     }
 }
