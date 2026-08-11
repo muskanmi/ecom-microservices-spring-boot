@@ -7,6 +7,8 @@ const LoginForm = ({ onSubmit, errorMessage }) => {
   });
 
   const handleChange = (e) => {
+    console.log(e, "checking");
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
