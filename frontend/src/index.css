@@ -2,12 +2,24 @@
 
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #1B3A3A;
+  --color-ink-deep: #122828;
+  --color-paper: #FBF6EC;
+  --color-gold: #E4A93B;
+  --color-brick: #C1443C;
+  --color-muted: #6B6156;
+
+  --font-display: "Zilla Slab", serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
 body {
-  background-color: #1B3A3A;
+  background-color: var(--color-ink);
   background-image:
     radial-gradient(circle at 20% 10%, rgba(228, 169, 59, 0.06), transparent 40%),
     radial-gradient(circle at 85% 90%, rgba(228, 169, 59, 0.05), transparent 40%);
-  color: #1F2421;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   margin: 0;
 }
