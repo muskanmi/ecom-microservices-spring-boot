@@ -1,18 +1,11 @@
 import { useState } from "react";
+import { TextField, Button, Alert } from "@mui/material";
 
 const LoginForm = ({ onSubmit, errorMessage }) => {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
 
   const handleChange = (e) => {
-    console.log(e, "checking");
-
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e) => {
@@ -21,34 +14,32 @@ const LoginForm = ({ onSubmit, errorMessage }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
-      <div>
-        <label htmlFor="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-      </div>
+      <TextField
+        label="Email"
+        name="email"
+        type="email"
+        value={formData.email}
+        onChange={handleChange}
+        required
+        fullWidth
+      />
 
-      <div>
-        <label htmlFor="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-      </div>
+      <TextField
+        label="Password"
+        name="password"
+        type="password"
+        value={formData.password}
+        onChange={handleChange}
+        required
+        fullWidth
+      />
 
-      <button type="submit">Log In</button>
+      <Button type="submit" variant="contained" fullWidth>
+        Log In
+      </Button>
     </form>
   );
 };
