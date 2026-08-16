@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { getCurrentUser } from "../api/authApi";
+import { currentUser } from "../api/authApi";
 
 const AuthContext = createContext();
 
@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      getcurrentUser(token)
+      currentUser(token)
         .then((response) => {
           setUser(response.data);
         })
