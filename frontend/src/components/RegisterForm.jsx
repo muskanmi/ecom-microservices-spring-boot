@@ -1,4 +1,12 @@
 import { useState } from "react";
+import {
+  TextField,
+  Button,
+  Alert,
+  ToggleButtonGroup,
+  ToggleButton,
+  Typography,
+} from "@mui/material";
 
 const RegisterForm = ({ onSubmit, errorMessage }) => {
   const [formData, setFormData] = useState({
@@ -9,10 +17,11 @@ const RegisterForm = ({ onSubmit, errorMessage }) => {
   });
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleRoleChange = (e, newRole) => {
+    if (newRole) setFormData({ ...formData, role: newRole });
   };
 
   const handleSubmit = (e) => {
@@ -21,59 +30,64 @@ const RegisterForm = ({ onSubmit, errorMessage }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+
+      <TextField
+        label="Name"
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        required
+        fullWidth
+      />
+      <TextField
+        label="Email"
+        name="email"
+        type="email"
+        value={formData.email}
+        onChange={handleChange}
+        required
+        fullWidth
+      />
+      <TextField
+        label="Password"
+        name="password"
+        type="password"
+        value={formData.password}
+        onChange={handleChange}
+        required
+        fullWidth
+      />
 
       <div>
-        <label htmlFor="name">Name</label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="role">I want to</label>
-        <select
-          id="role"
-          name="role"
+        <Typography className="!font-mono !text-[11px] !tracking-widest !uppercase !text-muted !mb-1.5">
+          I want to
+        </Typography>
+        <ToggleButtonGroup
           value={formData.role}
-          onChange={handleChange}
+          exclusive
+          onChange={handleRoleChange}
+          fullWidth
         >
-          <option value="CUSTOMER">Shop as a Customer</option>
-          <option value="SELLER">Sell as a Seller</option>
-        </select>
+          <ToggleButton value="CUSTOMER">Shop</ToggleButton>
+          <ToggleButton
+            value="SELLER"
+            sx={{
+              "&.Mui-selected": {
+                borderColor: "#C1443C !important",
+                backgroundColor: "rgba(193,68,60,0.1) !important",
+              },
+            }}
+          >
+            Sell
+          </ToggleButton>
+        </ToggleButtonGroup>
       </div>
 
-      <button type="submit">Register</button>
+      <Button type="submit" variant="contained" fullWidth>
+        Register
+      </Button>
     </form>
   );
 };
