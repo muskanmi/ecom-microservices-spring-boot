@@ -218,6 +218,8 @@ const DashboardPage = () => {
   };
 
   const toggleWishlist = (name) => {
+    console.log(name);
+
     setWishlist((current) =>
       current.includes(name)
         ? current.filter((item) => item !== name)
