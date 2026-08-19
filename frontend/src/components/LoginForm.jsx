@@ -5,6 +5,8 @@ const LoginForm = ({ onSubmit, errorMessage }) => {
   const [formData, setFormData] = useState({ email: "", password: "" });
 
   const handleChange = (e) => {
+    console.log(e);
+
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
