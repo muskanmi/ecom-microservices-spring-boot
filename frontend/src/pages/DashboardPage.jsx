@@ -981,13 +981,15 @@ const DashboardPage = () => {
                   Account Overview
                 </Typography>
 
-                <Stack spacing={1.5}>
+                <Stack spacing={1.5} width="100%">
                   {overview.map(({ label, value, icon: Icon }) => (
                     <Stack
                       key={label}
                       direction="row"
-                      alignItems="center"
-                      justifyContent="space-between"
+                      sx={{
+                        width: "100%",
+                        justifyContent: "space-between",
+                      }}
                     >
                       <Stack direction="row" alignItems="center" spacing={1}>
                         <Icon sx={{ fontSize: 18, color: muted }} />
