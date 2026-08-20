@@ -497,7 +497,7 @@ const DashboardPage = () => {
 
             <Box sx={{ flex: 1 }} />
 
-            <IconButton sx={{ color: ink }}>
+            <IconButton className="!flex !items-center !gap-2 !rounded-md !text-ink">
               <Badge
                 badgeContent={3}
                 sx={{
@@ -512,9 +512,11 @@ const DashboardPage = () => {
               >
                 <FavoriteBorder />
               </Badge>
+
+              <span className="text-sm font-medium">Wishlist</span>
             </IconButton>
 
-            <IconButton sx={{ color: ink }}>
+            <IconButton className="!flex !items-center !gap-2 !rounded-md !text-ink !mr-4">
               <Badge
                 badgeContent={2}
                 sx={{
@@ -529,13 +531,15 @@ const DashboardPage = () => {
               >
                 <ShoppingCartOutlined />
               </Badge>
+
+              <span className="text-sm font-medium">Cart</span>
             </IconButton>
 
             <Stack
               direction="row"
-              alignItems="center"
               spacing={1}
               sx={{ ml: 0.5 }}
+              sx={{ alignItems: "center" }}
             >
               <Avatar
                 sx={{
@@ -646,9 +650,11 @@ const DashboardPage = () => {
               {/* Categories */}
               <Stack
                 direction="row"
-                justifyContent="space-between"
-                alignItems="end"
                 sx={{ mb: 1.8 }}
+                sx={{
+                  width: "100%",
+                  justifyContent: "space-between",
+                }}
               >
                 <Box>
                   <Typography
@@ -748,9 +754,10 @@ const DashboardPage = () => {
               {/* Recommended */}
               <Stack
                 direction="row"
-                justifyContent="space-between"
-                alignItems="end"
                 sx={{ mb: 1.8 }}
+                sx={{
+                  justifyContent: "space-between",
+                }}
               >
                 <Box>
                   <Typography
@@ -1024,7 +1031,7 @@ const DashboardPage = () => {
                   }}
                 >
                   <LocalOfferOutlined sx={{ fontSize: 17 }} />
-                  <Typography sx={{ fontSize: 11.5, lineHeight: 1.4 }}>
+                  <Typography sx={{ fontSize: 12.5, lineHeight: 1.4 }}>
                     You&apos;re saving with us.
                     <br />
                     <Box component="span" sx={{ fontWeight: 800 }}>
@@ -1046,9 +1053,11 @@ const DashboardPage = () => {
               >
                 <Stack
                   direction="row"
-                  justifyContent="space-between"
-                  alignItems="end"
-                  sx={{ mb: 2 }}
+                  sx={{
+                    mb: 2,
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
                 >
                   <Box>
                     <Typography
@@ -1075,6 +1084,7 @@ const DashboardPage = () => {
                   </Box>
                   <Button
                     sx={{
+                      p: 0,
                       color: ink,
                       textTransform: "none",
                       fontSize: 11,
@@ -1196,15 +1206,16 @@ const DashboardPage = () => {
                         src={product.image}
                         alt={product.name}
                         sx={{
-                          width: 52,
-                          height: 52,
+                          width: 70,
+                          height: 70,
                           objectFit: "contain",
                           bgcolor: "#F3EFE7",
                           borderRadius: 1.2,
-                          p: 0.4,
+                          p: 0.6,
                           flexShrink: 0,
                         }}
                       />
+
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography
                           sx={{
@@ -1216,20 +1227,32 @@ const DashboardPage = () => {
                         >
                           {product.name}
                         </Typography>
+
                         <Typography
-                          sx={{ fontSize: 10, color: muted, mt: 0.2 }}
+                          sx={{
+                            fontSize: 10,
+                            color: muted,
+                            mt: 0.2,
+                          }}
                         >
                           {product.sub}
                         </Typography>
+
                         <Stack
                           direction="row"
                           spacing={0.6}
                           alignItems="baseline"
                           sx={{ mt: 0.3 }}
                         >
-                          <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+                              fontWeight: 800,
+                            }}
+                          >
                             {rupee(product.price)}
                           </Typography>
+
                           <Typography
                             sx={{
                               fontSize: 9.5,
@@ -1241,16 +1264,13 @@ const DashboardPage = () => {
                           </Typography>
                         </Stack>
                       </Box>
-                      <IconButton
-                        size="small"
-                        sx={{
-                          color: ink,
-                          border: `1px solid ${border}`,
-                          borderRadius: 1,
-                        }}
+
+                      <Button
+                        variant="outlined"
+                        className="!min-w-[72px] !h-[42px] !px-4 !border-[1.5px] !border-gold !text-ink !text-xs !font-bold !normal-case !rounded-md !shrink-0 hover:!border-gold hover:!bg-gold/10"
                       >
-                        <ChevronRight sx={{ fontSize: 17 }} />
-                      </IconButton>
+                        Add
+                      </Button>
                     </Stack>
                   ))}
                 </Stack>
