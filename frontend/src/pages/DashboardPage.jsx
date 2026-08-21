@@ -521,7 +521,6 @@ const DashboardPage = () => {
                 badgeContent={2}
                 sx={{
                   "& .MuiBadge-badge": {
-                    bgcolor: gold,
                     color: ink,
                     fontSize: 9,
                     minWidth: 16,
@@ -538,8 +537,10 @@ const DashboardPage = () => {
             <Stack
               direction="row"
               spacing={1}
-              sx={{ ml: 0.5 }}
-              sx={{ alignItems: "center" }}
+              sx={{
+                ml: 0.5,
+                alignItems: "center",
+              }}
             >
               <Avatar
                 sx={{
@@ -623,26 +624,97 @@ const DashboardPage = () => {
             {/* Left */}
             <Box sx={{ minWidth: 0 }}>
               {/* Banner */}
+              {/* Banner */}
               <Paper
                 elevation={0}
                 sx={{
+                  position: "relative",
                   overflow: "hidden",
                   mb: 4,
+                  height: { xs: 250, sm: 300, md: 360 },
                   bgcolor: "#F3EBDD",
                   border: `1px solid ${border}`,
                   borderRadius: 2.5,
                   boxShadow: "0 8px 30px rgba(35,31,24,.06)",
                 }}
               >
+                {/* Text */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    zIndex: 2,
+                    left: { xs: 24, sm: 40, md: 64 },
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: { xs: "55%", md: "40%" },
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: { xs: 18, sm: 24, md: 30 },
+                      fontWeight: 600,
+                      color: ink,
+                      mb: 1,
+                    }}
+                  >
+                    Summer Sale is Live! ☀️
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      fontSize: { xs: 32, sm: 45, md: 45 },
+                      fontWeight: 800,
+                      lineHeight: 1.1,
+                      color: ink,
+                      mb: 1.5,
+                    }}
+                  >
+                    Up to 50% Off
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      fontSize: { xs: 14, sm: 17, md: 20 },
+                      color: muted,
+                      mb: 3,
+                    }}
+                  >
+                    On fashion, electronics and more
+                  </Typography>
+
+                  <Button
+                    variant="contained"
+                    sx={{
+                      bgcolor: gold,
+                      color: ink,
+                      px: 4,
+                      py: 1.5,
+                      fontWeight: 700,
+                      textTransform: "none",
+                      "&:hover": {
+                        bgcolor: gold,
+                        opacity: 0.9,
+                      },
+                    }}
+                  >
+                    Shop Now
+                  </Button>
+                </Box>
+
+                {/* Products Image */}
                 <Box
                   component="img"
                   src={heroBanner}
                   alt="Featured products"
                   sx={{
-                    display: "block",
-                    width: "100%",
-                    height: { xs: 190, sm: 260, md: 330 },
-                    objectFit: "cover",
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    width: { xs: "65%", sm: "62%", md: "65%" },
+                    height: "100%",
+                    objectFit: "contain",
+                    objectPosition: "center right",
+                    mixBlendMode: "multiply",
                   }}
                 />
               </Paper>
@@ -650,8 +722,8 @@ const DashboardPage = () => {
               {/* Categories */}
               <Stack
                 direction="row"
-                sx={{ mb: 1.8 }}
                 sx={{
+                  mb: 1.8,
                   width: "100%",
                   justifyContent: "space-between",
                 }}
@@ -754,8 +826,8 @@ const DashboardPage = () => {
               {/* Recommended */}
               <Stack
                 direction="row"
-                sx={{ mb: 1.8 }}
                 sx={{
+                  mb: 1.8,
                   justifyContent: "space-between",
                 }}
               >
