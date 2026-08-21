@@ -50,7 +50,7 @@ import {
 
 // Generated assets from the ecommerce-assets ZIP.
 // Put them in: src/assets/ecommerce/
-import heroBanner from "../assets/ecommerce/hero-banner.png";
+import heroBanner from "../assets/ecommerce/banner_hero_img.png";
 import fashionDress from "../assets/ecommerce/fashion-dress.png";
 import blueHeadphones from "../assets/ecommerce/electronics-headphones-blue.png";
 import greenShoes from "../assets/ecommerce/footwear-green-shoe.png";
@@ -521,6 +521,7 @@ const DashboardPage = () => {
                 badgeContent={2}
                 sx={{
                   "& .MuiBadge-badge": {
+                    bgcolor: gold,
                     color: ink,
                     fontSize: 9,
                     minWidth: 16,
@@ -625,33 +626,51 @@ const DashboardPage = () => {
             <Box sx={{ minWidth: 0 }}>
               {/* Banner */}
               {/* Banner */}
+              {/* Hero Banner */}
               <Paper
                 elevation={0}
                 sx={{
                   position: "relative",
                   overflow: "hidden",
                   mb: 4,
-                  height: { xs: 250, sm: 300, md: 360 },
-                  bgcolor: "#F3EBDD",
+                  height: { xs: 260, sm: 320, md: 360 },
                   border: `1px solid ${border}`,
                   borderRadius: 2.5,
                   boxShadow: "0 8px 30px rgba(35,31,24,.06)",
                 }}
               >
-                {/* Text */}
+                {/* Full Banner Image */}
                 <Box
+                  component="img"
+                  src={heroBanner}
+                  alt="Summer sale"
                   sx={{
                     position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                  }}
+                />
+
+                {/* Left Side Content */}
+                <Box
+                  sx={{
+                    position: "relative",
                     zIndex: 2,
-                    left: { xs: 24, sm: 40, md: 64 },
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: { xs: "55%", md: "40%" },
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "flex-start",
+                    pl: { xs: 3, sm: 5, md: 8 },
+                    width: { xs: "65%", sm: "52%", md: "45%" },
                   }}
                 >
                   <Typography
                     sx={{
-                      fontSize: { xs: 18, sm: 24, md: 30 },
+                      fontSize: { xs: 18, sm: 24, md: 28 },
                       fontWeight: 600,
                       color: ink,
                       mb: 1,
@@ -662,7 +681,7 @@ const DashboardPage = () => {
 
                   <Typography
                     sx={{
-                      fontSize: { xs: 32, sm: 45, md: 45 },
+                      fontSize: { xs: 32, sm: 44, md: 45 },
                       fontWeight: 800,
                       lineHeight: 1.1,
                       color: ink,
@@ -674,7 +693,7 @@ const DashboardPage = () => {
 
                   <Typography
                     sx={{
-                      fontSize: { xs: 14, sm: 17, md: 20 },
+                      fontSize: { xs: 14, sm: 16, md: 18 },
                       color: muted,
                       mb: 3,
                     }}
@@ -688,35 +707,23 @@ const DashboardPage = () => {
                       bgcolor: gold,
                       color: ink,
                       px: 4,
-                      py: 1.5,
+                      py: 1.4,
                       fontWeight: 700,
+                      fontSize: 15,
                       textTransform: "none",
+                      borderRadius: 1.5,
+                      boxShadow: "none",
+
                       "&:hover": {
                         bgcolor: gold,
                         opacity: 0.9,
+                        boxShadow: "none",
                       },
                     }}
                   >
                     Shop Now
                   </Button>
                 </Box>
-
-                {/* Products Image */}
-                <Box
-                  component="img"
-                  src={heroBanner}
-                  alt="Featured products"
-                  sx={{
-                    position: "absolute",
-                    right: 0,
-                    top: 0,
-                    width: { xs: "65%", sm: "62%", md: "65%" },
-                    height: "100%",
-                    objectFit: "contain",
-                    objectPosition: "center right",
-                    mixBlendMode: "multiply",
-                  }}
-                />
               </Paper>
 
               {/* Categories */}
