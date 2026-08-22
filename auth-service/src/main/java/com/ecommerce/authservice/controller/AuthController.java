@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.authservice.dto.AuthResponse;
 import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
@@ -125,6 +127,19 @@ public class AuthController {
     public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         ForgotPasswordResponse response = authService.forgotPassword(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<UserProfileResponse> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = authService.uploadAvatar(email, file);
+
+        UserProfileResponse userProfileResponse = new UserProfileResponse(
+                user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getAvatarUrl(),
+                user.getCreatedAt());
+
+        return ResponseEntity.ok(userProfileResponse);
     }
 
 }

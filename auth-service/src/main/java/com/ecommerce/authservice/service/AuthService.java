@@ -1,11 +1,17 @@
 package com.ecommerce.authservice.service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.authservice.client.NotificationClient;
 import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
@@ -85,13 +91,6 @@ public class AuthService {
 
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-
-        // Only overwrite avatarUrl if the request actually included one.
-        // Avatar changes normally go through the dedicated /me/avatar upload
-        // endpoint, so this field will usually be null/blank here.
-        if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
 
         return userRepository.save(user);
     }
@@ -183,5 +182,52 @@ public class AuthService {
 
         return new ResetPasswordResponse(
                 "Successfully reset password");
+    }
+
+    @Transactional
+    public User uploadAvatar(String email, MultipartFile file) {
+
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Please select an image");
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new RuntimeException("Image size must not exceed 5 MB");
+        }
+
+        String contentType = file.getContentType();
+
+        if (!"image/jpeg".equals(contentType)) {
+            throw new RuntimeException("Only JPG images are allowed");
+        }
+
+        User user = getUserByEmail(email);
+
+        try {
+            // Create uploads/avatars folder
+            Path uploadPath = Paths.get("uploads", "avatars");
+            Files.createDirectories(uploadPath);
+
+            // Fixed filename based on user ID
+            String fileName = user.getId() + ".jpg";
+
+            Path filePath = uploadPath.resolve(fileName);
+
+            // Save or replace existing avatar
+            Files.copy(
+                    file.getInputStream(),
+                    filePath,
+                    StandardCopyOption.REPLACE_EXISTING);
+
+            // Save avatar URL in database
+            String avatarUrl = "/uploads/avatars/" + fileName;
+
+            user.setAvatarUrl(avatarUrl);
+
+            return userRepository.save(user);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload avatar", e);
+        }
     }
 }
