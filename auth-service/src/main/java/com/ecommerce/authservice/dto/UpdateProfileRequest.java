@@ -6,10 +6,15 @@ import lombok.Data;
 
 @Data
 public class UpdateProfileRequest {
-    
+
     @NotBlank
     private String name;
-    
-    @Email @NotBlank
+
+    @Email
+    @NotBlank
     private String email;
+
+    // Optional: not validated with @NotBlank since a profile update
+    // (name/email change) shouldn't be forced to resend the avatar too.
+    private String avatarUrl;
 }

@@ -62,8 +62,13 @@ public class AuthController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.getUserByEmail(email);
 
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(),
-                user.getRole());
+        UserProfileResponse response = new UserProfileResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getAvatarUrl(),
+                user.getCreatedAt());
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -73,8 +78,13 @@ public class AuthController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.updateUserProfile(email, request);
 
-        UserProfileResponse response = new UserProfileResponse(user.getId(), user.getName(), user.getEmail(),
-                user.getRole());
+        UserProfileResponse response = new UserProfileResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getAvatarUrl(),
+                user.getCreatedAt());
 
         return ResponseEntity.ok(response);
     }

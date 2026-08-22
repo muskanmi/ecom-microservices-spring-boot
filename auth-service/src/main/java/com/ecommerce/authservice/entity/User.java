@@ -12,21 +12,24 @@ import lombok.Data;
 
 @Entity
 @Data
-@Table(name="users")
+@Table(name = "users")
 public class User {
 
     @Id
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
 
-    @Column(unique=true)
+    @Column(unique = true)
     private String email;
 
     private String passwordHash;
 
     private String role;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
 
     private String resetToken;
 

@@ -86,6 +86,13 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
 
+        // Only overwrite avatarUrl if the request actually included one.
+        // Avatar changes normally go through the dedicated /me/avatar upload
+        // endpoint, so this field will usually be null/blank here.
+        if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+
         return userRepository.save(user);
     }
 
