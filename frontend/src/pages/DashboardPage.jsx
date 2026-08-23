@@ -21,7 +21,11 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  Menu,
+  MenuItem,
 } from "@mui/material";
+
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 
 import {
   Home,
@@ -211,6 +215,7 @@ const DashboardPage = () => {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const [wishlist, setWishlist] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -226,6 +231,18 @@ const DashboardPage = () => {
         : [...current, name],
     );
   };
+
+  const handleAvatarClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    console.log("handle close");
+
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
 
   if (loading) {
     return (
@@ -543,34 +560,107 @@ const DashboardPage = () => {
                 alignItems: "center",
               }}
             >
-              <Avatar
-                sx={{
-                  width: 34,
-                  height: 34,
-                  bgcolor: ink,
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
+              <Box
+                onClick={handleAvatarClick}
+                className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 transition hover:bg-gray-100"
               >
-                {(user.name || "U").slice(0, 1).toUpperCase()}
-              </Avatar>
-              <Box sx={{ display: { xs: "none", md: "block" } }}>
-                <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
-                  {user.name}
-                </Typography>
-                <Typography
+                <Avatar
+                  src={
+                    user.avatarUrl
+                      ? `http://localhost:8080${user.avatarUrl}`
+                      : undefined
+                  }
                   sx={{
-                    fontFamily: monoFont,
-                    fontSize: 9,
-                    letterSpacing: 1,
-                    color: muted,
+                    width: 34,
+                    height: 34,
+                    bgcolor: ink,
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 700,
                   }}
                 >
-                  MEMBER
-                </Typography>
+                  {(user.name || "U").slice(0, 1).toUpperCase()}
+                </Avatar>
+                <Box className="hidden sm:block">
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: ink,
+                    }}
+                  >
+                    {user.name}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      fontSize: 8,
+                      color: muted,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Customer
+                  </Typography>
+                </Box>
+
+                <KeyboardArrowDown
+                  sx={{
+                    color: ink,
+                    fontSize: 20,
+                    transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.2s ease",
+                  }}
+                />
               </Box>
-              <ExpandMore sx={{ color: muted }} />
+
+              <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+              >
+                <MenuItem onClick={() => navigate("/profile")}>
+                  My Profile
+                </MenuItem>
+
+                <MenuItem onClick={() => navigate("/orders")}>
+                  My Orders
+                </MenuItem>
+
+                <MenuItem onClick={() => navigate("/wishlist")}>
+                  Wishlist
+                </MenuItem>
+
+                <Divider />
+
+                <MenuItem onClick={() => navigate("/settings")}>
+                  Account Settings
+                </MenuItem>
+
+                <MenuItem onClick={() => navigate("/support")}>
+                  Help & Support
+                </MenuItem>
+
+                <Divider />
+
+                <MenuItem
+                  onClick={() => {
+                    handleClose();
+                    logout();
+                    navigate("/login");
+                  }}
+                >
+                  Logout
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
         </Box>
