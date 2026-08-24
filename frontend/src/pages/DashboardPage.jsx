@@ -233,6 +233,8 @@ const DashboardPage = () => {
   };
 
   const handleAvatarClick = (event) => {
+    console.log(event);
+
     setAnchorEl(event.currentTarget);
   };
 
