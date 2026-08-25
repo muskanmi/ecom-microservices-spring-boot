@@ -13,6 +13,8 @@ const LoginPage = () => {
   const handleLogin = async (formData) => {
     try {
       const response = await loginUser(formData);
+      console.log(response, "response");
+
       const { token } = response.data;
 
       login(token);
