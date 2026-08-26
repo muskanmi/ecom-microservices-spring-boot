@@ -16,6 +16,7 @@ const RegisterPage = () => {
 
       const response = await registerUser(formData);
       const { token } = response.data;
+      console.log(token);
 
       console.log(response);
 
