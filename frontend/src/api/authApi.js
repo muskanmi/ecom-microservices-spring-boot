@@ -45,4 +45,12 @@ export const uploadAvatar = (file, token) => {
     });
 };
 
+export const changePassword = (data, token) => {
+    return authApi.put("/me/password", data, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+};
+
 export default authApi;

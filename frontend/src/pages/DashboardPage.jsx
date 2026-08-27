@@ -569,7 +569,7 @@ const DashboardPage = () => {
                 <Avatar
                   src={
                     user.avatarUrl
-                      ? `http://localhost:8080${user.avatarUrl}`
+                      ? `http://localhost:8081${user.avatarUrl}`
                       : undefined
                   }
                   sx={{

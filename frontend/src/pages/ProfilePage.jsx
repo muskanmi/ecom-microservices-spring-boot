@@ -22,7 +22,12 @@ import {
 } from "@mui/icons-material";
 
 import { useNavigate } from "react-router-dom";
-import { currentUser, updateProfile, uploadAvatar } from "../api/authApi";
+import {
+  currentUser,
+  updateProfile,
+  uploadAvatar,
+  changePassword,
+} from "../api/authApi";
 
 const ink = "#243F3F";
 const muted = "#737373";
@@ -104,7 +109,13 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem("token");
 
-      // API call will go here
+      await changePassword(
+        {
+          currentPassword,
+          newPassword,
+        },
+        token,
+      );
 
       setCurrentPassword("");
       setNewPassword("");
@@ -157,6 +168,7 @@ export default function ProfilePage() {
   }
 
   const avatarSrc = user.avatarUrl ? `${API_URL}${user.avatarUrl}` : undefined;
+  console.log(avatarSrc, user);
 
   return (
     <Box
@@ -497,8 +509,8 @@ export default function ProfilePage() {
                     color: ink,
                   }}
                 >
-                  {user.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString("en-IN", {
+                  {user.memberSince
+                    ? new Date(user.memberSince).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "long",
                         year: "numeric",

@@ -241,6 +241,14 @@ public class AuthService {
             throw new RuntimeException("Current password is incorrect");
         }
 
+        if (passwordEncoder.matches(
+                request.getNewPassword(),
+                user.getPasswordHash())) {
+
+            throw new RuntimeException(
+                    "New password must be different from current password");
+        }
+
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
 
         userRepository.save(user);
