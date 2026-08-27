@@ -143,4 +143,14 @@ public class AuthController {
 
         return ResponseEntity.ok(userProfileResponse);
     }
+
+    @PutMapping("me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        authService.changePassword(email, request);
+
+        return ResponseEntity.noContent().build();
+    }
+
 }

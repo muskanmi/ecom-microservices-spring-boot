@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.authservice.client.NotificationClient;
+import com.ecommerce.authservice.dto.ChangePasswordRequest;
 import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordResponse;
@@ -229,5 +230,19 @@ public class AuthService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload avatar", e);
         }
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+
+        User user = getUserByEmail(email);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        userRepository.save(user);
     }
 }
