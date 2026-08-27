@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -29,6 +30,7 @@ const App = () => {
             }
           />
           <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.authservice.dto.AuthResponse;
+import com.ecommerce.authservice.dto.ChangePasswordRequest;
 import com.ecommerce.authservice.dto.CreateSellerProfileRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordRequest;
 import com.ecommerce.authservice.dto.ForgotPasswordResponse;
@@ -30,6 +31,7 @@ import com.ecommerce.authservice.service.AuthService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -141,5 +143,4 @@ public class AuthController {
 
         return ResponseEntity.ok(userProfileResponse);
     }
-
 }

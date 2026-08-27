@@ -33,4 +33,16 @@ export const updateProfile = (data, token) => {
     })
 }
 
+export const uploadAvatar = (file, token) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return authApi.post("/me/avatar", formData, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+        },
+    });
+};
+
 export default authApi;
