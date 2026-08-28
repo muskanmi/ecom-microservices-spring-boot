@@ -19,6 +19,7 @@ import {
   CalendarMonthOutlined,
   BadgeOutlined,
   LockOutlined,
+  LogoutOutlined,
 } from "@mui/icons-material";
 
 import { useNavigate } from "react-router-dom";
@@ -127,6 +128,12 @@ export default function ProfilePage() {
       console.error("Password update failed:", error);
       alert("Failed to update password");
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+
+    navigate("/login");
   };
 
   const handleSave = async () => {
@@ -656,6 +663,53 @@ export default function ProfilePage() {
                 </Box>
               </Box>
             )}
+          </Box>
+
+          <Box
+            className="border-t p-6 sm:p-10"
+            sx={{
+              borderColor: border,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#d32f2f",
+                mb: 1,
+              }}
+            >
+              Logout
+            </Typography>
+
+            <Typography
+              sx={{
+                fontSize: 13,
+                color: muted,
+                mb: 3,
+              }}
+            >
+              Sign out from your account on this device.
+            </Typography>
+
+            <Button
+              variant="outlined"
+              startIcon={<LogoutOutlined />}
+              onClick={handleLogout}
+              className="!normal-case"
+              sx={{
+                borderColor: "#d32f2f",
+                color: "#d32f2f",
+                fontWeight: 600,
+                px: 3,
+                "&:hover": {
+                  borderColor: "#b71c1c",
+                  backgroundColor: "rgba(211, 47, 47, 0.04)",
+                },
+              }}
+            >
+              Logout
+            </Button>
           </Box>
         </Paper>
       </Box>

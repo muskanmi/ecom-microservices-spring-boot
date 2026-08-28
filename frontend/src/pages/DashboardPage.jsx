@@ -516,9 +516,12 @@ const DashboardPage = () => {
 
             <Box sx={{ flex: 1 }} />
 
-            <IconButton className="!flex !items-center !gap-2 !rounded-md !text-ink">
+            <IconButton
+              onClick={() => navigate("/wishlist")}
+              className="!flex !items-center !gap-2 !rounded-md !text-ink"
+            >
               <Badge
-                badgeContent={3}
+                badgeContent={0}
                 sx={{
                   "& .MuiBadge-badge": {
                     bgcolor: gold,
@@ -535,9 +538,12 @@ const DashboardPage = () => {
               <span className="text-sm font-medium">Wishlist</span>
             </IconButton>
 
-            <IconButton className="!flex !items-center !gap-2 !rounded-md !text-ink !mr-4">
+            <IconButton
+              onClick={() => navigate("/cart")}
+              className="!flex !items-center !gap-2 !rounded-md !text-ink !mr-4"
+            >
               <Badge
-                badgeContent={2}
+                badgeContent={0}
                 sx={{
                   "& .MuiBadge-badge": {
                     bgcolor: gold,
@@ -878,6 +884,7 @@ const DashboardPage = () => {
                 {categories.map(({ label, image }) => (
                   <Box
                     key={label}
+                    onClick={() => navigate("/products/1")}
                     sx={{ textAlign: "center", cursor: "pointer", minWidth: 0 }}
                   >
                     <Paper

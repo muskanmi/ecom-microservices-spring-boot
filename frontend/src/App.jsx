@@ -4,6 +4,9 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
+import WishlistPage from "./pages/WishlistPage";
+import CartPage from "./pages/CartPage";
+import ProductDetailsPage from "./pages/ProductDetailsPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -31,6 +34,9 @@ const App = () => {
           />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/wishlist" element={<WishlistPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/products/:productId" element={<ProductDetailsPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
