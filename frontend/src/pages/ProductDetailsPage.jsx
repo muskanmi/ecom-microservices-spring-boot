@@ -39,6 +39,8 @@ const ProductDetailsPage = () => {
     },
   ];
 
+  console.log(product, "product");
+
   const product = products.find((item) => item.id === Number(productId));
 
   if (!product) {
