@@ -64,6 +64,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem("token");
 
       const response = await currentUser(token);
+      console.log(response, "response");
 
       setUser(response.data);
       setName(response.data.name || "");
