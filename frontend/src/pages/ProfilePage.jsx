@@ -87,6 +87,7 @@ export default function ProfilePage() {
       const token = localStorage.getItem("token");
 
       const response = await uploadAvatar(file, token);
+      console.log(response, "response");
 
       setUser(response.data);
     } catch (error) {
