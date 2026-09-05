@@ -23,7 +23,6 @@ public class ProductService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
-        ;
     }
 
     public ProductResponse getProductById(Long id) {
