@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.catalogservice.dto.CreateProductRequest;
 import com.ecommerce.catalogservice.dto.ProductResponse;
+import com.ecommerce.catalogservice.dto.UpdateProductRequest;
 import com.ecommerce.catalogservice.entity.Product;
 import com.ecommerce.catalogservice.service.ProductService;
 
@@ -46,7 +47,7 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id,
-            @Valid @RequestBody CreateProductRequest request) {
+            @Valid @RequestBody UpdateProductRequest request) {
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
