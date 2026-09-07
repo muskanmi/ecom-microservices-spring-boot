@@ -26,6 +26,8 @@ const LoginPage = () => {
     }
   };
 
+  console.log(login, "login");
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="relative bg-paper w-full max-w-[380px] rounded pt-10 pb-8 px-8 shadow-2xl">
