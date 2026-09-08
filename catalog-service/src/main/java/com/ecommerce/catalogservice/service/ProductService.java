@@ -1,5 +1,6 @@
 package com.ecommerce.catalogservice.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -18,9 +19,11 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
-    public List<ProductResponse> getAllProducts() {
-        return productRepository.findAll()
-                .stream()
+    public List<ProductResponse> getAllProducts(String category, BigDecimal minPrice, BigDecimal maxPrice) {
+
+        List<Product> products = productRepository.findProduct(category, minPrice, maxPrice);
+
+        return products.stream()
                 .map(this::mapToResponse)
                 .toList();
     }
