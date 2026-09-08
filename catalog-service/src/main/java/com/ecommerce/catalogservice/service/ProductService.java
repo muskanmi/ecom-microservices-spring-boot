@@ -180,4 +180,34 @@ public class ProductService {
 
         return responses;
     }
+
+    public void deleteImage(Long productId, Long imageId) {
+        ProductImage image = productImageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("Product Image not found"));
+
+        // Make sure this image belongs to the requested product
+        if (!image.getProduct().getId().equals(productId)) {
+            throw new RuntimeException("Image does not belong to this product");
+        }
+
+        // Delete actual file from uploads folder
+        String imageUrl = image.getImageUrl();
+
+        if (imageUrl != null && !imageUrl.isBlank()) {
+
+            Path filePath = Paths.get(
+                    imageUrl.substring(1));
+
+            try {
+                Files.deleteIfExists(filePath);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Could not delete image file",
+                        e);
+            }
+        }
+
+        // Delete image record from database
+        productImageRepository.delete(image);
+    }
 }
