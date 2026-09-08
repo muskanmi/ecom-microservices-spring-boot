@@ -1,14 +1,25 @@
 package com.ecommerce.catalogservice.service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Path;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.catalogservice.dto.CreateProductRequest;
+import com.ecommerce.catalogservice.dto.ProductImageResponse;
 import com.ecommerce.catalogservice.dto.ProductResponse;
 import com.ecommerce.catalogservice.dto.UpdateProductRequest;
 import com.ecommerce.catalogservice.entity.Product;
+import com.ecommerce.catalogservice.entity.ProductImage;
+import com.ecommerce.catalogservice.repository.ProductImageRepository;
 import com.ecommerce.catalogservice.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductImageRepository productImageRepository;
 
     public List<ProductResponse> getAllProducts(String category, BigDecimal minPrice, BigDecimal maxPrice) {
 
@@ -93,5 +105,79 @@ public class ProductService {
         response.setCreatedAt(product.getCreatedAt());
 
         return response;
+    }
+
+    public List<ProductImageResponse> uploadImages(
+            Long id,
+            List<MultipartFile> files) {
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        // Create uploads/products/{productId} folder
+        Path uploadPath = Paths.get(
+                "uploads",
+                "products",
+                id.toString());
+
+        try {
+            Files.createDirectories(uploadPath);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Could not create upload directory",
+                    e);
+        }
+
+        List<ProductImageResponse> responses = new ArrayList<>();
+
+        int displayOrder = 1;
+
+        for (MultipartFile file : files) {
+
+            if (file.isEmpty()) {
+                continue;
+            }
+
+            // Generate unique file name
+            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+            Path filePath = uploadPath.resolve(fileName);
+
+            // Save actual image to uploads folder
+            try {
+                Files.copy(
+                        file.getInputStream(),
+                        filePath,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Could not save image: " + fileName,
+                        e);
+            }
+
+            // Save image information in database
+            ProductImage image = new ProductImage();
+
+            image.setProduct(product);
+
+            image.setImageUrl(
+                    "/uploads/products/" + id + "/" + fileName);
+
+            image.setDisplayOrder(displayOrder++);
+
+            ProductImage savedImage = productImageRepository.save(image);
+
+            // Prepare response
+            ProductImageResponse response = new ProductImageResponse();
+
+            response.setId(savedImage.getId());
+            response.setImageUrl(savedImage.getImageUrl());
+            response.setDisplayOrder(
+                    savedImage.getDisplayOrder());
+
+            responses.add(response);
+        }
+
+        return responses;
     }
 }

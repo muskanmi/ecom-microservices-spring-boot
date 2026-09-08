@@ -2,8 +2,10 @@ package com.ecommerce.catalogservice.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.ecommerce.catalogservice.dto.CreateProductRequest;
+import com.ecommerce.catalogservice.dto.ProductImageResponse;
 import com.ecommerce.catalogservice.dto.ProductResponse;
 import com.ecommerce.catalogservice.dto.UpdateProductRequest;
 import com.ecommerce.catalogservice.entity.Product;
@@ -60,6 +62,12 @@ public class ProductController {
         productService.deleteProduct(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/images")
+    public ResponseEntity<List<ProductImageResponse>> uploadImages(@PathVariable Long id,
+            @RequestParam("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(productService.uploadImages(id, files));
     }
 
 }
