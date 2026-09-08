@@ -28,8 +28,6 @@ public class CreateProductRequest {
     @NotBlank(message = "Category is required")
     private String category;
 
-    private String imageUrl;
-
     @NotNull(message = "Stock is required")
     @PositiveOrZero(message = "Stock cannot be negative")
     private Integer stock;

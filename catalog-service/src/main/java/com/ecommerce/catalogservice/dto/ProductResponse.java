@@ -2,6 +2,7 @@ package com.ecommerce.catalogservice.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,7 +19,7 @@ public class ProductResponse {
     private BigDecimal price;
     private BigDecimal mrp;
     private String category;
-    private String imageUrl;
+    private List<ProductImageResponse> images;
     private Integer stock;
     private Long sellerId;
     private LocalDateTime createdAt;

@@ -44,7 +44,6 @@ public class ProductService {
         product.setPrice(request.getPrice());
         product.setMrp(request.getMrp());
         product.setCategory(request.getCategory());
-        product.setImageUrl(request.getImageUrl());
         product.setStock(request.getStock());
 
         Product saveProduct = productRepository.save(product);
@@ -64,7 +63,6 @@ public class ProductService {
         product.setPrice(request.getPrice());
         product.setMrp(request.getMrp());
         product.setCategory(request.getCategory());
-        product.setImageUrl(request.getImageUrl());
         product.setStock(request.getStock());
 
         Product updatedProduct = productRepository.save(product);
@@ -90,7 +88,6 @@ public class ProductService {
         response.setPrice(product.getPrice());
         response.setMrp(product.getMrp());
         response.setCategory(product.getCategory());
-        response.setImageUrl(product.getImageUrl());
         response.setStock(product.getStock());
         response.setSellerId(product.getSellerId());
         response.setCreatedAt(product.getCreatedAt());
