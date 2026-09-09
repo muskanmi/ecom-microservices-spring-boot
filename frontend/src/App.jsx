@@ -7,6 +7,7 @@ import ProfilePage from "./pages/ProfilePage";
 import WishlistPage from "./pages/WishlistPage";
 import CartPage from "./pages/CartPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
+import MainLayout from "./components/MainLayout";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -24,19 +25,23 @@ const App = () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/products/:productId" element={<ProductDetailsPage />} />
+          {/* Marketplace layout */}
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+
+            <Route
+              path="/products/:productId"
+              element={<ProductDetailsPage />}
+            />
+
+            <Route path="/wishlist" element={<WishlistPage />} />
+
+            <Route path="/cart" element={<CartPage />} />
+
+            {/* <Route path="/orders" element={<OrdersPage />} /> */}
+
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>

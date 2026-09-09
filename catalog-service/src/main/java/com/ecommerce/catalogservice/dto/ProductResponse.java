@@ -19,8 +19,9 @@ public class ProductResponse {
     private BigDecimal price;
     private BigDecimal mrp;
     private String category;
-    private List<ProductImageResponse> images;
     private Integer stock;
     private Long sellerId;
     private LocalDateTime createdAt;
+
+    private List<ProductImageResponse> images;
 }

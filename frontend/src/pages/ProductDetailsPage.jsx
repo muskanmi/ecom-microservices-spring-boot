@@ -8,45 +8,65 @@ import {
   ArrowBack,
 } from "@mui/icons-material";
 
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
+import { getProductById } from "../api/productApi";
 
 const ProductDetailsPage = () => {
   const navigate = useNavigate();
   const { productId } = useParams();
 
-  // Temporary product data
-  // Later this will come from your backend API
-  const products = [
-    {
-      id: 1,
-      name: "Pink Summer Dress",
-      price: 1499,
-      mrp: 2499,
-      image: "/assets/products/pink-dress.png",
-      category: "Fashion",
-      description:
-        "A stylish and comfortable summer dress designed for everyday wear and special occasions.",
-    },
-    {
-      id: 2,
-      name: "Wireless Headphones",
-      price: 2999,
-      mrp: 4999,
-      image: "/assets/products/headphones.png",
-      category: "Electronics",
-      description:
-        "Premium wireless headphones with comfortable design and immersive sound quality.",
-    },
-  ];
+  const [product, setProduct] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  console.log(product, "product");
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await getProductById(productId);
 
-  const product = products.find((item) => item.id === Number(productId));
+        const productData = response.data;
+
+        setProduct(productData);
+
+        // Select first image by default
+        if (productData.images?.length > 0) {
+          setSelectedImage(productData.images[0]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch product:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId]);
+
+  if (loading) {
+    return (
+      <Box className="flex min-h-[70vh] items-center justify-center">
+        <Typography sx={{ color: "#8A8378" }}>Loading product...</Typography>
+      </Box>
+    );
+  }
 
   if (!product) {
     return (
-      <Box className="flex min-h-[70vh] items-center justify-center">
-        <Typography>Product not found</Typography>
+      <Box className="flex min-h-[70vh] flex-col items-center justify-center gap-4">
+        <Typography sx={{ color: "#2D3A3A" }}>Product not found</Typography>
+
+        <Button
+          onClick={() => navigate(-1)}
+          className="!normal-case"
+          sx={{
+            backgroundColor: "#E9B44C",
+            color: "#2D3A3A",
+          }}
+        >
+          Go Back
+        </Button>
       </Box>
     );
   }
@@ -70,24 +90,82 @@ const ProductDetailsPage = () => {
       {/* Main Product Section */}
 
       <Box className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        {/* Left - Product Image */}
+        {/* LEFT - Images */}
 
-        <Box
-          className="flex items-center justify-center rounded-2xl p-8"
-          sx={{
-            backgroundColor: "#F3EFE7",
-            minHeight: 500,
-          }}
-        >
+        <Box>
+          {/* Main Image */}
+
           <Box
-            component="img"
-            src={product.image}
-            alt={product.name}
-            className="max-h-[430px] max-w-full object-contain"
-          />
+            className="flex items-center justify-center rounded-2xl"
+            sx={{
+              backgroundColor: "#F3EFE7",
+              height: 500,
+              overflow: "hidden",
+            }}
+          >
+            {selectedImage ? (
+              <Box
+                component="img"
+                src={`http://localhost:8082${selectedImage.imageUrl}`}
+                alt={product.name}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  p: 4,
+                }}
+              />
+            ) : (
+              <Typography sx={{ color: "#8A8378" }}>
+                No image available
+              </Typography>
+            )}
+          </Box>
+
+          {/* Image Thumbnails */}
+
+          {product.images?.length > 0 && (
+            <Box className="mt-4 flex gap-3 overflow-x-auto">
+              {product.images
+                .slice()
+                .sort((a, b) => a.displayOrder - b.displayOrder)
+                .map((image) => (
+                  <Box
+                    key={image.id}
+                    onClick={() => setSelectedImage(image)}
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      flexShrink: 0,
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      backgroundColor: "#F3EFE7",
+                      border:
+                        selectedImage?.id === image.id
+                          ? "2px solid #E9B44C"
+                          : "1px solid #DDD6CA",
+                      transition: "border .2s",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={`http://localhost:8082${image.imageUrl}`}
+                      alt={`${product.name} ${image.displayOrder}`}
+                      sx={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                        p: 0.5,
+                      }}
+                    />
+                  </Box>
+                ))}
+            </Box>
+          )}
         </Box>
 
-        {/* Right - Product Information */}
+        {/* RIGHT - Product Information */}
 
         <Box className="flex flex-col justify-center">
           <Typography
@@ -102,12 +180,6 @@ const ProductDetailsPage = () => {
             sx={{ color: "#2D3A3A" }}
           >
             {product.name}
-          </Typography>
-
-          {/* Rating */}
-
-          <Typography className="!mb-5 !text-sm" sx={{ color: "#8A8378" }}>
-            ★★★★★ (24 reviews)
           </Typography>
 
           {/* Price */}
@@ -157,6 +229,19 @@ const ProductDetailsPage = () => {
             {product.description}
           </Typography>
 
+          {/* Stock */}
+
+          <Typography
+            className="!mb-4 !text-sm !font-semibold"
+            sx={{
+              color: product.stock > 0 ? "#2E7D32" : "#C62828",
+            }}
+          >
+            {product.stock > 0
+              ? `${product.stock} items available`
+              : "Out of stock"}
+          </Typography>
+
           {/* Quantity */}
 
           <Typography
@@ -192,6 +277,7 @@ const ProductDetailsPage = () => {
             <Button
               startIcon={<ShoppingCartOutlined />}
               variant="contained"
+              disabled={product.stock <= 0}
               className="!flex-1 !py-3 !normal-case"
               sx={{
                 backgroundColor: "#E9B44C",

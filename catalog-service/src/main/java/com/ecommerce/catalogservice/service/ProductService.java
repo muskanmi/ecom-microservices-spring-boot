@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -104,6 +105,21 @@ public class ProductService {
         response.setSellerId(product.getSellerId());
         response.setCreatedAt(product.getCreatedAt());
 
+        List<ProductImageResponse> images = product.getImages()
+                .stream()
+                .map(image -> {
+                    ProductImageResponse imageResponse = new ProductImageResponse();
+
+                    imageResponse.setId(image.getId());
+                    imageResponse.setImageUrl(image.getImageUrl());
+                    imageResponse.setDisplayOrder(image.getDisplayOrder());
+
+                    return imageResponse;
+                })
+                .toList();
+
+        response.setImages(images);
+
         return response;
     }
 
@@ -130,7 +146,11 @@ public class ProductService {
 
         List<ProductImageResponse> responses = new ArrayList<>();
 
-        int displayOrder = 1;
+        int displayOrder = product.getImages().stream()
+                .map(ProductImage::getDisplayOrder)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
 
         for (MultipartFile file : files) {
 
@@ -179,6 +199,88 @@ public class ProductService {
         }
 
         return responses;
+    }
+
+    public ProductImageResponse updateImage(Long productId, Long imageId, MultipartFile file) {
+        ProductImage image = productImageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("Image not found"));
+
+        // Make sure the image belongs to this product
+        if (!image.getProduct().getId().equals(productId)) {
+            throw new RuntimeException("Image does not belong to this product");
+        }
+
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Image file is required");
+        }
+
+        // Product image folder
+        Path uploadPath = Paths.get(
+                "uploads",
+                "products",
+                productId.toString());
+
+        try {
+            Files.createDirectories(uploadPath);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Could not create upload directory",
+                    e);
+        }
+
+        // Delete old physical image
+        String oldImageUrl = image.getImageUrl();
+
+        if (oldImageUrl != null && !oldImageUrl.isBlank()) {
+
+            Path oldFilePath = Paths.get(
+                    oldImageUrl.substring(1));
+
+            try {
+                Files.deleteIfExists(oldFilePath);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Could not delete old image",
+                        e);
+            }
+        }
+
+        // Generate new unique filename
+        String fileName = UUID.randomUUID()
+                + "_" + file.getOriginalFilename();
+
+        Path newFilePath = uploadPath.resolve(fileName);
+
+        // Save new image
+        try {
+            Files.copy(
+                    file.getInputStream(),
+                    newFilePath,
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Could not save new image",
+                    e);
+        }
+
+        // Update database record
+        image.setImageUrl(
+                "/uploads/products/"
+                        + productId
+                        + "/"
+                        + fileName);
+
+        ProductImage updatedImage = productImageRepository.save(image);
+
+        // Prepare response
+        ProductImageResponse response = new ProductImageResponse();
+
+        response.setId(updatedImage.getId());
+        response.setImageUrl(updatedImage.getImageUrl());
+        response.setDisplayOrder(
+                updatedImage.getDisplayOrder());
+
+        return response;
     }
 
     public void deleteImage(Long productId, Long imageId) {

@@ -11,6 +11,7 @@ import com.ecommerce.catalogservice.dto.UpdateProductRequest;
 import com.ecommerce.catalogservice.entity.Product;
 import com.ecommerce.catalogservice.service.ProductService;
 
+import io.micrometer.core.ipc.http.HttpSender.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -68,6 +69,12 @@ public class ProductController {
     public ResponseEntity<List<ProductImageResponse>> uploadImages(@PathVariable Long id,
             @RequestParam("files") List<MultipartFile> files) {
         return ResponseEntity.ok(productService.uploadImages(id, files));
+    }
+
+    @PutMapping("/{id}/images/{imageId}")
+    public ResponseEntity<ProductImageResponse> updateImage(@PathVariable Long id, @PathVariable Long imageId,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(productService.updateImage(id, imageId, file));
     }
 
     @DeleteMapping("/{id}/images/{imageId}")
