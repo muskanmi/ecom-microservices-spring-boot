@@ -25,8 +25,8 @@ public class UpdateProductRequest {
     @Positive(message = "MRP must be greater than zero")
     private BigDecimal mrp;
 
-    @NotBlank(message = "Category is required")
-    private String category;
+    @NotNull(message = "Category is required")
+    private Long categoryId;
 
     @NotNull(message = "Stock is required")
     @PositiveOrZero(message = "Stock cannot be negative")

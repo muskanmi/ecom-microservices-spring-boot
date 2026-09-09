@@ -18,8 +18,10 @@ import com.ecommerce.catalogservice.dto.CreateProductRequest;
 import com.ecommerce.catalogservice.dto.ProductImageResponse;
 import com.ecommerce.catalogservice.dto.ProductResponse;
 import com.ecommerce.catalogservice.dto.UpdateProductRequest;
+import com.ecommerce.catalogservice.entity.Category;
 import com.ecommerce.catalogservice.entity.Product;
 import com.ecommerce.catalogservice.entity.ProductImage;
+import com.ecommerce.catalogservice.repository.CategoryRepository;
 import com.ecommerce.catalogservice.repository.ProductImageRepository;
 import com.ecommerce.catalogservice.repository.ProductRepository;
 
@@ -31,6 +33,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
+    private final CategoryRepository categoryRepository;
 
     public List<ProductResponse> getAllProducts(String category, BigDecimal minPrice, BigDecimal maxPrice) {
 
@@ -50,13 +53,16 @@ public class ProductService {
 
     public ProductResponse createProduct(CreateProductRequest request) {
 
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
         Product product = new Product();
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setMrp(request.getMrp());
-        product.setCategory(request.getCategory());
+        product.setCategory(category);
         product.setStock(request.getStock());
 
         Product saveProduct = productRepository.save(product);
@@ -71,11 +77,14 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setMrp(request.getMrp());
-        product.setCategory(request.getCategory());
+        product.setCategory(category);
         product.setStock(request.getStock());
 
         Product updatedProduct = productRepository.save(product);
@@ -100,10 +109,14 @@ public class ProductService {
         response.setDescription(product.getDescription());
         response.setPrice(product.getPrice());
         response.setMrp(product.getMrp());
-        response.setCategory(product.getCategory());
         response.setStock(product.getStock());
         response.setSellerId(product.getSellerId());
         response.setCreatedAt(product.getCreatedAt());
+
+        if (product.getCategory() != null) {
+            response.setCategoryId(product.getCategory().getId());
+            response.setCategoryName(product.getCategory().getName());
+        }
 
         List<ProductImageResponse> images = product.getImages()
                 .stream()

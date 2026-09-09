@@ -18,7 +18,8 @@ public class ProductResponse {
     private String description;
     private BigDecimal price;
     private BigDecimal mrp;
-    private String category;
+    private Long categoryId;
+    private String categoryName;
     private Integer stock;
     private Long sellerId;
     private LocalDateTime createdAt;

@@ -434,6 +434,7 @@ const DashboardPage = () => {
             sx={{
               mb: 1.8,
               justifyContent: "space-between",
+              alignItems: "flex-end",
             }}
           >
             <Box>
@@ -466,6 +467,8 @@ const DashboardPage = () => {
                 textTransform: "none",
                 fontSize: 12,
                 fontWeight: 700,
+                minWidth: "auto",
+                px: 0,
               }}
             >
               View all
@@ -478,37 +481,52 @@ const DashboardPage = () => {
               gridTemplateColumns: {
                 xs: "repeat(2,minmax(0,1fr))",
                 sm: "repeat(3,minmax(0,1fr))",
-                md: "repeat(4,minmax(0,1fr))",
+                md: "repeat(5,minmax(0,1fr))",
               },
-              gap: 1.8,
+              gap: {
+                xs: 1,
+                sm: 1.2,
+                md: 1.4,
+              },
             }}
           >
-            {products.map((product) => (
+            {products.slice(0, 5).map((product) => (
               <Paper
                 key={product.id}
                 onClick={() => navigate(`/products/${product.id}`)}
-                elevation={0}
                 sx={{
-                  p: 1.2,
+                  p: 1,
                   cursor: "pointer",
                   overflow: "hidden",
+
                   border: `1px solid ${border}`,
-                  borderRadius: 2.5,
-                  bgcolor: paper,
+                  borderRadius: 2,
+
+                  // WHITE CARD
+                  bgcolor: "#FFFFFF",
+
+                  display: "flex",
+                  flexDirection: "column",
+
                   transition: "transform .2s, box-shadow .2s",
+
                   "&:hover": {
                     transform: "translateY(-3px)",
-                    boxShadow: "0 12px 28px rgba(35,31,24,.10)",
+                    boxShadow: "0 10px 24px rgba(35,31,24,.10)",
                   },
                 }}
               >
                 <Box
                   sx={{
                     position: "relative",
-                    bgcolor: "#F3EFE7",
+                    bgcolor: "#FFFFFF",
                     borderRadius: 1.5,
                     overflow: "hidden",
-                    mb: 1.3,
+                    height: 125,
+
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
                   <Box
@@ -524,7 +542,7 @@ const DashboardPage = () => {
                       width: "100%",
                       height: "100%",
                       objectFit: "contain",
-                      p: 1,
+                      p: 0.5,
                     }}
                   />
                   <IconButton
@@ -532,83 +550,129 @@ const DashboardPage = () => {
                     onClick={() => toggleWishlist(product.name)}
                     sx={{
                       position: "absolute",
-                      top: 6,
-                      right: 6,
-                      width: 30,
-                      height: 30,
-                      bgcolor: "rgba(255,252,244,.94)",
+                      top: 5,
+                      right: 5,
+
+                      width: 28,
+                      height: 28,
+
+                      bgcolor: "rgba(255,255,255,.95)",
+
+                      border: `1px solid ${border}`,
+
                       color: wishlist.includes(product.name) ? "#C84B55" : ink,
-                      "&:hover": { bgcolor: "#FFFCF4" },
+
+                      "&:hover": {
+                        bgcolor: "#FFFFFF",
+                      },
                     }}
                   >
-                    <FavoriteBorder sx={{ fontSize: 16 }} />
+                    <FavoriteBorder sx={{ fontSize: 15 }} />
                   </IconButton>
                 </Box>
 
                 <Typography
                   sx={{
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: 700,
                     color: ink,
-                    lineHeight: 1.35,
-                    minHeight: 35,
+                    lineHeight: 1.3,
+
+                    minHeight: 32,
+
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
                   }}
                 >
                   {product.name}
                 </Typography>
-                <Typography sx={{ fontSize: 11, color: muted, mt: 0.35 }}>
-                  {product.category}
+                <Typography
+                  sx={{
+                    fontSize: 10.5,
+                    color: muted,
+                    mt: 0.3,
+
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {product.subcategory || product.categoryName}
                 </Typography>
 
                 <Stack
                   direction="row"
                   alignItems="baseline"
-                  spacing={0.7}
-                  sx={{ mt: 0.8 }}
+                  spacing={0.6}
+                  sx={{
+                    mt: 0.7,
+                    flexWrap: "nowrap",
+                  }}
                 >
-                  <Typography sx={{ fontSize: 14, fontWeight: 800 }}>
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: ink,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {rupee(product.price)}
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: 10,
+                      fontSize: 12,
                       color: muted,
                       textDecoration: "line-through",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {rupee(product.mrp)}
                   </Typography>
-                </Stack>
 
-                <Typography
-                  sx={{
-                    fontSize: 10,
-                    color: "#17834B",
-                    fontWeight: 700,
-                    mt: 0.2,
-                  }}
-                >
-                  {discountPercentage(product.price, product.mrp)}% off
-                </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      color: "#17834B",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {discountPercentage(product.price, product.mrp)}% off
+                  </Typography>
+                </Stack>
 
                 <Stack
                   direction="row"
                   alignItems="center"
-                  spacing={0.5}
-                  sx={{ mt: 0.4 }}
+                  spacing={0.4}
+                  sx={{
+                    mt: 0.45,
+                    minHeight: 20,
+                  }}
                 >
                   <Rating
-                    value={product?.rating}
+                    value={product?.rating || 0}
                     precision={0.1}
                     readOnly
                     size="small"
                     sx={{
-                      fontSize: 14,
-                      "& .MuiRating-iconFilled": { color: gold },
+                      fontSize: 13,
+                      "& .MuiRating-iconFilled": {
+                        color: gold,
+                      },
+
+                      "& .MuiRating-iconEmpty": {
+                        color: "#D8D1C5",
+                      },
                     }}
                   />
-                  <Typography sx={{ fontSize: 9.5, color: muted }}>
-                    {product?.rating} ({product?.reviews})
+                  <Typography
+                    sx={{ fontSize: 9, color: muted, whiteSpace: "nowrap" }}
+                  >
+                    {product?.rating || 0} ({product?.reviews || 0})
                   </Typography>
                 </Stack>
 
