@@ -250,7 +250,9 @@ const MainLayout = () => {
                 fontWeight: 700,
                 letterSpacing: 1.7,
                 color: ink,
+                cursor: "pointer",
               }}
+              onClick={navigate("/dashboard")}
             >
               MARKETPLACE
             </Typography>

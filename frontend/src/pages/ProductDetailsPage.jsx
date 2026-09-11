@@ -944,22 +944,6 @@ const ProductDetailsPage = () => {
             >
               {product.description}
             </Typography>
-
-            <Box
-              component="ul"
-              sx={{
-                pl: 2.5,
-                mt: 2,
-                color: "#68706B",
-                fontSize: 13,
-                lineHeight: 1.9,
-              }}
-            >
-              <li>Premium quality product</li>
-              <li>Designed for everyday use</li>
-              <li>Carefully selected materials</li>
-              <li>Easy returns within 7 days</li>
-            </Box>
           </Box>
 
           {/* Secondary product image */}
@@ -1008,7 +992,7 @@ const ProductDetailsPage = () => {
             direction="row"
             justifyContent="space-between"
             alignItems="center"
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, display: "flex", justifyContent: "space-between" }}
           >
             <Typography
               sx={{
