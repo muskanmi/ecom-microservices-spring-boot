@@ -104,7 +104,7 @@ const navItems = [
   },
 ];
 
-console.log(navItems, "nnnnnnnn");
+console.log(navItems, "nnnnn");
 
 // --------------------------------------------------
 // Main Layout
