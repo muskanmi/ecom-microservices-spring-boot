@@ -6,6 +6,7 @@ import {
   Divider,
   Rating,
   Stack,
+  Breadcrumbs,
 } from "@mui/material";
 
 import {
@@ -97,10 +98,8 @@ const ProductDetailsPage = () => {
   // Category name
   // --------------------------------------------------
 
-  const categoryName =
-    typeof product?.category === "object"
-      ? product?.category?.name
-      : product?.category;
+  const categoryName = product?.categoryName;
+  const parentCategoryName = product?.parentCategoryName;
 
   // --------------------------------------------------
   // Quantity
@@ -133,6 +132,8 @@ const ProductDetailsPage = () => {
       previous === images.length - 1 ? 0 : previous + 1,
     );
   };
+
+  const addToCart = () => {};
 
   // --------------------------------------------------
   // Loading
@@ -212,22 +213,21 @@ const ProductDetailsPage = () => {
             BREADCRUMB
         ========================================================= */}
 
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={1}
+        <Breadcrumbs
+          separator="›"
           sx={{
-            mb: 2.5,
-            color: "#6F766F",
-            fontSize: 12,
+            mb: 3,
+            "& .MuiBreadcrumbs-separator": {
+              color: "#8A8378",
+            },
           }}
         >
           <Typography
             onClick={() => navigate("/dashboard")}
             sx={{
+              color: "#2D3A3A",
+              fontSize: 13,
               cursor: "pointer",
-              color: "#344B4B",
-              fontSize: 12,
               "&:hover": {
                 textDecoration: "underline",
               },
@@ -236,24 +236,38 @@ const ProductDetailsPage = () => {
             Home
           </Typography>
 
-          <ChevronRight sx={{ fontSize: 15 }} />
+          {parentCategoryName && (
+            <Typography
+              sx={{
+                color: "#8A8378",
+                fontSize: 13,
+              }}
+            >
+              {parentCategoryName}
+            </Typography>
+          )}
 
-          <Typography sx={{ fontSize: 12 }}>
-            {categoryName || "Products"}
-          </Typography>
-
-          <ChevronRight sx={{ fontSize: 15 }} />
+          {categoryName && (
+            <Typography
+              sx={{
+                color: "#8A8378",
+                fontSize: 13,
+              }}
+            >
+              {categoryName}
+            </Typography>
+          )}
 
           <Typography
             sx={{
-              fontSize: 12,
               color: "#2D3A3A",
+              fontSize: 13,
               fontWeight: 700,
             }}
           >
             {product.name}
           </Typography>
-        </Stack>
+        </Breadcrumbs>
 
         {/* =========================================================
             MAIN PRODUCT SECTION
@@ -783,6 +797,7 @@ const ProductDetailsPage = () => {
                 fullWidth
                 startIcon={<ShoppingCartOutlined />}
                 disabled={product.stock <= 0}
+                onClick={addToCart}
                 sx={{
                   py: 1.35,
                   backgroundColor: "#E9B44C",

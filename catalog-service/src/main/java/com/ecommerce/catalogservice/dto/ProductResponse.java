@@ -20,6 +20,10 @@ public class ProductResponse {
     private BigDecimal mrp;
     private Long categoryId;
     private String categoryName;
+
+    private Long parentCategoryId;
+    private String parentCategoryName;
+
     private Integer stock;
     private Long sellerId;
     private LocalDateTime createdAt;

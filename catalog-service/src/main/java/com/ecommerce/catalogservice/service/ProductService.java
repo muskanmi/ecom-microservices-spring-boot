@@ -116,6 +116,16 @@ public class ProductService {
         if (product.getCategory() != null) {
             response.setCategoryId(product.getCategory().getId());
             response.setCategoryName(product.getCategory().getName());
+
+            // Parent Category
+            if (product.getCategory().getParent() != null) {
+
+                response.setParentCategoryId(
+                        product.getCategory().getParent().getId());
+
+                response.setParentCategoryName(
+                        product.getCategory().getParent().getName());
+            }
         }
 
         List<ProductImageResponse> images = product.getImages()

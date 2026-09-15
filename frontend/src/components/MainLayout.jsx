@@ -104,8 +104,6 @@ const navItems = [
   },
 ];
 
-console.log(navItems, "nnnnn");
-
 // --------------------------------------------------
 // Main Layout
 // --------------------------------------------------
@@ -254,7 +252,6 @@ const MainLayout = () => {
                 color: ink,
                 cursor: "pointer",
               }}
-              onClick={navigate("/dashboard")}
             >
               MARKETPLACE
             </Typography>
