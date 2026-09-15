@@ -133,7 +133,25 @@ const ProductDetailsPage = () => {
     );
   };
 
-  const addToCart = () => {};
+  const addToCart = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await addToCart(
+        {
+          productId: product.id,
+          quantity,
+        },
+        token,
+      );
+
+      alert("Product added to cart successfully");
+    } catch (error) {
+      console.error("Failed to add product to cart:", error);
+
+      alert(error.response?.data?.message || "Failed to add product to cart");
+    }
+  };
 
   // --------------------------------------------------
   // Loading
