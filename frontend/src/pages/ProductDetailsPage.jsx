@@ -26,15 +26,18 @@ import {
   FullscreenOutlined,
 } from "@mui/icons-material";
 
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getProductById } from "../api/productApi";
+import { addToCart } from "../api/cartApi";
+import { useAuth } from "../context/AuthContext";
 
 const API_URL = "http://localhost:8082";
 
 const ProductDetailsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { productId } = useParams();
 
   const [product, setProduct] = useState(null);
@@ -133,23 +136,26 @@ const ProductDetailsPage = () => {
     );
   };
 
-  const addToCart = async () => {
+  const handleAddToCart = async () => {
     try {
       const token = localStorage.getItem("token");
 
-      await addToCart(
+      const response = await addToCart(
         {
           productId: product.id,
           quantity,
         },
         token,
+        user.id,
       );
 
-      alert("Product added to cart successfully");
+      console.log("Add to Cart response:", product.id, quantity);
+      console.log("Response data:", response);
+      // alert("Product added to cart successfully");
     } catch (error) {
       console.error("Failed to add product to cart:", error);
 
-      alert(error.response?.data?.message || "Failed to add product to cart");
+      // alert(error.response?.data?.message || "Failed to add product to cart");
     }
   };
 
@@ -815,7 +821,8 @@ const ProductDetailsPage = () => {
                 fullWidth
                 startIcon={<ShoppingCartOutlined />}
                 disabled={product.stock <= 0}
-                onClick={addToCart}
+                type="button"
+                onClick={handleAddToCart}
                 sx={{
                   py: 1.35,
                   backgroundColor: "#E9B44C",

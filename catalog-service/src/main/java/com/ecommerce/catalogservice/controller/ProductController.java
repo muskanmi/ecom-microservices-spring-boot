@@ -11,7 +11,6 @@ import com.ecommerce.catalogservice.dto.UpdateProductRequest;
 import com.ecommerce.catalogservice.entity.Product;
 import com.ecommerce.catalogservice.service.ProductService;
 
-import io.micrometer.core.ipc.http.HttpSender.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
