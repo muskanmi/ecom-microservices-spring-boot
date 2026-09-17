@@ -7,6 +7,8 @@ const CartPage = () => {
 
   const cartItems = [];
 
+  console.log(cartItems, "cccccc");
+
   if (cartItems.length === 0) {
     return (
       <EmptyState
