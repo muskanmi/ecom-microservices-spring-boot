@@ -32,6 +32,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getProductById } from "../api/productApi";
 import { addToCart } from "../api/cartApi";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 
 const API_URL = "http://localhost:8082";
 
@@ -39,6 +40,8 @@ const ProductDetailsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { productId } = useParams();
+
+  const { fetchCart } = useCart();
 
   const [product, setProduct] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -152,9 +155,12 @@ const ProductDetailsPage = () => {
       console.log("Add to Cart response:", product.id, quantity);
       console.log("Response data:", response);
       // alert("Product added to cart successfully");
+
+      await fetchCart();
     } catch (error) {
       console.error("Failed to add product to cart:", error);
 
+      console.error("Backend response:", error.response?.data);
       // alert(error.response?.data?.message || "Failed to add product to cart");
     }
   };

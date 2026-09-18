@@ -38,6 +38,7 @@ import {
   ShoppingCartOutlined,
   ShoppingBagOutlined,
 } from "@mui/icons-material";
+import { useCart } from "../context/CartContext";
 
 // --------------------------------------------------
 // Theme constants
@@ -113,6 +114,8 @@ const MainLayout = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { cartItemCount } = useCart();
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -465,7 +468,7 @@ const MainLayout = () => {
               className="!flex !items-center !gap-2 !rounded-md !text-ink !mr-4"
             >
               <Badge
-                badgeContent={0}
+                badgeContent={cartItemCount}
                 sx={{
                   "& .MuiBadge-badge": {
                     bgcolor: gold,

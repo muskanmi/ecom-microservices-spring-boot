@@ -14,3 +14,27 @@ export const addToCart = (data, token, userId) => {
     }
   );
 };
+
+export const getCart = (token, userId) => {
+  return axios.get(
+    API_URL,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-User-Id": userId,
+      }
+    }
+  )
+}
+
+export const getCartDetails = (token, userId) => {
+  return axios.get(
+    `${API_URL}/details`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-User-Id": userId,
+      },
+    }
+  );
+};
