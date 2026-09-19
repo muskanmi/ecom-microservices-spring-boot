@@ -38,3 +38,39 @@ export const getCartDetails = (token, userId) => {
     }
   );
 };
+
+export const updateCartItem = (
+  itemId,
+  quantity,
+  token,
+  userId
+) => {
+  return axios.put(
+    `${API_URL}/items/${itemId}`,
+    {
+      quantity,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-User-Id": userId,
+      },
+    }
+  );
+};
+
+export const removeCartItem = (
+  itemId,
+  token,
+  userId
+) => {
+  return axios.delete(
+    `${API_URL}/items/${itemId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-User-Id": userId,
+      },
+    }
+  );
+};
