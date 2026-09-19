@@ -35,6 +35,10 @@ const CartPage = () => {
 
   const savings = totalMrp - subtotal;
 
+  const handleAddQuantity = () => {};
+
+  const handleRemoveQuantity = () => {};
+
   if (cartItemCount === 0) {
     return (
       <Box
@@ -301,7 +305,7 @@ const CartPage = () => {
                           borderRadius: 1,
                         }}
                       >
-                        <IconButton size="small">
+                        <IconButton size="small" onClick={handleRemoveQuantity}>
                           <RemoveIcon fontSize="small" />
                         </IconButton>
 
@@ -317,7 +321,7 @@ const CartPage = () => {
                           {item.quantity}
                         </Typography>
 
-                        <IconButton size="small">
+                        <IconButton size="small" onClick={handleAddQuantity}>
                           <AddIcon fontSize="small" />
                         </IconButton>
                       </Stack>

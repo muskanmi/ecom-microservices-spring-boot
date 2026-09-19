@@ -7,6 +7,7 @@ import com.ecommerce.orderservice.dto.CartItemDetailResponse;
 import com.ecommerce.orderservice.dto.CartItemResponse;
 import com.ecommerce.orderservice.dto.CartResponse;
 import com.ecommerce.orderservice.dto.CatalogProductResponse;
+import com.ecommerce.orderservice.dto.UpdateCartItemRequest;
 import com.ecommerce.orderservice.entity.Cart;
 import com.ecommerce.orderservice.entity.CartItem;
 import com.ecommerce.orderservice.repository.CartItemRepository;
@@ -135,5 +136,43 @@ public class CartService {
                 response.setItems(items);
 
                 return response;
+        }
+
+        @Transactional
+        public CartDetailsResponse updateCartItem(Long userId, Long itemid, UpdateCartItemRequest request) {
+
+                Cart cart = cartRepository.findByUserId(userId)
+                                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+                CartItem cartItem = cartItemRepository.findById(itemid)
+                                .orElseThrow(() -> new RuntimeException("Cart Item not found"));
+
+                if (!cartItem.getCart().getId().equals(cart.getId())) {
+                        throw new RuntimeException("Cart item does not belong to this user");
+                }
+
+                cartItem.setQuantity(request.getQuantity());
+                cartItemRepository.save(cartItem);
+
+                return getCartDetails(userId);
+
+        }
+
+        @Transactional
+        public CartDetailsResponse removeCartItem(Long userId, Long itemId) {
+                Cart cart = cartRepository.findByUserId(userId)
+                                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+                CartItem item = cartItemRepository.findById(itemId)
+                                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+
+                if (!item.getCart().getId().equals(cart.getId())) {
+                        throw new RuntimeException(
+                                        "Cart item does not belong to this user");
+                }
+
+                cartItemRepository.delete(item);
+
+                return getCartDetails(userId);
         }
 }
