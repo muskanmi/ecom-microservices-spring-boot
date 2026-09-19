@@ -308,7 +308,9 @@ const CartPage = () => {
                         <Typography
                           sx={{
                             minWidth: 35,
-                            textAlign: "center",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
                             fontWeight: 600,
                           }}
                         >
@@ -365,13 +367,25 @@ const CartPage = () => {
           </Typography>
 
           <Stack spacing={1.5}>
-            <Stack direction="row" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
               <Typography>MRP</Typography>
 
               <Typography>₹{totalMrp.toLocaleString()}</Typography>
             </Stack>
 
-            <Stack direction="row" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
               <Typography>Discount</Typography>
 
               <Typography
@@ -383,7 +397,13 @@ const CartPage = () => {
               </Typography>
             </Stack>
 
-            <Stack direction="row" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
               <Typography>Delivery</Typography>
 
               <Typography
@@ -398,7 +418,13 @@ const CartPage = () => {
 
             <Divider />
 
-            <Stack direction="row" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
               <Typography
                 sx={{
                   fontWeight: 700,
