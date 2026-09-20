@@ -15,13 +15,17 @@ import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
+import { removeCartItem, updateCartItem } from "../api/cartApi";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL = "http://localhost:8082";
 
 const CartPage = () => {
-  const { cart, cartItemCount } = useCart();
+  const { cart, cartItemCount, fetchCart } = useCart();
 
   const navigate = useNavigate();
+
+  const { user } = useAuth();
 
   const subtotal = cart.items.reduce(
     (total, item) => total + item.product.price * item.quantity,
@@ -35,9 +39,39 @@ const CartPage = () => {
 
   const savings = totalMrp - subtotal;
 
-  const handleAddQuantity = () => {};
+  const handleQuantityChange = async (item, newQuantity) => {
+    if (newQuantity < 1) {
+      return;
+    }
 
-  const handleRemoveQuantity = () => {};
+    if (newQuantity < item.product.stock) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      await updateCartItem(item.id, newQuantity, token, user.id);
+
+      await fetchCart();
+    } catch (error) {
+      console.error("Failed to update quantity:", error);
+    }
+  };
+
+  const handleRemoveItem = async (itemId) => {
+    try {
+      console.log(itemId, "itemId");
+
+      const token = localStorage.getItem("token");
+
+      await removeCartItem(itemId, token, user.id);
+
+      await fetchCart();
+    } catch (error) {
+      console.error("Failed to remove cart item:", error);
+    }
+  };
 
   if (cartItemCount === 0) {
     return (
@@ -184,7 +218,9 @@ const CartPage = () => {
                       alignItems: "center",
                       justifyContent: "center",
                       overflow: "hidden",
+                      cursor: "pointer",
                     }}
+                    onClick={() => navigate(`/products/${item.product.id}`)}
                   >
                     {image ? (
                       <Box
@@ -305,7 +341,12 @@ const CartPage = () => {
                           borderRadius: 1,
                         }}
                       >
-                        <IconButton size="small" onClick={handleRemoveQuantity}>
+                        <IconButton
+                          size="small"
+                          onClick={() =>
+                            handleQuantityChange(item, item.quantity - 1)
+                          }
+                        >
                           <RemoveIcon fontSize="small" />
                         </IconButton>
 
@@ -321,7 +362,12 @@ const CartPage = () => {
                           {item.quantity}
                         </Typography>
 
-                        <IconButton size="small" onClick={handleAddQuantity}>
+                        <IconButton
+                          size="small"
+                          onClick={() =>
+                            handleQuantityChange(item, item.quantity + 1)
+                          }
+                        >
                           <AddIcon fontSize="small" />
                         </IconButton>
                       </Stack>
@@ -329,6 +375,7 @@ const CartPage = () => {
                       <Button
                         size="small"
                         startIcon={<DeleteOutlined />}
+                        onClick={() => handleRemoveItem(item.id)}
                         sx={{
                           color: "#555",
                           textTransform: "none",
