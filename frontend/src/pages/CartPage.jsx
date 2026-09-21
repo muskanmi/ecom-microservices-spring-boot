@@ -17,6 +17,7 @@ import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import { removeCartItem, updateCartItem } from "../api/cartApi";
 import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
 
 const API_BASE_URL = "http://localhost:8082";
 
@@ -26,6 +27,8 @@ const CartPage = () => {
   const navigate = useNavigate();
 
   const { user } = useAuth();
+
+  const [quantityErrors, setQuantityErrors] = useState({});
 
   const subtotal = cart.items.reduce(
     (total, item) => total + item.product.price * item.quantity,
@@ -47,8 +50,17 @@ const CartPage = () => {
     }
 
     if (newQuantity > item.product.stock) {
+      setQuantityErrors((prev) => ({
+        ...prev,
+        [item.id]: `Only ${item.product.stock} items are available`,
+      }));
       return;
     }
+
+    setQuantityErrors((prev) => ({
+      ...prev,
+      [item.id]: "",
+    }));
 
     try {
       const token = localStorage.getItem("token");
@@ -259,7 +271,6 @@ const CartPage = () => {
                     >
                       {product.name}
                     </Typography>
-
                     <Typography
                       sx={{
                         color: "#777",
@@ -272,7 +283,6 @@ const CartPage = () => {
                         : ""}
                       {product.categoryName}
                     </Typography>
-
                     <Typography
                       sx={{
                         color: "#198754",
@@ -283,7 +293,6 @@ const CartPage = () => {
                     >
                       {product.stock > 0 ? "In Stock" : "Out of Stock"}
                     </Typography>
-
                     <Stack
                       direction="row"
                       spacing={1}
@@ -323,13 +332,11 @@ const CartPage = () => {
                         </>
                       )}
                     </Stack>
-
                     <Divider
                       sx={{
                         my: 1.5,
                       }}
                     />
-
                     {/* Quantity / actions */}
                     <Stack
                       direction="row"
@@ -388,6 +395,20 @@ const CartPage = () => {
                         Remove
                       </Button>
                     </Stack>
+
+                    {quantityErrors[item.id] && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          mt: 0.5,
+                          color: "#D32F2F",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {quantityErrors[item.id]}
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
               </Paper>
