@@ -40,11 +40,13 @@ const CartPage = () => {
   const savings = totalMrp - subtotal;
 
   const handleQuantityChange = async (item, newQuantity) => {
+    console.log("clicked");
+
     if (newQuantity < 1) {
       return;
     }
 
-    if (newQuantity < item.product.stock) {
+    if (newQuantity > item.product.stock) {
       return;
     }
 
@@ -60,6 +62,8 @@ const CartPage = () => {
   };
 
   const handleRemoveItem = async (itemId) => {
+    console.log("yyyyyyy");
+
     try {
       console.log(itemId, "itemId");
 
