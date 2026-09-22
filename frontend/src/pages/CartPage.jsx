@@ -200,11 +200,13 @@ const CartPage = () => {
               <Paper
                 key={item.id}
                 elevation={0}
+                onClick={() => navigate(`/products/${item.product.id}`)}
                 sx={{
                   p: 2.5,
                   border: "1px solid #E4DED1",
                   borderRadius: 2,
                   bgcolor: "#FFFFFF",
+                  cursor: "pointer",
                 }}
               >
                 <Box
