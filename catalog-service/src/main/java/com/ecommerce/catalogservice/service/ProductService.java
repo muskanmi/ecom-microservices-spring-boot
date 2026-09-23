@@ -100,7 +100,7 @@ public class ProductService {
         productRepository.delete(product);
     }
 
-    private ProductResponse mapToResponse(Product product) {
+    public ProductResponse mapToResponse(Product product) {
 
         ProductResponse response = new ProductResponse();
 

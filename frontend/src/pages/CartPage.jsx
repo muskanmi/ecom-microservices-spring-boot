@@ -74,8 +74,6 @@ const CartPage = () => {
   };
 
   const handleRemoveItem = async (itemId) => {
-    console.log("yyyyyyy");
-
     try {
       console.log(itemId, "itemId");
 
@@ -84,6 +82,18 @@ const CartPage = () => {
       await removeCartItem(itemId, token, user.id);
 
       await fetchCart();
+    } catch (error) {
+      console.error("Failed to remove cart item:", error);
+    }
+  };
+
+  const handleSaveForLater = async (itemId) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await removeCartItem(itemId, token, user.id);
+
+      // add item to wishlist
     } catch (error) {
       console.error("Failed to remove cart item:", error);
     }
@@ -155,7 +165,7 @@ const CartPage = () => {
           mb: 1,
         }}
       >
-        My Cart
+        Shopping Cart
       </Typography>
 
       <Typography
@@ -217,6 +227,7 @@ const CartPage = () => {
                       sm: "140px 1fr",
                     },
                     gap: 2.5,
+                    alignItems: "start",
                   }}
                 >
                   {/* Product image */}
@@ -262,103 +273,153 @@ const CartPage = () => {
                   </Box>
 
                   {/* Product details */}
-                  <Box>
-                    <Typography
+                  <Box
+                    sx={{
+                      alignSelf: "start",
+                    }}
+                  >
+                    <Box
                       sx={{
-                        fontWeight: 700,
-                        fontSize: "1.05rem",
-                        color: "#183F38",
-                        mb: 0.7,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
-                      {product.name}
-                    </Typography>
-                    <Typography
+                      <Box>
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: "1.05rem",
+                            color: "#183F38",
+                            mb: 0.7,
+                          }}
+                        >
+                          {product.name}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: "#777",
+                            fontSize: "0.85rem",
+                            mb: 1,
+                          }}
+                        >
+                          {product.parentCategoryName
+                            ? `${product.parentCategoryName} › `
+                            : ""}
+                          {product.categoryName}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: "#198754",
+                            fontSize: "0.82rem",
+                            fontWeight: 600,
+                            mb: 1.2,
+                          }}
+                        >
+                          {product.stock > 0 ? "In Stock" : "Out of Stock"}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          minWidth: "150px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          justifyContent="flex-end"
+                          sx={{
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {product.mrp > product.price && (
+                            <Typography
+                              sx={{
+                                color: "#cc0c39",
+                                fontSize: "1.2rem",
+                              }}
+                            >
+                              - {discount}% off
+                            </Typography>
+                          )}
+
+                          <Typography
+                            sx={{
+                              fontSize: "1rem",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ₹{product.price.toLocaleString()}
+                          </Typography>
+                        </Stack>
+
+                        {product.mrp > product.price && (
+                          <Stack
+                            direction="row"
+                            spacing={0.5}
+                            alignItems="center"
+                            justifyContent="flex-end"
+                            sx={{
+                              mt: 0.5,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.82rem",
+                              }}
+                            >
+                              M.R.P.:
+                            </Typography>
+                            <Typography
+                              sx={{
+                                textDecoration: "line-through",
+                                color: "#888",
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              ₹{product.mrp.toLocaleString()}
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Box>
+                    </Box>
+                    {/* <Divider
                       sx={{
-                        color: "#777",
-                        fontSize: "0.85rem",
-                        mb: 1,
+                        my: 1.5,
                       }}
-                    >
-                      {product.parentCategoryName
-                        ? `${product.parentCategoryName} › `
-                        : ""}
-                      {product.categoryName}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        color: "#198754",
-                        fontSize: "0.82rem",
-                        fontWeight: 600,
-                        mb: 1.2,
-                      }}
-                    >
-                      {product.stock > 0 ? "In Stock" : "Out of Stock"}
-                    </Typography>
+                    /> */}
+                    {/* Quantity / actions */}
                     <Stack
                       direction="row"
                       spacing={1}
                       alignItems="center"
                       flexWrap="wrap"
                     >
-                      <Typography
-                        sx={{
-                          fontSize: "1.2rem",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ₹{product.price.toLocaleString()}
-                      </Typography>
-
-                      {product.mrp > product.price && (
-                        <>
-                          <Typography
-                            sx={{
-                              textDecoration: "line-through",
-                              color: "#888",
-                              fontSize: "0.9rem",
-                            }}
-                          >
-                            ₹{product.mrp.toLocaleString()}
-                          </Typography>
-
-                          <Typography
-                            sx={{
-                              color: "#138808",
-                              fontSize: "0.82rem",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {discount}% off
-                          </Typography>
-                        </>
-                      )}
-                    </Stack>
-                    <Divider
-                      sx={{
-                        my: 1.5,
-                      }}
-                    />
-                    {/* Quantity / actions */}
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
-                      flexWrap="wrap"
-                    >
                       <Stack
                         direction="row"
                         alignItems="center"
+                        justifyContent="space-between"
                         sx={{
                           border: "1px solid #D8D1C4",
-                          borderRadius: 1,
+                          borderRadius: "20px",
+                          height: "100%",
+                          width: 100,
+                          px: 0.25,
                         }}
                       >
                         <IconButton
                           size="small"
-                          onClick={() =>
-                            handleQuantityChange(item, item.quantity - 1)
-                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleQuantityChange(item, item.quantity - 1);
+                          }}
                         >
                           <RemoveIcon fontSize="small" />
                         </IconButton>
@@ -377,9 +438,10 @@ const CartPage = () => {
 
                         <IconButton
                           size="small"
-                          onClick={() =>
-                            handleQuantityChange(item, item.quantity + 1)
-                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleQuantityChange(item, item.quantity + 1);
+                          }}
                         >
                           <AddIcon fontSize="small" />
                         </IconButton>
@@ -387,14 +449,44 @@ const CartPage = () => {
 
                       <Button
                         size="small"
-                        startIcon={<DeleteOutlined />}
-                        onClick={() => handleRemoveItem(item.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleRemoveItem(item.id);
+                        }}
                         sx={{
-                          color: "#555",
+                          color: "#1B3A3A",
                           textTransform: "none",
+                          padding: "0px",
+                          fontSize: "0.82rem",
                         }}
                       >
-                        Remove
+                        Delete
+                      </Button>
+
+                      <Divider
+                        orientation="vertical"
+                        flexItem
+                        sx={{
+                          height: "18px",
+                          alignSelf: "center",
+                          borderColor: "#D9D3C8",
+                          mx: 0.5,
+                        }}
+                      />
+                      <Button
+                        size="small"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleSaveForLater(item.id);
+                        }}
+                        sx={{
+                          color: "#1B3A3A",
+                          textTransform: "none",
+                          padding: "0px",
+                          fontSize: "0.82rem",
+                        }}
+                      >
+                        Save for later
                       </Button>
                     </Stack>
 
