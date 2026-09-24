@@ -26,19 +26,22 @@ import {
   FullscreenOutlined,
 } from "@mui/icons-material";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getProductById } from "../api/productApi";
 import { addToCart } from "../api/cartApi";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
+import { addToWishlist, removeFromWishlist } from "../api/wishlistApi";
 
 const API_URL = "http://localhost:8082";
 
 const ProductDetailsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { wishlist, fetchWishlist } = useWishlist();
   const { productId } = useParams();
 
   const { fetchCart } = useCart();
@@ -47,7 +50,14 @@ const ProductDetailsPage = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [wishlist, setWishlist] = useState(false);
+
+  const wishlistItem = wishlist?.items?.find(
+    (item) => item.productId === product?.id,
+  );
+
+  const isWishlisted = Boolean(wishlistItem);
+
+  const [wishlistUpdating, setWishlistUpdating] = useState(false);
 
   // --------------------------------------------------
   // Fetch product
@@ -162,6 +172,37 @@ const ProductDetailsPage = () => {
 
       console.error("Backend response:", error.response?.data);
       // alert(error.response?.data?.message || "Failed to add product to cart");
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!user?.id) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setWishlistUpdating(true);
+
+      const token = localStorage.getItem("token");
+
+      if (isWishlisted) {
+        await removeFromWishlist(wishlistItem.id, token, user.id);
+
+        console.log("Removed from wishlist:", product.id);
+      } else {
+        const response = await addToWishlist(product.id, token, user.id);
+
+        console.log("Added to wishlist:", response.data);
+      }
+
+      await fetchWishlist();
+    } catch (error) {
+      console.error("Failed to update wishlist:", error);
+
+      console.error("Backend response:", error.response?.data);
+    } finally {
+      setWishlistUpdating(false);
     }
   };
 
@@ -849,23 +890,31 @@ const ProductDetailsPage = () => {
 
               <Button
                 fullWidth
-                onClick={() => setWishlist((previous) => !previous)}
-                startIcon={wishlist ? <Favorite /> : <FavoriteBorder />}
+                disabled={wishlistUpdating}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleWishlistToggle();
+                }}
+                startIcon={isWishlisted ? <Favorite /> : <FavoriteBorder />}
                 sx={{
                   py: 1.35,
-                  backgroundColor: wishlist ? "#FFF1F2" : "#FFFFFF",
-                  color: wishlist ? "#C84B55" : "#263A3A",
+                  backgroundColor: isWishlisted ? "#FFF1F2" : "#FFFFFF",
+                  color: isWishlisted ? "#C84B55" : "#263A3A",
                   border: "1px solid #DDD6CA",
                   fontSize: 13,
                   fontWeight: 800,
                   textTransform: "none",
                   borderRadius: 1,
                   "&:hover": {
-                    backgroundColor: "#FFF8F5",
+                    backgroundColor: isWishlisted ? "#FFE7EA" : "#FFF8F5",
                   },
                 }}
               >
-                {wishlist ? "Added to Wishlist" : "Add to Wishlist"}
+                {wishlistUpdating
+                  ? "Updating..."
+                  : isWishlisted
+                    ? "Remove from Wishlist"
+                    : "Add to Wishlist"}
               </Button>
             </Stack>
 
