@@ -9,6 +9,7 @@ import CartPage from "./pages/CartPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
 import MainLayout from "./components/MainLayout";
 import { CartProvider } from "./context/CartContext";
+import { WishlistProvider } from "./context/WishlistContext";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -24,27 +25,29 @@ const App = () => {
     <AuthProvider>
       <BrowserRouter>
         <CartProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            {/* Marketplace layout */}
-            <Route element={<MainLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
+          <WishlistProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              {/* Marketplace layout */}
+              <Route element={<MainLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
 
-              <Route
-                path="/products/:productId"
-                element={<ProductDetailsPage />}
-              />
+                <Route
+                  path="/products/:productId"
+                  element={<ProductDetailsPage />}
+                />
 
-              <Route path="/wishlist" element={<WishlistPage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
 
-              <Route path="/cart" element={<CartPage />} />
+                <Route path="/cart" element={<CartPage />} />
 
-              {/* <Route path="/orders" element={<OrdersPage />} /> */}
+                {/* <Route path="/orders" element={<OrdersPage />} /> */}
 
-              <Route path="/profile" element={<ProfilePage />} />
-            </Route>
-          </Routes>
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
+            </Routes>
+          </WishlistProvider>
         </CartProvider>
       </BrowserRouter>
     </AuthProvider>
