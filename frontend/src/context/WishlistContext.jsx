@@ -35,6 +35,8 @@ export const WishlistProvider = ({ children }) => {
 
       const response = await getWishlist(token, user.id);
 
+      console.log(response, "response");
+
       setWishlist(response.data);
     } catch (error) {
       console.error("Failed to fetch wishlist:", error);
