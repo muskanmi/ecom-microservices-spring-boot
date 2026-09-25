@@ -10,6 +10,7 @@ import com.ecommerce.orderservice.dto.CatalogProductResponse;
 import com.ecommerce.orderservice.dto.UpdateCartItemRequest;
 import com.ecommerce.orderservice.entity.Cart;
 import com.ecommerce.orderservice.entity.CartItem;
+import com.ecommerce.orderservice.exception.InsufficientStockException;
 import com.ecommerce.orderservice.repository.CartItemRepository;
 import com.ecommerce.orderservice.repository.CartRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,20 @@ public class CartService {
         @Transactional
         public CartResponse addToCart(Long userId, AddToCartRequest request) {
 
+                // get product from catalog service
+                CatalogProductResponse product = catalogProductClient.getProductById(request.getProductId());
+
+                // validate product exists
+                if (product == null) {
+                        throw new RuntimeException("Product not found");
+                }
+
+                // validate stock
+                if (product.getStock() == null || product.getStock() <= 0) {
+                        throw new InsufficientStockException(
+                                        "Product is out of stock");
+                }
+
                 // 1. Find existing cart or create a new one
                 Cart cart = cartRepository.findByUserId(userId)
                                 .orElseGet(() -> {
@@ -44,26 +59,47 @@ public class CartService {
                                                 request.getProductId())
                                 .orElse(null);
 
-                // 3. Existing product -> increase quantity
+                // calculate requested final quantity
+                int newQuantity;
+
+                if (cartItem != null) {
+                        newQuantity = cartItem.getQuantity() + request.getQuantity();
+                } else {
+                        newQuantity = request.getQuantity();
+                }
+
+                // final cart qiuantity cannot exceed stock
+                if (newQuantity > product.getStock()) {
+                        throw new InsufficientStockException(
+                                        "Only "
+                                                        + product.getStock()
+                                                        + " items are available. "
+                                                        + "You already have "
+                                                        + (cartItem != null ? cartItem.getQuantity() : 0)
+                                                        + " in your cart.");
+                }
+
+                // 3. Update existing item
                 if (cartItem != null) {
 
                         cartItem.setQuantity(
-                                        cartItem.getQuantity() + request.getQuantity());
+                                        newQuantity);
 
                         cartItemRepository.save(cartItem);
 
                 } else {
 
-                        // 4. New product -> create cart item
-                        cartItem = new CartItem();
-                        cartItem.setProductId(request.getProductId());
-                        cartItem.setQuantity(request.getQuantity());
-                        cartItem.setCart(cart);
+                        // 4. create new cart item
+                        CartItem newCartItem = new CartItem();
 
-                        cartItemRepository.save(cartItem);
+                        newCartItem.setCart(cart);
+                        newCartItem.setProductId(request.getProductId());
+                        newCartItem.setQuantity(request.getQuantity());
+
+                        cartItemRepository.save(newCartItem);
                 }
 
-                // 5. Read cart items from database
+                // 5. return updated cart
                 List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
 
                 // 6. Convert to response
@@ -151,7 +187,34 @@ public class CartService {
                         throw new RuntimeException("Cart item does not belong to this user");
                 }
 
-                cartItem.setQuantity(request.getQuantity());
+                // Get latest stock from Catalog Service
+                CatalogProductResponse product = catalogProductClient.getProductById(
+                                cartItem.getProductId());
+
+                if (product == null) {
+                        throw new RuntimeException("Product not found");
+                }
+
+                if (request.getQuantity() < 1) {
+                        throw new RuntimeException(
+                                        "Quantity must be at least 1");
+                }
+
+                int currentQuantity = cartItem.getQuantity();
+                int requestedQuantity = request.getQuantity();
+                int availableStock = product.getStock();
+
+                boolean increasing = requestedQuantity > currentQuantity;
+
+                // Only block when the customer is trying
+                // to increase beyond available stock.
+                if (increasing && requestedQuantity > availableStock) {
+                        throw new InsufficientStockException(
+                                        "Only " + availableStock
+                                                        + " items are available.");
+                }
+
+                cartItem.setQuantity(requestedQuantity);
                 cartItemRepository.save(cartItem);
 
                 return getCartDetails(userId);

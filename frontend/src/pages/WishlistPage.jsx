@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   IconButton,
@@ -20,6 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import { removeFromWishlist } from "../api/wishlistApi";
 
 import { addToCart } from "../api/cartApi";
+import { useState } from "react";
 
 const API_BASE_URL = "http://localhost:8082";
 
@@ -31,6 +33,8 @@ const WishlistPage = () => {
   const { wishlist, wishlistItemCount, fetchWishlist } = useWishlist();
 
   const { fetchCart } = useCart();
+
+  const [cartError, setCartError] = useState("");
 
   const handleRemoveFromWishlist = async (itemId) => {
     try {
@@ -48,6 +52,7 @@ const WishlistPage = () => {
 
   const handleAddToCart = async (productId) => {
     try {
+      setCartError("");
       const token = localStorage.getItem("token");
 
       await addToCart(
@@ -60,9 +65,14 @@ const WishlistPage = () => {
       );
 
       await fetchCart();
-
-      console.log("Product added to cart:", productId);
     } catch (error) {
+      const message =
+        error.response?.data?.message ||
+        error.response?.data ||
+        "Unable to add product to cart";
+
+      setCartError(message);
+
       console.error("Failed to add product to cart:", error);
     }
   };
@@ -212,6 +222,19 @@ const WishlistPage = () => {
             }}
           />
         </Stack>
+
+        {cartError && (
+          <Alert
+            severity="error"
+            onClose={() => setCartError("")}
+            sx={{
+              mb: 2,
+              borderRadius: 1.5,
+            }}
+          >
+            {cartError}
+          </Alert>
+        )}
 
         {/* Products */}
         <Box

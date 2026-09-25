@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Divider,
@@ -43,13 +44,13 @@ const CartPage = () => {
   const savings = totalMrp - subtotal;
 
   const handleQuantityChange = async (item, newQuantity) => {
-    console.log("clicked");
-
     if (newQuantity < 1) {
       return;
     }
 
-    if (newQuantity > item.product.stock) {
+    const isIncreasing = newQuantity > item.quantity;
+
+    if (isIncreasing && newQuantity > item.product.stock) {
       setQuantityErrors((prev) => ({
         ...prev,
         [item.id]: `Only ${item.product.stock} items are available`,
@@ -98,6 +99,11 @@ const CartPage = () => {
       console.error("Failed to remove cart item:", error);
     }
   };
+
+  // disbale checkout button
+  const hasStockIssue = cart.items.some(
+    (item) => item.quantity > item.product.stock,
+  );
 
   if (cartItemCount === 0) {
     return (
@@ -178,6 +184,20 @@ const CartPage = () => {
         {cartItemCount !== 1 ? "s" : ""}
       </Typography>
 
+      {hasStockIssue && (
+        <Alert
+          severity="error"
+          sx={{
+            mb: 3,
+            borderRadius: 1.5,
+            alignItems: "center",
+          }}
+        >
+          One or more items in your cart exceed the currently available stock.
+          Please reduce the quantity before proceeding to checkout.
+        </Alert>
+      )}
+
       <Box
         sx={{
           display: "grid",
@@ -192,6 +212,7 @@ const CartPage = () => {
         {/* Cart items */}
         <Stack spacing={2}>
           {cart.items.map((item) => {
+            const stockExceeded = item.quantity > item.product.stock;
             const product = item.product;
 
             const image =
@@ -308,16 +329,40 @@ const CartPage = () => {
                             : ""}
                           {product.categoryName}
                         </Typography>
+
                         <Typography
                           sx={{
-                            color: "#198754",
+                            color: stockExceeded
+                              ? "#D32F2F"
+                              : product.stock > 0
+                                ? "#198754"
+                                : "#C62828",
                             fontSize: "0.82rem",
                             fontWeight: 600,
                             mb: 1.2,
                           }}
                         >
-                          {product.stock > 0 ? "In Stock" : "Out of Stock"}
+                          {stockExceeded
+                            ? `Only ${product.stock} available`
+                            : product.stock > 0
+                              ? "In Stock"
+                              : "Out of Stock"}
                         </Typography>
+
+                        {stockExceeded && (
+                          <Typography
+                            sx={{
+                              color: "#D32F2F",
+                              fontSize: "0.8rem",
+                              fontWeight: 700,
+                              mt: 0.5,
+                            }}
+                          >
+                            Only {item.product.stock} available. You have{" "}
+                            {item.quantity} in your cart. Please reduce the
+                            quantity by {item.quantity - item.product.stock}.
+                          </Typography>
+                        )}
                       </Box>
                       <Box
                         sx={{
@@ -442,6 +487,7 @@ const CartPage = () => {
                             event.stopPropagation();
                             handleQuantityChange(item, item.quantity + 1);
                           }}
+                          disabled={item.quantity >= item.product.stock}
                         >
                           <AddIcon fontSize="small" />
                         </IconButton>
