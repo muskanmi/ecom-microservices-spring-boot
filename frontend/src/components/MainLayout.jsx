@@ -39,6 +39,7 @@ import {
   ShoppingBagOutlined,
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 
 // --------------------------------------------------
 // Theme constants
@@ -116,6 +117,7 @@ const MainLayout = () => {
   const location = useLocation();
 
   const { cartItemCount } = useCart();
+  const { wishlistItemCount } = useWishlist();
 
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -444,11 +446,11 @@ const MainLayout = () => {
               className="!flex !items-center !gap-2 !rounded-md !text-ink"
             >
               <Badge
-                badgeContent={0}
+                badgeContent={wishlistItemCount}
+                color="warning"
+                invisible={wishlistItemCount === 0}
                 sx={{
                   "& .MuiBadge-badge": {
-                    bgcolor: gold,
-                    color: ink,
                     fontSize: 9,
                     minWidth: 16,
                     height: 16,
