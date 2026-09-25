@@ -41,6 +41,7 @@ import {
   ShoppingCartOutlined,
   ChevronRight,
   LocalOfferOutlined,
+  Favorite,
 } from "@mui/icons-material";
 
 import heroBanner from "../assets/ecommerce/banner_hero_img.png";
@@ -53,8 +54,10 @@ import handbag from "../assets/ecommerce/accessories-handbag.png";
 import smartwatch from "../assets/ecommerce/smartwatch.png";
 import runningShoes from "../assets/ecommerce/running-shoes.png";
 import blackHandbag from "../assets/ecommerce/black-handbag.png";
-import perfume from "../assets/ecommerce/perfume.png";
-import blackHeadphones from "../assets/ecommerce/headphones-black.png";
+import { addToCart } from "../api/cartApi";
+import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
+import { addToWishlist, removeFromWishlist } from "../api/wishlistApi";
 import plant from "../assets/ecommerce/plant.png";
 
 const gold = "#E8AA2B";
@@ -144,9 +147,10 @@ const statusColor = {
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const { fetchCart } = useCart();
   const navigate = useNavigate();
+  const { wishlist, fetchWishlist } = useWishlist();
   const [products, setProducts] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -161,14 +165,49 @@ const DashboardPage = () => {
     fetchProducts();
   }, []);
 
-  const toggleWishlist = (name) => {
-    console.log(name);
+  const handleAddToCart = async (productId) => {
+    try {
+      const token = localStorage.getItem("token");
 
-    setWishlist((current) =>
-      current.includes(name)
-        ? current.filter((item) => item !== name)
-        : [...current, name],
-    );
+      await addToCart(
+        {
+          productId,
+          quantity: 1,
+        },
+        token,
+        user.id,
+      );
+
+      await fetchCart();
+
+      console.log("Product added to cart:", productId);
+    } catch (error) {
+      console.error("Failed to add product to cart:", error);
+
+      console.error("Backend response:", error.response?.data);
+    }
+  };
+
+  const handleWishlistToggle = async (product) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const wishlistItem = wishlist?.items?.find(
+        (item) => item.productId === product.id,
+      );
+
+      if (wishlistItem) {
+        await removeFromWishlist(wishlistItem.id, token, user.id);
+      } else {
+        await addToWishlist(product.id, token, user.id);
+      }
+
+      await fetchWishlist();
+    } catch (error) {
+      console.error("Failed to update wishlist:", error);
+
+      console.error("Backend response:", error.response?.data);
+    }
   };
 
   return (
@@ -547,7 +586,10 @@ const DashboardPage = () => {
                   />
                   <IconButton
                     size="small"
-                    onClick={() => toggleWishlist(product.name)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleWishlistToggle(product);
+                    }}
                     sx={{
                       position: "absolute",
                       top: 5,
@@ -560,14 +602,24 @@ const DashboardPage = () => {
 
                       border: `1px solid ${border}`,
 
-                      color: wishlist.includes(product.name) ? "#C84B55" : ink,
+                      color: wishlist?.items?.some(
+                        (item) => item.productId === product.id,
+                      )
+                        ? "#C84B55"
+                        : ink,
 
                       "&:hover": {
                         bgcolor: "#FFFFFF",
                       },
                     }}
                   >
-                    <FavoriteBorder sx={{ fontSize: 15 }} />
+                    {wishlist?.items?.some(
+                      (item) => item.productId === product.id,
+                    ) ? (
+                      <Favorite sx={{ fontSize: 15 }} />
+                    ) : (
+                      <FavoriteBorder sx={{ fontSize: 15 }} />
+                    )}
                   </IconButton>
                 </Box>
 
@@ -679,6 +731,10 @@ const DashboardPage = () => {
                 <Button
                   fullWidth
                   startIcon={<ShoppingCartOutlined sx={{ fontSize: 14 }} />}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleAddToCart(product.id);
+                  }}
                   sx={{
                     mt: 1.2,
                     bgcolor: gold,
