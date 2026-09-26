@@ -238,4 +238,22 @@ public class CartService {
 
                 return getCartDetails(userId);
         }
+
+        @Transactional
+        public void clearCart(Long userId) {
+
+                Cart cart = cartRepository
+                                .findByUserId(userId)
+                                .orElse(null);
+
+                if (cart == null) {
+                        return;
+                }
+
+                List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+
+                if (items != null && !items.isEmpty()) {
+                        cartItemRepository.deleteAll(items);
+                }
+        }
 }
