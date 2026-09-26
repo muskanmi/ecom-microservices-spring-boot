@@ -19,11 +19,14 @@ import { useNavigate } from "react-router-dom";
 import { removeCartItem, updateCartItem } from "../api/cartApi";
 import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
+import { useWishlist } from "../context/WishlistContext";
+import { addToWishlist, removeFromWishlist } from "../api/wishlistApi";
 
 const API_BASE_URL = "http://localhost:8082";
 
 const CartPage = () => {
   const { cart, cartItemCount, fetchCart } = useCart();
+  const { fetchWishlist } = useWishlist();
 
   const navigate = useNavigate();
 
@@ -88,15 +91,25 @@ const CartPage = () => {
     }
   };
 
-  const handleSaveForLater = async (itemId) => {
+  const handleSaveForLater = async (item) => {
     try {
       const token = localStorage.getItem("token");
 
-      await removeCartItem(itemId, token, user.id);
+      // 1. Add the product to wishlist
+      await addToWishlist(item.product.id, token, user.id);
 
-      // add item to wishlist
+      // 2. Remove the item from cart
+      await removeCartItem(item.id, token, user.id);
+
+      // 3. Refresh both states
+      await Promise.all([fetchCart(), fetchWishlist()]);
+
+      // Redirect to wishlist
+      navigate("/wishlist");
     } catch (error) {
-      console.error("Failed to remove cart item:", error);
+      console.error("Failed to save item for later:", error);
+
+      console.error("Backend response:", error.response?.data);
     }
   };
 
@@ -523,7 +536,7 @@ const CartPage = () => {
                         size="small"
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleSaveForLater(item.id);
+                          handleSaveForLater(item);
                         }}
                         sx={{
                           color: "#1B3A3A",

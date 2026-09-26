@@ -50,21 +50,25 @@ const WishlistPage = () => {
     }
   };
 
-  const handleAddToCart = async (productId) => {
+  const handleAddToCart = async (item) => {
     try {
       setCartError("");
       const token = localStorage.getItem("token");
 
       await addToCart(
         {
-          productId,
+          productId: item.product.id,
           quantity: 1,
         },
         token,
         user.id,
       );
 
-      await fetchCart();
+      // 2. Only remove from wishlist if add-to-cart succeeds
+      await removeFromWishlist(item.id, token, user.id);
+
+      // 3. Refresh both states
+      await Promise.all([fetchCart(), fetchWishlist()]);
     } catch (error) {
       const message =
         error.response?.data?.message ||
@@ -74,6 +78,7 @@ const WishlistPage = () => {
       setCartError(message);
 
       console.error("Failed to add product to cart:", error);
+      console.error("Backend response:", error.response?.data);
     }
   };
 
@@ -447,8 +452,7 @@ const WishlistPage = () => {
                     startIcon={<ShoppingCartOutlinedIcon />}
                     onClick={(event) => {
                       event.stopPropagation();
-
-                      handleAddToCart(product.id);
+                      handleAddToCart(item);
                     }}
                     sx={{
                       backgroundColor: "#E9B44C",
