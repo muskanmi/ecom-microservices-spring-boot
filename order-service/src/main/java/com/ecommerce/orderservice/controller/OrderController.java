@@ -2,6 +2,8 @@ package com.ecommerce.orderservice.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +18,9 @@ import java.util.List;
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
+
+    @Value("${internal.service.key}")
+    private String internalServiceKey;
 
     private final OrderService orderService;
 
@@ -49,10 +54,15 @@ public class OrderController {
                         userId));
     }
 
-    @PutMapping("/{orderId}/payment-status")
+    @PutMapping("/internal/{orderId}/payment-status")
     public ResponseEntity<OrderResponse> updatePaymentStatus(
             @PathVariable Long orderId,
-            @RequestBody UpdatePaymentStatusRequest request) {
+            @RequestBody UpdatePaymentStatusRequest request,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
 
         return ResponseEntity.ok(
                 orderService.updatePaymentStatus(
