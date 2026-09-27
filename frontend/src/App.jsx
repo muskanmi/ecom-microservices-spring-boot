@@ -10,6 +10,7 @@ import ProductDetailsPage from "./pages/ProductDetailsPage";
 import MainLayout from "./components/MainLayout";
 import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
+import CheckoutPage from "./pages/CheckoutPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -45,6 +46,8 @@ const App = () => {
                 {/* <Route path="/orders" element={<OrdersPage />} /> */}
 
                 <Route path="/profile" element={<ProfilePage />} />
+
+                <Route path="/checkout" element={<CheckoutPage />} />
               </Route>
             </Routes>
           </WishlistProvider>

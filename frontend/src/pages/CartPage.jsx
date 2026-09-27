@@ -677,6 +677,7 @@ const CartPage = () => {
           <Button
             fullWidth
             variant="contained"
+            onClick={() => navigate("/checkout")}
             sx={{
               mt: 3,
               py: 1.5,
