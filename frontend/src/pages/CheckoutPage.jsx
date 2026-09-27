@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { createOrder } from "../api/orderApi";
 import { getImageUrl } from "../utils/imageUrl";
+import { createCheckoutSession } from "../api/paymentApi.JS";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -75,7 +76,8 @@ export default function CheckoutPage() {
 
       const token = localStorage.getItem("token");
 
-      const response = await createOrder(
+      // 1. Create order
+      const orderResponse = await createOrder(
         {
           shippingAddress: {
             fullName: form.fullName.trim(),
@@ -92,27 +94,28 @@ export default function CheckoutPage() {
         user.id,
       );
 
-      const order = response.data;
+      const order = orderResponse.data;
 
-      console.log("Order created successfully:", order);
+      console.log("Order created:", order);
 
-      /*
-       * For now we only create the order.
-       *
-       * Stripe payment will be connected in the next step.
-       */
-      navigate(`/orders/${order.id}`);
+      // 2. Create Stripe Checkout Session
+      const paymentResponse = await createCheckoutSession(
+        order.id,
+        token,
+        user.id,
+      );
+
+      const checkoutUrl = paymentResponse.data.checkoutUrl;
+
+      // 3. Redirect to Stripe
+      window.location.href = checkoutUrl;
     } catch (error) {
-      console.error("Failed to create order:", error);
+      console.error("Checkout failed:", error);
 
       const message =
-        error.response?.data?.message ||
-        error.response?.data ||
-        "Unable to create order.";
+        error.response?.data?.message || "Unable to proceed with payment.";
 
-      setError(
-        typeof message === "string" ? message : "Unable to create order.",
-      );
+      setError(message);
     } finally {
       setLoading(false);
     }

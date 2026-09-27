@@ -137,6 +137,7 @@ public class OrderService {
         return mapToResponse(savedOrder);
     }
 
+    @Transactional
     public OrderResponse getOrderById(
             Long orderId,
             Long userId) {
@@ -150,6 +151,7 @@ public class OrderService {
         return mapToResponse(order);
     }
 
+    @Transactional
     public List<OrderResponse> getUserOrders(
             Long userId) {
 
