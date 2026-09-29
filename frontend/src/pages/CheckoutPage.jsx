@@ -94,6 +94,8 @@ export default function CheckoutPage() {
         user.id,
       );
 
+      console.log(orderResponse, "oooooo");
+
       const order = orderResponse.data;
 
       console.log("Order created:", order);
