@@ -14,6 +14,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentCancelPage from "./pages/PaymentCancelPage";
+import OrderDetailsPage from "./pages/OrderDetailsPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -59,6 +60,8 @@ const App = () => {
                 />
 
                 <Route path="/payment/cancel" element={<PaymentCancelPage />} />
+
+                <Route path="/orders/:orderId" element={<OrderDetailsPage />} />
               </Route>
             </Routes>
           </WishlistProvider>
