@@ -38,6 +38,10 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [createdOrderId, setCreatedOrderId] = useState(() =>
+    sessionStorage.getItem("checkoutOrderId"),
+  );
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -76,40 +80,56 @@ export default function CheckoutPage() {
 
       const token = localStorage.getItem("token");
 
-      // 1. Create order
-      const orderResponse = await createOrder(
-        {
-          shippingAddress: {
-            fullName: form.fullName.trim(),
-            phone: form.phone.trim(),
-            addressLine1: form.addressLine1.trim(),
-            addressLine2: form.addressLine2.trim(),
-            city: form.city.trim(),
-            state: form.state.trim(),
-            pincode: form.pincode.trim(),
-            country: form.country.trim(),
+      let orderId = createdOrderId;
+
+      /*
+       * Create the order only once.
+       */
+      if (!orderId) {
+        const orderResponse = await createOrder(
+          {
+            shippingAddress: {
+              fullName: form.fullName.trim(),
+              phone: form.phone.trim(),
+              addressLine1: form.addressLine1.trim(),
+              addressLine2: form.addressLine2.trim(),
+              city: form.city.trim(),
+              state: form.state.trim(),
+              pincode: form.pincode.trim(),
+              country: form.country.trim(),
+            },
           },
-        },
-        token,
-        user.id,
-      );
+          token,
+          user.id,
+        );
 
-      console.log(orderResponse, "oooooo");
+        const order = orderResponse.data;
 
-      const order = orderResponse.data;
+        orderId = order.id;
 
-      console.log("Order created:", order);
+        setCreatedOrderId(orderId);
 
-      // 2. Create Stripe Checkout Session
+        sessionStorage.setItem("checkoutOrderId", String(orderId));
+
+        console.log("Created order:", order);
+      } else {
+        console.log("Reusing existing order:", orderId);
+      }
+
+      /*
+       * Create Stripe Checkout Session.
+       *
+       * This can happen multiple times for
+       * the SAME order.
+       */
       const paymentResponse = await createCheckoutSession(
-        order.id,
+        orderId,
         token,
         user.id,
       );
 
       const checkoutUrl = paymentResponse.data.checkoutUrl;
 
-      // 3. Redirect to Stripe
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error("Checkout failed:", error);
@@ -117,7 +137,11 @@ export default function CheckoutPage() {
       const message =
         error.response?.data?.message || "Unable to proceed with payment.";
 
-      setError(message);
+      setError(
+        typeof message === "string"
+          ? message
+          : "Unable to proceed with payment.",
+      );
     } finally {
       setLoading(false);
     }

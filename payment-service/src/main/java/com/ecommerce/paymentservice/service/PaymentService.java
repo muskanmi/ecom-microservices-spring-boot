@@ -51,6 +51,10 @@ public class PaymentService {
             throw new RuntimeException(
                     "Order is not available for payment");
         }
+        if ("PAID".equals(order.getPaymentStatus())) {
+            throw new RuntimeException(
+                    "Order has already been paid");
+        }
 
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
 
