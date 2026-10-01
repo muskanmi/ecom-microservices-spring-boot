@@ -1,13 +1,18 @@
 package com.ecommerce.orderservice.service;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ecommerce.orderservice.client.CatalogStockClient;
 import com.ecommerce.orderservice.dto.CartDetailsResponse;
 import com.ecommerce.orderservice.dto.CartItemDetailResponse;
 import com.ecommerce.orderservice.dto.CatalogProductImageResponse;
 import com.ecommerce.orderservice.dto.CatalogProductResponse;
+import com.ecommerce.orderservice.dto.CatalogStockDeductionItemRequest;
+import com.ecommerce.orderservice.dto.CatalogStockDeductionRequest;
 import com.ecommerce.orderservice.dto.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.OrderItemResponse;
 import com.ecommerce.orderservice.dto.OrderResponse;
@@ -21,6 +26,8 @@ import com.ecommerce.orderservice.entity.ShippingAddress;
 import com.ecommerce.orderservice.exception.InsufficientStockException;
 import com.ecommerce.orderservice.repository.OrderRepository;
 
+import feign.FeignException;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
@@ -33,6 +40,10 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartService cartService;
+    private final CatalogStockClient catalogStockClient;
+
+    @Value("${internal.service.key}")
+    private String internalServiceKey;
 
     @Transactional
     public OrderResponse createOrder(
@@ -168,47 +179,167 @@ public class OrderService {
             String paymentStatus) {
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(
-                        () -> new RuntimeException(
-                                "Order not found"));
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        System.out.println(
+                "===== PAYMENT STATUS UPDATE =====");
+
+        System.out.println(
+                "Order ID: " + order.getId());
+
+        System.out.println(
+                "Current order payment status: "
+                        + order.getPaymentStatus());
+
+        System.out.println(
+                "Requested payment status: "
+                        + paymentStatus);
 
         PaymentStatus newPaymentStatus;
 
         try {
+
             newPaymentStatus = PaymentStatus.valueOf(
                     paymentStatus.toUpperCase());
 
         } catch (IllegalArgumentException e) {
 
             throw new RuntimeException(
-                    "Invalid payment status: " +
-                            paymentStatus);
+                    "Invalid payment status: "
+                            + paymentStatus);
         }
 
         /*
          * Idempotency:
-         * Stripe may send the same webhook more than once.
+         *
+         * Stripe can send the same webhook more than once.
+         * If this order is already PAID, don't deduct stock again.
          */
         if (order.getPaymentStatus() == PaymentStatus.PAID
                 && newPaymentStatus == PaymentStatus.PAID) {
 
+            System.out.println(
+                    "ORDER ALREADY PAID -> SKIPPING STOCK DEDUCTION");
+
             return mapToResponse(order);
         }
 
-        order.setPaymentStatus(newPaymentStatus);
-
+        /*
+         * Successful Stripe payment.
+         */
         if (newPaymentStatus == PaymentStatus.PAID) {
 
-            order.setStatus(OrderStatus.CONFIRMED);
+            /*
+             * Build stock deduction request from the
+             * order's stored items.
+             */
+            List<CatalogStockDeductionItemRequest> stockItems = order.getItems()
+                    .stream()
+                    .map(item -> new CatalogStockDeductionItemRequest(
+                            item.getProductId(),
+                            item.getQuantity()))
+                    .toList();
+
+            System.out.println(
+                    "===== STOCK DEDUCTION REQUEST =====");
+
+            stockItems.forEach(item -> System.out.println(
+                    "Product ID: "
+                            + item.getProductId()
+                            + ", Quantity: "
+                            + item.getQuantity()));
+
+            CatalogStockDeductionRequest stockRequest = new CatalogStockDeductionRequest(
+                    stockItems);
 
             /*
-             * Clear cart only AFTER successful payment.
+             * Deduct stock before confirming the order.
              */
-            cartService.clearCart(order.getUserId());
+            try {
+
+                catalogStockClient.deductStock(
+                        stockRequest,
+                        internalServiceKey);
+
+                System.out.println(
+                        "===== STOCK DEDUCTION SUCCESS =====");
+
+            } catch (FeignException.Conflict e) {
+
+                /*
+                 * Catalog Service returns 409 when there
+                 * isn't enough stock.
+                 */
+                System.out.println(
+                        "===== INSUFFICIENT STOCK =====");
+
+                System.out.println(
+                        "Catalog Service returned 409 Conflict");
+
+                throw new InsufficientStockException(
+                        "Insufficient stock for one or more products in this order.");
+            }
+
+            /*
+             * Stock deduction succeeded.
+             */
+            order.setPaymentStatus(
+                    PaymentStatus.PAID);
+
+            order.setStatus(
+                    OrderStatus.CONFIRMED);
+
+            /*
+             * Clear cart only after successful payment
+             * AND successful stock deduction.
+             */
+            cartService.clearCart(
+                    order.getUserId());
         }
 
-        if (newPaymentStatus == PaymentStatus.CANCELLED) {
-            order.setStatus(OrderStatus.CANCELLED);
+        /*
+         * Payment cancelled.
+         */
+        else if (newPaymentStatus == PaymentStatus.CANCELLED) {
+
+            order.setPaymentStatus(
+                    PaymentStatus.CANCELLED);
+
+            order.setStatus(
+                    OrderStatus.CANCELLED);
+        }
+
+        /*
+         * Payment refunded.
+         */
+        else if (newPaymentStatus == PaymentStatus.REFUNDED) {
+
+            System.out.println(
+                    "===== REFUND RECEIVED FROM PAYMENT SERVICE =====");
+
+            System.out.println(
+                    "Order ID: " + order.getId());
+
+            order.setPaymentStatus(
+                    PaymentStatus.REFUNDED);
+
+            order.setStatus(
+                    OrderStatus.CANCELLED);
+
+            System.out.println(
+                    "Order payment status set to REFUNDED");
+
+            System.out.println(
+                    "Order status set to CANCELLED");
+        }
+
+        /*
+         * Any other payment status.
+         */
+        else {
+
+            order.setPaymentStatus(
+                    newPaymentStatus);
         }
 
         Order savedOrder = orderRepository.save(order);

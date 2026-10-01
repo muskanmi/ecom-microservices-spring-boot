@@ -36,6 +36,8 @@ public class Payment {
 
     private String stripeSessionId;
 
+    private String stripeRefundId;
+
     private String stripePaymentIntentId;
 
     private LocalDateTime createdAt;

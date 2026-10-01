@@ -1,5 +1,6 @@
 package com.ecommerce.orderservice.exception;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,9 +14,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleInsufficientStock(
             InsufficientStockException exception) {
 
-        return ResponseEntity.badRequest().body(
-                Map.of(
-                        "error", "INSUFFICIENT_STOCK",
-                        "message", exception.getMessage()));
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        Map.of(
+                                "error", "INSUFFICIENT_STOCK",
+                                "message", exception.getMessage()));
     }
 }
