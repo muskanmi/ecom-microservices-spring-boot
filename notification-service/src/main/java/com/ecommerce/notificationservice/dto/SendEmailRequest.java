@@ -11,7 +11,9 @@ public class SendEmailRequest {
     @Email
     private String recipientEmail;
 
+    @NotBlank
     private String subject;
 
+    @NotBlank
     private String message;
 }
