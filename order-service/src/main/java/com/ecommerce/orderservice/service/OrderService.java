@@ -63,6 +63,7 @@ public class OrderService {
 
         Order order = Order.builder()
                 .userId(userId)
+                .customerEmail(request.getCustomerEmail())
                 .orderNumber(generateOrderNumber())
                 .discount(BigDecimal.ZERO)
                 .shippingFee(BigDecimal.ZERO)
@@ -427,6 +428,7 @@ public class OrderService {
         return new OrderResponse(
                 order.getId(),
                 order.getUserId(),
+                order.getCustomerEmail(),
                 order.getOrderNumber(),
                 order.getSubtotal(),
                 order.getDiscount(),

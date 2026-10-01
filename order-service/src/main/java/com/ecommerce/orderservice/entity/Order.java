@@ -23,6 +23,9 @@ public class Order {
     @Column(nullable = false)
     private Long userId;
 
+    @Column(length = 255)
+    private String customerEmail;
+
     @Column(nullable = false, unique = true)
     private String orderNumber;
 
