@@ -69,6 +69,13 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!user?.email) {
+      setError(
+        "Your account email is missing. Please update your profile before placing an order.",
+      );
+      return;
+    }
+
     if (cartItems.length === 0) {
       setError("Your cart is empty.");
       return;
@@ -88,6 +95,8 @@ export default function CheckoutPage() {
       if (!orderId) {
         const orderResponse = await createOrder(
           {
+            customerEmail: user.email.trim(),
+
             shippingAddress: {
               fullName: form.fullName.trim(),
               phone: form.phone.trim(),

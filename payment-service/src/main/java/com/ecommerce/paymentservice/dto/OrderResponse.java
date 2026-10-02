@@ -12,6 +12,8 @@ public class OrderResponse {
 
     private Long userId;
 
+    private String customerEmail;
+
     private String orderNumber;
 
     private BigDecimal subtotal;

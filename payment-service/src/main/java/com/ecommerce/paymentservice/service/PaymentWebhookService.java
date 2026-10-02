@@ -1,7 +1,9 @@
 package com.ecommerce.paymentservice.service;
 
+import com.ecommerce.paymentservice.client.NotificationClient;
 import com.ecommerce.paymentservice.client.OrderClient;
 import com.ecommerce.paymentservice.dto.OrderResponse;
+import com.ecommerce.paymentservice.dto.SendEmailRequest;
 import com.ecommerce.paymentservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.paymentservice.entity.Payment;
 import com.ecommerce.paymentservice.repository.PaymentRepository;
@@ -24,6 +26,7 @@ public class PaymentWebhookService {
 
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
+    private final NotificationClient notificationClient;
 
     @Value("${internal.service.key}")
     private String internalServiceKey;
@@ -86,38 +89,24 @@ public class PaymentWebhookService {
                 "Order ID: "
                         + payment.getOrderId());
 
-        /*
-         * -----------------------------------------------------
-         * CURRENT PAYMENT STATUS
-         * -----------------------------------------------------
-         */
-
         System.out.println(
                 "Current payment status: "
                         + payment.getStatus());
 
         /*
-         * -----------------------------------------------------
-         * SAVE STRIPE PAYMENT INTENT
-         * -----------------------------------------------------
-         *
-         * Save this BEFORE calling Order Service.
-         *
-         * If stock fails and we need a refund, we already
-         * have the Stripe PaymentIntent available.
+         * Save Stripe PaymentIntent BEFORE calling Order Service.
+         * Required in case we need to refund the payment.
          */
-
         payment.setStripePaymentIntentId(
                 session.getPaymentIntent());
 
         paymentRepository.save(payment);
 
         /*
-         * -----------------------------------------------------
+         * ---------------------------------------------------------
          * IDEMPOTENCY - ALREADY PAID
-         * -----------------------------------------------------
+         * ---------------------------------------------------------
          */
-
         if ("PAID".equalsIgnoreCase(
                 payment.getStatus())) {
 
@@ -128,19 +117,10 @@ public class PaymentWebhookService {
         }
 
         /*
-         * -----------------------------------------------------
+         * ---------------------------------------------------------
          * IDEMPOTENCY - ALREADY REFUNDED
-         * -----------------------------------------------------
-         *
-         * This is important if Stripe sends the same webhook
-         * again after we already refunded the payment.
-         *
-         * We DO NOT create another Stripe refund.
-         *
-         * We simply make sure Order Service also knows
-         * that the order is refunded.
+         * ---------------------------------------------------------
          */
-
         if ("REFUNDED".equalsIgnoreCase(
                 payment.getStatus())) {
 
@@ -161,11 +141,10 @@ public class PaymentWebhookService {
         }
 
         /*
-         * -----------------------------------------------------
+         * ---------------------------------------------------------
          * TELL ORDER SERVICE PAYMENT SUCCEEDED
-         * -----------------------------------------------------
+         * ---------------------------------------------------------
          */
-
         UpdatePaymentStatusRequest paidRequest = new UpdatePaymentStatusRequest();
 
         paidRequest.setPaymentStatus("PAID");
@@ -177,39 +156,60 @@ public class PaymentWebhookService {
         try {
 
             /*
-             * Order Service will:
+             * Order Service:
+             * 1. Deducts stock
+             * 2. Marks order PAID
+             * 3. Marks order CONFIRMED
+             * 4. Clears cart
              *
-             * 1. Deduct stock
-             * 2. Mark order PAID
-             * 3. Mark order CONFIRMED
-             * 4. Clear cart
-             *
-             * If stock is insufficient,
-             * Order Service returns HTTP 409.
+             * If stock is insufficient, it returns 409.
              */
-
             OrderResponse orderResponse = orderClient.updatePaymentStatus(
                     payment.getOrderId(),
                     paidRequest,
                     internalServiceKey);
 
             /*
-             * -------------------------------------------------
+             * -----------------------------------------------------
              * ORDER SUCCESS
-             * -------------------------------------------------
+             * -----------------------------------------------------
              */
-
             System.out.println(
                     "Order Service response received: "
                             + orderResponse.getOrderNumber());
 
-            /*
-             * Only now do we mark Payment as PAID.
-             */
-
             payment.setStatus("PAID");
 
             paymentRepository.save(payment);
+
+            /*
+             * -----------------------------------------------------
+             * SEND ORDER CONFIRMATION EMAIL
+             * -----------------------------------------------------
+             */
+            sendNotificationEmail(
+
+                    orderResponse.getCustomerEmail(),
+
+                    "Order Confirmed - "
+                            + orderResponse.getOrderNumber(),
+
+                    "Hello,\n\n"
+                            + "Your order "
+                            + orderResponse.getOrderNumber()
+                            + " has been successfully confirmed.\n\n"
+
+                            + "Order Total: ₹"
+                            + orderResponse.getTotalAmount()
+                            + "\n\n"
+
+                            + "Your payment was successful and "
+                            + "your order is now confirmed.\n\n"
+
+                            + "Thank you for shopping with Marketplace.\n\n"
+
+                            + "Regards,\n"
+                            + "Marketplace Team");
 
             System.out.println(
                     "Payment updated to PAID");
@@ -220,16 +220,19 @@ public class PaymentWebhookService {
         } catch (FeignException.Conflict e) {
 
             /*
-             * -------------------------------------------------
+             * -----------------------------------------------------
              * STOCK FAILURE
-             * -------------------------------------------------
+             * -----------------------------------------------------
              *
-             * Stripe payment succeeded, but our application
-             * cannot fulfill the order because stock is gone.
+             * Stripe payment succeeded, but the order cannot
+             * be fulfilled because stock is unavailable.
              *
-             * Therefore we must REFUND the Stripe payment.
+             * Therefore:
+             * 1. Refund Stripe
+             * 2. Mark Payment REFUNDED
+             * 3. Mark Order REFUNDED/CANCELLED
+             * 4. Send refund email
              */
-
             System.out.println(
                     "===== STOCK FAILURE DETECTED =====");
 
@@ -249,17 +252,15 @@ public class PaymentWebhookService {
                  * 1. REFUND STRIPE
                  * -------------------------------------------------
                  */
-
                 Refund refund = refundStripePayment(
                         session.getPaymentIntent(),
                         payment.getOrderId());
 
                 /*
                  * -------------------------------------------------
-                 * 2. SAVE REFUND INFORMATION
+                 * 2. UPDATE PAYMENT SERVICE
                  * -------------------------------------------------
                  */
-
                 payment.setStatus("REFUNDED");
 
                 payment.setStripeRefundId(
@@ -278,25 +279,62 @@ public class PaymentWebhookService {
                  * -------------------------------------------------
                  * 3. UPDATE ORDER SERVICE
                  * -------------------------------------------------
-                 *
-                 * Order Service will:
-                 *
-                 * paymentStatus = REFUNDED
-                 * status = CANCELLED
-                 *
-                 * It will NOT clear the cart.
                  */
-
                 UpdatePaymentStatusRequest refundedRequest = new UpdatePaymentStatusRequest();
 
                 refundedRequest.setPaymentStatus(
                         "REFUNDED");
 
-                orderClient.updatePaymentStatus(
+                /*
+                 * Capture the response because we need:
+                 * customerEmail
+                 * orderNumber
+                 * totalAmount
+                 */
+                OrderResponse refundedOrder = orderClient.updatePaymentStatus(
                         payment.getOrderId(),
                         refundedRequest,
                         internalServiceKey);
 
+                /*
+                 * -------------------------------------------------
+                 * 4. SEND REFUND EMAIL
+                 * -------------------------------------------------
+                 */
+                sendNotificationEmail(
+
+                        refundedOrder.getCustomerEmail(),
+
+                        "Payment Refunded - "
+                                + refundedOrder.getOrderNumber(),
+
+                        "Hello,\n\n"
+
+                                + "Your payment for order "
+                                + refundedOrder.getOrderNumber()
+                                + " has been successfully refunded.\n\n"
+
+                                + "Refund Amount: ₹"
+                                + refundedOrder.getTotalAmount()
+                                + "\n\n"
+
+                                + "The order was cancelled because "
+                                + "the requested item(s) were no longer "
+                                + "available.\n\n"
+
+                                + "The refunded amount will be returned "
+                                + "to your original payment method.\n\n"
+
+                                + "We apologize for the inconvenience.\n\n"
+
+                                + "Regards,\n"
+                                + "Marketplace Team");
+
+                /*
+                 * -------------------------------------------------
+                 * COMPENSATION COMPLETE
+                 * -------------------------------------------------
+                 */
                 System.out.println(
                         "===== COMPENSATION COMPLETE =====");
 
@@ -312,36 +350,16 @@ public class PaymentWebhookService {
 
             } catch (StripeException stripeException) {
 
-                /*
-                 * -------------------------------------------------
-                 * STRIPE REFUND FAILED
-                 * -------------------------------------------------
-                 */
-
                 System.out.println(
                         "===== STRIPE REFUND FAILED =====");
 
                 stripeException.printStackTrace();
-
-                /*
-                 * Do NOT mark Payment as REFUNDED.
-                 *
-                 * The payment actually succeeded at Stripe,
-                 * so we need webhook processing to fail/retry
-                 * rather than pretending the refund happened.
-                 */
 
                 throw new RuntimeException(
                         "Stripe refund failed",
                         stripeException);
 
             } catch (Exception compensationException) {
-
-                /*
-                 * -------------------------------------------------
-                 * COMPENSATION FAILED
-                 * -------------------------------------------------
-                 */
 
                 System.out.println(
                         "===== COMPENSATION FAILED =====");
@@ -522,5 +540,64 @@ public class PaymentWebhookService {
 
         System.out.println(
                 "========== CHECKOUT SESSION EXPIRATION HANDLED ==========");
+    }
+
+    private void sendNotificationEmail(
+            String recipientEmail,
+            String subject,
+            String message) {
+
+        if (recipientEmail == null
+                || recipientEmail.isBlank()) {
+
+            System.out.println(
+                    "Notification skipped: customer email is missing.");
+
+            return;
+        }
+
+        try {
+
+            SendEmailRequest request = new SendEmailRequest(
+                    recipientEmail,
+                    subject,
+                    message);
+
+            notificationClient.sendEmail(
+                    internalServiceKey,
+                    request);
+
+            System.out.println(
+                    "===== NOTIFICATION SENT =====");
+
+            System.out.println(
+                    "Recipient: "
+                            + recipientEmail);
+
+            System.out.println(
+                    "Subject: "
+                            + subject);
+
+        } catch (Exception e) {
+
+            /*
+             * Notification failure must NOT make
+             * payment/order processing fail.
+             *
+             * Payment and refund are more important
+             * than email delivery.
+             */
+
+            System.out.println(
+                    "===== NOTIFICATION FAILED =====");
+
+            System.out.println(
+                    "Recipient: "
+                            + recipientEmail);
+
+            System.out.println(
+                    "Reason: "
+                            + e.getMessage());
+        }
     }
 }
