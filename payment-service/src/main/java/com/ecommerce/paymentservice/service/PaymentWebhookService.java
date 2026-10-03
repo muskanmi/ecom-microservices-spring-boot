@@ -452,6 +452,12 @@ public class PaymentWebhookService {
         System.out.println(
                 "========== CHECKOUT SESSION EXPIRED ==========");
 
+        /*
+         * ---------------------------------------------------------
+         * GET STRIPE SESSION
+         * ---------------------------------------------------------
+         */
+
         Session session = (Session) event
                 .getDataObjectDeserializer()
                 .getObject()
@@ -459,8 +465,19 @@ public class PaymentWebhookService {
                         () -> new RuntimeException(
                                 "Unable to deserialize Checkout Session"));
 
+        System.out.println(
+                "Stripe session ID: "
+                        + session.getId());
+
+        /*
+         * ---------------------------------------------------------
+         * FIND PAYMENT
+         * ---------------------------------------------------------
+         */
+
         Payment payment = paymentRepository
-                .findByStripeSessionId(session.getId())
+                .findByStripeSessionId(
+                        session.getId())
                 .orElse(null);
 
         if (payment == null) {
@@ -472,15 +489,45 @@ public class PaymentWebhookService {
             return;
         }
 
-        if ("PAID".equals(payment.getStatus())) {
+        System.out.println(
+                "Found payment ID: "
+                        + payment.getId());
+
+        System.out.println(
+                "Order ID: "
+                        + payment.getOrderId());
+
+        System.out.println(
+                "Current payment status: "
+                        + payment.getStatus());
+
+        /*
+         * ---------------------------------------------------------
+         * ALREADY PAID
+         * ---------------------------------------------------------
+         *
+         * If the payment was already completed successfully,
+         * an expired-session event must not cancel the order.
+         */
+
+        if ("PAID".equalsIgnoreCase(
+                payment.getStatus())) {
 
             System.out.println(
-                    "Payment already PAID. Ignoring expiration.");
+                    "Payment already PAID. "
+                            + "Ignoring expiration.");
 
             return;
         }
 
-        if ("REFUNDED".equals(payment.getStatus())) {
+        /*
+         * ---------------------------------------------------------
+         * ALREADY REFUNDED
+         * ---------------------------------------------------------
+         */
+
+        if ("REFUNDED".equalsIgnoreCase(
+                payment.getStatus())) {
 
             System.out.println(
                     "Payment already REFUNDED. "
@@ -489,21 +536,44 @@ public class PaymentWebhookService {
             return;
         }
 
+        /*
+         * ---------------------------------------------------------
+         * CANCEL THIS PAYMENT ATTEMPT
+         * ---------------------------------------------------------
+         */
+
         payment.setStatus("CANCELLED");
 
         paymentRepository.save(payment);
 
+        System.out.println(
+                "Payment attempt marked as CANCELLED");
+
         /*
-         * Check if this is the latest payment attempt.
+         * ---------------------------------------------------------
+         * FIND ALL PAYMENT ATTEMPTS FOR THIS ORDER
+         * ---------------------------------------------------------
          *
-         * If the user already created a newer Stripe
-         * session for the same order, don't cancel
-         * the order because of the old session.
+         * An order may have multiple Stripe payment attempts.
+         *
+         * Example:
+         *
+         * Attempt 1 → expired
+         * Attempt 2 → active
+         *
+         * In that situation we must NOT cancel the order because
+         * an old payment attempt expired.
          */
 
         List<Payment> attempts = paymentRepository
                 .findByOrderIdOrderByCreatedAtDesc(
                         payment.getOrderId());
+
+        /*
+         * ---------------------------------------------------------
+         * CHECK WHETHER THIS IS THE LATEST ATTEMPT
+         * ---------------------------------------------------------
+         */
 
         if (!attempts.isEmpty()) {
 
@@ -513,23 +583,40 @@ public class PaymentWebhookService {
                     payment.getId())) {
 
                 System.out.println(
-                        "Old payment attempt expired. "
-                                + "Order remains active.");
+                        "Old payment attempt expired.");
+
+                System.out.println(
+                        "A newer payment attempt exists.");
+
+                System.out.println(
+                        "Order remains active.");
 
                 return;
             }
         }
 
         /*
-         * This was the latest payment attempt,
-         * so cancel the order as well.
+         * ---------------------------------------------------------
+         * THIS IS THE LATEST PAYMENT ATTEMPT
+         * ---------------------------------------------------------
+         *
+         * Therefore the order should be cancelled.
          */
 
         UpdatePaymentStatusRequest request = new UpdatePaymentStatusRequest();
 
-        request.setPaymentStatus("CANCELLED");
+        request.setPaymentStatus(
+                "CANCELLED");
 
-        orderClient.updatePaymentStatus(
+        /*
+         * Capture OrderResponse because we need:
+         *
+         * customerEmail
+         * orderNumber
+         * totalAmount
+         */
+
+        OrderResponse cancelledOrder = orderClient.updatePaymentStatus(
                 payment.getOrderId(),
                 request,
                 internalServiceKey);
@@ -537,6 +624,50 @@ public class PaymentWebhookService {
         System.out.println(
                 "Order cancelled because latest "
                         + "Stripe session expired.");
+
+        System.out.println(
+                "Order number: "
+                        + cancelledOrder.getOrderNumber());
+
+        /*
+         * ---------------------------------------------------------
+         * SEND ORDER CANCELLED EMAIL
+         * ---------------------------------------------------------
+         */
+
+        sendNotificationEmail(
+
+                cancelledOrder.getCustomerEmail(),
+
+                "Order Cancelled - "
+                        + cancelledOrder.getOrderNumber(),
+
+                "Hello,\n\n"
+
+                        + "Your order "
+                        + cancelledOrder.getOrderNumber()
+                        + " has been cancelled because the "
+                        + "Stripe payment session expired before "
+                        + "the payment was completed.\n\n"
+
+                        + "Order Total: ₹"
+                        + cancelledOrder.getTotalAmount()
+                        + "\n\n"
+
+                        + "No payment was completed for this order.\n\n"
+
+                        + "You can place a new order anytime from "
+                        + "our marketplace.\n\n"
+
+                        + "Regards,\n"
+                        + "Marketplace Team");
+
+        System.out.println(
+                "===== ORDER CANCELLATION NOTIFICATION SENT =====");
+
+        System.out.println(
+                "Recipient: "
+                        + cancelledOrder.getCustomerEmail());
 
         System.out.println(
                 "========== CHECKOUT SESSION EXPIRATION HANDLED ==========");
