@@ -37,4 +37,18 @@ public class InternalStockController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/restore")
+    public ResponseEntity<Void> restoreStock(
+            @RequestHeader("X-Internal-Service-Key") String serviceKey,
+            @RequestBody StockDeductionRequest request) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        stockService.restoreStock(request);
+
+        return ResponseEntity.ok().build();
+    }
 }

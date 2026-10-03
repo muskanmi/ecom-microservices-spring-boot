@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ecommerce.orderservice.client.CatalogStockClient;
+import com.ecommerce.orderservice.client.PaymentClient;
 import com.ecommerce.orderservice.dto.CartDetailsResponse;
 import com.ecommerce.orderservice.dto.CartItemDetailResponse;
 import com.ecommerce.orderservice.dto.CatalogProductImageResponse;
@@ -41,6 +42,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartService cartService;
     private final CatalogStockClient catalogStockClient;
+    private final PaymentClient paymentClient;
 
     @Value("${internal.service.key}")
     private String internalServiceKey;
@@ -161,6 +163,105 @@ public class OrderService {
                                 "Order not found"));
 
         return mapToResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse cancelOrder(
+            Long orderId,
+            Long userId) {
+
+        System.out.println(
+                "===== CUSTOMER ORDER CANCELLATION =====");
+
+        System.out.println(
+                "Order ID: " + orderId);
+
+        System.out.println(
+                "User ID: " + userId);
+
+        /*
+         * ---------------------------------------------------------
+         * FIND ORDER BELONGING TO THIS USER
+         * ---------------------------------------------------------
+         *
+         * This prevents User 2 from cancelling User 1's order.
+         */
+
+        Order order = orderRepository
+                .findByIdAndUserId(
+                        orderId,
+                        userId)
+                .orElseThrow(
+                        () -> new RuntimeException(
+                                "Order not found"));
+
+        System.out.println(
+                "Current order status: "
+                        + order.getStatus());
+
+        System.out.println(
+                "Current payment status: "
+                        + order.getPaymentStatus());
+
+        /*
+         * ---------------------------------------------------------
+         * ALREADY CANCELLED
+         * ---------------------------------------------------------
+         */
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+
+            throw new RuntimeException(
+                    "Order is already cancelled");
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * STEP 1:
+         *
+         * For now we only allow cancellation while payment
+         * is still pending.
+         *
+         * A PAID/CONFIRMED order will be handled in the
+         * next step through Stripe refund + stock restoration.
+         * ---------------------------------------------------------
+         */
+
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT
+                || order.getPaymentStatus() != PaymentStatus.PENDING) {
+
+            throw new RuntimeException(
+                    "This order cannot be cancelled at this stage. "
+                            + "Paid orders require the refund workflow.");
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * CANCEL ORDER
+         * ---------------------------------------------------------
+         */
+
+        order.setStatus(
+                OrderStatus.CANCELLED);
+
+        order.setPaymentStatus(
+                PaymentStatus.CANCELLED);
+
+        Order savedOrder = orderRepository.save(order);
+
+        System.out.println(
+                "Order successfully cancelled");
+
+        System.out.println(
+                "Order status: "
+                        + savedOrder.getStatus());
+
+        System.out.println(
+                "Payment status: "
+                        + savedOrder.getPaymentStatus());
+
+        return mapToResponse(
+                savedOrder);
     }
 
     @Transactional

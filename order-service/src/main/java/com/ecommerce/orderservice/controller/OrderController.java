@@ -54,6 +54,17 @@ public class OrderController {
                         userId));
     }
 
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderResponse> cancelOrder(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable Long orderId) {
+
+        return ResponseEntity.ok(
+                orderService.cancelOrder(
+                        orderId,
+                        userId));
+    }
+
     @PutMapping("/internal/{orderId}/payment-status")
     public ResponseEntity<OrderResponse> updatePaymentStatus(
             @PathVariable Long orderId,

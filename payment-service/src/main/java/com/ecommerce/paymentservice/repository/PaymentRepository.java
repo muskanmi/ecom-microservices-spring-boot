@@ -17,4 +17,8 @@ public interface PaymentRepository
 
     List<Payment> findByOrderIdOrderByCreatedAtDesc(Long orderId);
 
+    Optional<Payment> findFirstByOrderIdAndStatusOrderByCreatedAtDesc(
+            Long orderId,
+            String status);
+
 }

@@ -67,4 +67,36 @@ public class StockService {
                     "Stock deduction completed successfully.");
         }
     }
+
+    @Transactional
+    public void restoreStock(StockDeductionRequest request) {
+
+        System.out.println("===== RESTORING PRODUCT STOCK =====");
+
+        for (StockDeductionItemRequest item : request.getItems()) {
+
+            System.out.println(
+                    "Restoring productId="
+                            + item.getProductId()
+                            + ", quantity="
+                            + item.getQuantity());
+
+            int updatedRows = productRepository.restoreStock(
+                    item.getProductId(),
+                    item.getQuantity());
+
+            if (updatedRows == 0) {
+                throw new RuntimeException(
+                        "Product not found: "
+                                + item.getProductId());
+            }
+
+            System.out.println(
+                    "Stock restored successfully for productId="
+                            + item.getProductId());
+        }
+
+        System.out.println(
+                "===== STOCK RESTORATION COMPLETED =====");
+    }
 }
