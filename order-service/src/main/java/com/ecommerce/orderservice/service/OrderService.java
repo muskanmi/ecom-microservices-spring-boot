@@ -17,6 +17,7 @@ import com.ecommerce.orderservice.dto.CatalogStockDeductionRequest;
 import com.ecommerce.orderservice.dto.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.OrderItemResponse;
 import com.ecommerce.orderservice.dto.OrderResponse;
+import com.ecommerce.orderservice.dto.PaymentRefundResponse;
 import com.ecommerce.orderservice.dto.ShippingAddressRequest;
 import com.ecommerce.orderservice.dto.ShippingAddressResponse;
 import com.ecommerce.orderservice.entity.Order;
@@ -183,14 +184,9 @@ public class OrderService {
          * ---------------------------------------------------------
          * FIND ORDER BELONGING TO THIS USER
          * ---------------------------------------------------------
-         *
-         * This prevents User 2 from cancelling User 1's order.
          */
-
         Order order = orderRepository
-                .findByIdAndUserId(
-                        orderId,
-                        userId)
+                .findByIdAndUserId(orderId, userId)
                 .orElseThrow(
                         () -> new RuntimeException(
                                 "Order not found"));
@@ -208,7 +204,6 @@ public class OrderService {
          * ALREADY CANCELLED
          * ---------------------------------------------------------
          */
-
         if (order.getStatus() == OrderStatus.CANCELLED) {
 
             throw new RuntimeException(
@@ -217,51 +212,125 @@ public class OrderService {
 
         /*
          * ---------------------------------------------------------
-         * STEP 1:
+         * CASE 1:
          *
-         * For now we only allow cancellation while payment
-         * is still pending.
+         * Payment is still pending.
          *
-         * A PAID/CONFIRMED order will be handled in the
-         * next step through Stripe refund + stock restoration.
+         * No Stripe refund is required.
          * ---------------------------------------------------------
          */
+        if (order.getStatus() == OrderStatus.PENDING_PAYMENT
+                && order.getPaymentStatus() == PaymentStatus.PENDING) {
 
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT
-                || order.getPaymentStatus() != PaymentStatus.PENDING) {
+            order.setStatus(
+                    OrderStatus.CANCELLED);
 
-            throw new RuntimeException(
-                    "This order cannot be cancelled at this stage. "
-                            + "Paid orders require the refund workflow.");
+            order.setPaymentStatus(
+                    PaymentStatus.CANCELLED);
+
+            Order savedOrder = orderRepository.save(order);
+
+            System.out.println(
+                    "===== PENDING ORDER CANCELLED =====");
+
+            return mapToResponse(savedOrder);
         }
 
         /*
          * ---------------------------------------------------------
-         * CANCEL ORDER
+         * CASE 2:
+         *
+         * Order is already paid.
+         *
+         * Refund payment through Payment Service.
          * ---------------------------------------------------------
          */
+        if (order.getStatus() == OrderStatus.CONFIRMED
+                && order.getPaymentStatus() == PaymentStatus.PAID) {
 
-        order.setStatus(
-                OrderStatus.CANCELLED);
+            System.out.println(
+                    "===== PAID ORDER CANCELLATION =====");
 
-        order.setPaymentStatus(
-                PaymentStatus.CANCELLED);
+            /*
+             * 1. Refund Stripe payment
+             */
+            PaymentRefundResponse refundResponse = paymentClient.refundPayment(
+                    orderId,
+                    internalServiceKey);
 
-        Order savedOrder = orderRepository.save(order);
+            System.out.println(
+                    "Payment refund status: "
+                            + refundResponse.getPaymentStatus());
 
-        System.out.println(
-                "Order successfully cancelled");
+            System.out.println(
+                    "Stripe refund ID: "
+                            + refundResponse.getStripeRefundId());
 
-        System.out.println(
-                "Order status: "
-                        + savedOrder.getStatus());
+            /*
+             * 2. Build stock restoration request
+             * from the order's stored items.
+             */
+            List<CatalogStockDeductionItemRequest> stockItems = order.getItems()
+                    .stream()
+                    .map(item -> new CatalogStockDeductionItemRequest(
+                            item.getProductId(),
+                            item.getQuantity()))
+                    .toList();
 
-        System.out.println(
-                "Payment status: "
-                        + savedOrder.getPaymentStatus());
+            CatalogStockDeductionRequest stockRequest = new CatalogStockDeductionRequest(
+                    stockItems);
 
-        return mapToResponse(
-                savedOrder);
+            System.out.println(
+                    "===== STOCK RESTORATION REQUEST =====");
+
+            stockItems.forEach(item -> System.out.println(
+                    "Product ID: "
+                            + item.getProductId()
+                            + ", Quantity: "
+                            + item.getQuantity()));
+
+            /*
+             * 3. Restore stock
+             */
+            catalogStockClient.restoreStock(
+                    stockRequest,
+                    internalServiceKey);
+
+            System.out.println(
+                    "===== STOCK RESTORATION SUCCESS =====");
+
+            /*
+             * 4. Update order
+             */
+            order.setStatus(
+                    OrderStatus.CANCELLED);
+
+            order.setPaymentStatus(
+                    PaymentStatus.REFUNDED);
+
+            Order savedOrder = orderRepository.save(order);
+
+            System.out.println(
+                    "===== PAID ORDER CANCELLED SUCCESSFULLY =====");
+
+            System.out.println(
+                    "Order status: "
+                            + savedOrder.getStatus());
+
+            System.out.println(
+                    "Payment status: "
+                            + savedOrder.getPaymentStatus());
+
+            return mapToResponse(savedOrder);
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * Any other state cannot be cancelled.
+         * ---------------------------------------------------------
+         */
+        throw new RuntimeException(
+                "This order cannot be cancelled at this stage.");
     }
 
     @Transactional

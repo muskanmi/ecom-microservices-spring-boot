@@ -4,6 +4,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Paper,
   Stack,
@@ -29,7 +33,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
-import { getOrderById } from "../api/orderApi";
+import { cancelOrder, getOrderById } from "../api/orderApi";
 import { getImageUrl } from "../utils/imageUrl";
 
 const COLORS = {
@@ -62,6 +66,8 @@ export default function OrderDetailsPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -190,6 +196,38 @@ export default function OrderDetailsPage() {
 
   const isRefunded = order.paymentStatus === "REFUNDED";
 
+  const canCancel =
+    !isCancelled &&
+    ((order.status === "PENDING_PAYMENT" &&
+      order.paymentStatus === "PENDING") ||
+      (order.status === "CONFIRMED" && order.paymentStatus === "PAID"));
+
+  const isPaidOrder =
+    order.status === "CONFIRMED" && order.paymentStatus === "PAID";
+
+  const handleCancelOrder = async () => {
+    try {
+      setCancelling(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      const response = await cancelOrder(order.id, token, user.id);
+
+      setOrder(response.data);
+      setCancelDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to cancel order:", error);
+
+      const message =
+        error.response?.data?.message || "Unable to cancel this order.";
+
+      setError(message);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -241,6 +279,20 @@ export default function OrderDetailsPage() {
             mb: 2.5,
           }}
         >
+          {error && (
+            <Alert
+              severity="error"
+              onClose={() => setError("")}
+              sx={{
+                mb: 2.5,
+                borderRadius: 3,
+                backgroundColor: COLORS.white,
+                border: `1px solid #F1CACA`,
+              }}
+            >
+              {error}
+            </Alert>
+          )}
           <Stack
             direction={{
               xs: "column",
@@ -891,53 +943,195 @@ export default function OrderDetailsPage() {
               )}
             </Paper>
 
-            {/* ACTION */}
-            <Button
-              fullWidth
-              variant="contained"
-              endIcon={<ArrowForwardRounded />}
-              onClick={() => navigate("/orders")}
-              sx={{
-                py: 1.35,
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 800,
-                backgroundColor: COLORS.ink,
-                boxShadow: "none",
+            <Stack spacing={1.5}>
+              {canCancel && (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => setCancelDialogOpen(true)}
+                  disabled={cancelling}
+                  sx={{
+                    py: 1.25,
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    color: COLORS.red,
+                    borderColor: "#E3A8A8",
+                    backgroundColor: COLORS.white,
 
-                "&:hover": {
-                  backgroundColor: COLORS.inkDark,
+                    "&:hover": {
+                      borderColor: COLORS.red,
+                      backgroundColor: COLORS.softRed,
+                    },
+                  }}
+                >
+                  Cancel Order
+                </Button>
+              )}
+
+              <Button
+                fullWidth
+                variant="contained"
+                endIcon={<ArrowForwardRounded />}
+                onClick={() => navigate("/orders")}
+                sx={{
+                  py: 1.35,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  backgroundColor: COLORS.ink,
                   boxShadow: "none",
-                },
-              }}
-            >
-              Back to My Orders
-            </Button>
 
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<HomeRounded />}
-              onClick={() => navigate("/")}
-              sx={{
-                py: 1.2,
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 700,
-                color: COLORS.ink,
-                borderColor: "#CFC4B2",
+                  "&:hover": {
+                    backgroundColor: COLORS.inkDark,
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                Back to My Orders
+              </Button>
 
-                "&:hover": {
-                  borderColor: COLORS.ink,
-                  backgroundColor: "#F3EDE2",
-                },
-              }}
-            >
-              Continue Shopping
-            </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<HomeRounded />}
+                onClick={() => navigate("/")}
+                sx={{
+                  py: 1.2,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  color: COLORS.ink,
+                  borderColor: "#CFC4B2",
+
+                  "&:hover": {
+                    borderColor: COLORS.ink,
+                    backgroundColor: "#F3EDE2",
+                  },
+                }}
+              >
+                Continue Shopping
+              </Button>
+            </Stack>
           </Stack>
         </Box>
       </Box>
+
+      {/* =====================================================
+          CANCEL ORDER CONFIRMATION DIALOG
+      ===================================================== */}
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => {
+          if (!cancelling) {
+            setCancelDialogOpen(false);
+          }
+        }}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            backgroundColor: COLORS.paper,
+            border: `1px solid ${COLORS.border}`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            color: COLORS.ink,
+            fontWeight: 800,
+            fontSize: 20,
+            pb: 1,
+          }}
+        >
+          Cancel this order?
+        </DialogTitle>
+
+        <DialogContent>
+          <Typography
+            sx={{
+              color: COLORS.muted,
+              fontSize: 14,
+              lineHeight: 1.7,
+            }}
+          >
+            {isPaidOrder
+              ? "This order has already been paid. Your payment will be refunded to the original payment method after cancellation."
+              : "Are you sure you want to cancel this order?"}
+          </Typography>
+        </DialogContent>
+
+        {/* =================================================
+            DIALOG ACTIONS
+        ================================================= */}
+
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2.5,
+            pt: 1,
+            gap: 1,
+          }}
+        >
+          <Button
+            onClick={() => setCancelDialogOpen(false)}
+            disabled={cancelling}
+            sx={{
+              color: COLORS.ink,
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: 2,
+              px: 2,
+
+              "&:hover": {
+                backgroundColor: "#F3EDE2",
+              },
+            }}
+          >
+            Keep Order
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={handleCancelOrder}
+            disabled={cancelling}
+            sx={{
+              minWidth: 130,
+              py: 1,
+              px: 2,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              backgroundColor: COLORS.red,
+              boxShadow: "none",
+
+              "&:hover": {
+                backgroundColor: "#A92F2F",
+                boxShadow: "none",
+              },
+
+              "&:disabled": {
+                backgroundColor: "#D7A0A0",
+                color: COLORS.white,
+              },
+            }}
+          >
+            {cancelling ? (
+              <CircularProgress
+                size={20}
+                thickness={4}
+                sx={{
+                  color: COLORS.white,
+                }}
+              />
+            ) : (
+              "Cancel Order"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

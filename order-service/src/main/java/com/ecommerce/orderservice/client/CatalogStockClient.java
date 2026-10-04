@@ -13,4 +13,9 @@ public interface CatalogStockClient {
             @RequestBody CatalogStockDeductionRequest request,
 
             @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
+
+    @PostMapping("/api/products/internal/stock/restore")
+    void restoreStock(
+            @RequestBody CatalogStockDeductionRequest request,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
 }

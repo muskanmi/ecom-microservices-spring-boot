@@ -36,3 +36,16 @@ export const getOrderById = (orderId, token, userId) =>
             }
         }
     );
+
+export const cancelOrder = (orderId, token, userId) => {
+    return api.post(
+        `/api/orders/${orderId}/cancel`,
+        {},
+        {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "X-User-Id": userId,
+        },
+        }
+    );
+};
