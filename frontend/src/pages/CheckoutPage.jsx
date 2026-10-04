@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { createOrder } from "../api/orderApi";
+import { createOrder, getOrderById } from "../api/orderApi";
 import { getImageUrl } from "../utils/imageUrl";
 import { createCheckoutSession } from "../api/paymentApi.JS";
 
@@ -90,7 +90,73 @@ export default function CheckoutPage() {
       let orderId = createdOrderId;
 
       /*
-       * Create the order only once.
+       * ---------------------------------------------------------
+       * CHECK EXISTING CHECKOUT ORDER
+       * ---------------------------------------------------------
+       *
+       * We intentionally reuse an existing order only when:
+       *
+       * 1. It exists
+       * 2. It belongs to the current user
+       * 3. It is still PENDING_PAYMENT
+       * 4. Its payment is still PENDING
+       *
+       * This prevents cancelled/refunded/paid orders from
+       * remaining stuck in sessionStorage and being reused.
+       * ---------------------------------------------------------
+       */
+      if (orderId) {
+        try {
+          console.log("Checking existing checkout order:", orderId);
+
+          const existingOrderResponse = await getOrderById(
+            orderId,
+            token,
+            user.id,
+          );
+
+          const existingOrder = existingOrderResponse.data;
+
+          console.log("Existing checkout order:", existingOrder);
+
+          const canReuseOrder =
+            existingOrder.userId === user.id &&
+            existingOrder.status === "PENDING_PAYMENT" &&
+            existingOrder.paymentStatus === "PENDING";
+
+          if (!canReuseOrder) {
+            console.log("Existing checkout order is no longer reusable.");
+
+            sessionStorage.removeItem("checkoutOrderId");
+
+            setCreatedOrderId(null);
+
+            orderId = null;
+          }
+        } catch (existingOrderError) {
+          /*
+           * The stored order no longer exists or cannot be
+           * accessed by this user.
+           *
+           * Clear the stale checkout order and create a
+           * completely new one.
+           */
+          console.log(
+            "Stored checkout order is invalid or unavailable. Creating a new order.",
+          );
+
+          sessionStorage.removeItem("checkoutOrderId");
+
+          setCreatedOrderId(null);
+
+          orderId = null;
+        }
+      }
+
+      /*
+       * ---------------------------------------------------------
+       * CREATE NEW ORDER
+       * ---------------------------------------------------------
        */
       if (!orderId) {
         const orderResponse = await createOrder(
@@ -120,16 +186,15 @@ export default function CheckoutPage() {
 
         sessionStorage.setItem("checkoutOrderId", String(orderId));
 
-        console.log("Created order:", order);
+        console.log("Created new checkout order:", order);
       } else {
-        console.log("Reusing existing order:", orderId);
+        console.log("Reusing valid pending checkout order:", orderId);
       }
 
       /*
-       * Create Stripe Checkout Session.
-       *
-       * This can happen multiple times for
-       * the SAME order.
+       * ---------------------------------------------------------
+       * CREATE STRIPE CHECKOUT SESSION
+       * ---------------------------------------------------------
        */
       const paymentResponse = await createCheckoutSession(
         orderId,

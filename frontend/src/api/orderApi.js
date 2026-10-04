@@ -38,14 +38,15 @@ export const getOrderById = (orderId, token, userId) =>
     );
 
 export const cancelOrder = (orderId, token, userId) => {
-    return api.post(
-        `/api/orders/${orderId}/cancel`,
+    return axios.post(
+        `${API_URL}/${orderId}/cancel`,
         {},
         {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            "X-User-Id": userId,
-        },
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "X-User-Id": userId,
+                "Content-Type": "application/json"
+            }
         }
     );
 };

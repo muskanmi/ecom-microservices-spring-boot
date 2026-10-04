@@ -214,6 +214,12 @@ export default function OrderDetailsPage() {
 
       const response = await cancelOrder(order.id, token, user.id);
 
+      const checkoutOrderId = sessionStorage.getItem("checkoutOrderId");
+
+      if (checkoutOrderId === String(order.id)) {
+        sessionStorage.removeItem("checkoutOrderId");
+      }
+
       setOrder(response.data);
       setCancelDialogOpen(false);
     } catch (error) {

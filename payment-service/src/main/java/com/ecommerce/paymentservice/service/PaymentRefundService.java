@@ -1,6 +1,10 @@
 package com.ecommerce.paymentservice.service;
 
+import com.ecommerce.paymentservice.client.NotificationClient;
+import com.ecommerce.paymentservice.client.OrderClient;
+import com.ecommerce.paymentservice.dto.OrderResponse;
 import com.ecommerce.paymentservice.dto.RefundPaymentResponse;
+import com.ecommerce.paymentservice.dto.SendEmailRequest;
 import com.ecommerce.paymentservice.entity.Payment;
 import com.ecommerce.paymentservice.repository.PaymentRepository;
 import com.stripe.exception.StripeException;
@@ -18,12 +22,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentRefundService {
 
     private final PaymentRepository paymentRepository;
+    private final OrderClient orderClient;
+    private final NotificationClient notificationClient;
+
+    @Value("${internal.service.key}")
+    private String internalServiceKey;
 
     @Value("${stripe.secret-key}")
     private String stripeSecretKey;
 
     @Transactional
-    public RefundPaymentResponse refundPayment(Long orderId) {
+    public RefundPaymentResponse refundPayment(
+            Long orderId) {
 
         System.out.println(
                 "===== CUSTOMER PAYMENT REFUND =====");
@@ -38,17 +48,6 @@ public class PaymentRefundService {
                 .orElseThrow(() -> new RuntimeException(
                         "No PAID payment found for order: "
                                 + orderId));
-
-        /*
-         * Idempotency protection.
-         *
-         * If Stripe refund was already completed and the payment
-         * was already marked REFUNDED, the method above will not find
-         * it because we searched for PAID.
-         *
-         * So the controller/service integration should normally call
-         * this only once for a PAID payment.
-         */
 
         if (payment.getStripeRefundId() != null) {
 
@@ -80,7 +79,8 @@ public class PaymentRefundService {
                     .build();
 
             Refund refund = Refund.create(
-                    com.stripe.param.RefundCreateParams.builder()
+                    com.stripe.param.RefundCreateParams
+                            .builder()
                             .setPaymentIntent(
                                     payment.getStripePaymentIntentId())
                             .build(),
@@ -105,6 +105,38 @@ public class PaymentRefundService {
                     "Payment status: "
                             + payment.getStatus());
 
+            /*
+             * Get order details so we can send
+             * the refund email to the customer.
+             */
+            try {
+
+                OrderResponse orderResponse = orderClient.getOrderById(
+                        payment.getOrderId(),
+                        payment.getUserId());
+
+                sendRefundEmail(
+                        payment,
+                        orderResponse);
+
+            } catch (Exception e) {
+
+                /*
+                 * Do not fail a successful refund
+                 * because email/order lookup failed.
+                 */
+                System.out.println(
+                        "===== COULD NOT SEND REFUND EMAIL =====");
+
+                System.out.println(
+                        "Order ID: "
+                                + payment.getOrderId());
+
+                System.out.println(
+                        "Reason: "
+                                + e.getMessage());
+            }
+
             return buildResponse(payment);
 
         } catch (StripeException e) {
@@ -116,6 +148,78 @@ public class PaymentRefundService {
                     "Stripe refund failed for order: "
                             + orderId,
                     e);
+        }
+    }
+
+    private void sendRefundEmail(
+            Payment payment,
+            OrderResponse order) {
+
+        try {
+
+            String recipientEmail = order.getCustomerEmail();
+
+            if (recipientEmail == null
+                    || recipientEmail.isBlank()) {
+
+                System.out.println(
+                        "Refund email skipped: customer email is missing for order "
+                                + payment.getOrderId());
+
+                return;
+            }
+
+            String orderNumber = order.getOrderNumber();
+
+            String subject = "Payment Refunded - " + orderNumber;
+
+            String message = "Hello,\n\n"
+                    + "Your order " + orderNumber
+                    + " has been cancelled successfully.\n\n"
+                    + "Payment Amount: ₹"
+                    + payment.getAmount()
+                    + "\n\n"
+                    + "The payment has been refunded to your original payment method.\n"
+                    + "Please allow some time for the refund to appear in your account, "
+                    + "depending on your bank or payment provider.\n\n"
+                    + "Thank you,\n"
+                    + "Marketplace Team";
+
+            SendEmailRequest request = new SendEmailRequest();
+
+            request.setRecipientEmail(
+                    recipientEmail);
+
+            request.setSubject(subject);
+
+            request.setMessage(message);
+
+            notificationClient.sendEmail(
+                    internalServiceKey,
+                    request);
+
+            System.out.println(
+                    "===== REFUND EMAIL SENT =====");
+
+            System.out.println(
+                    "Recipient: " + recipientEmail);
+
+            System.out.println(
+                    "Subject: " + subject);
+
+        } catch (Exception e) {
+
+            /*
+             * Email failure should NOT undo a successful Stripe refund.
+             */
+            System.out.println(
+                    "===== REFUND EMAIL FAILED =====");
+
+            System.out.println(
+                    "Order ID: " + payment.getOrderId());
+
+            System.out.println(
+                    "Reason: " + e.getMessage());
         }
     }
 
