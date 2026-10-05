@@ -4,6 +4,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   InputAdornment,
   Paper,
@@ -30,7 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
-import { getOrders } from "../api/orderApi";
+import { getOrders, cancelOrder } from "../api/orderApi";
 import { getImageUrl } from "../utils/imageUrl";
 
 const COLORS = {
@@ -74,6 +78,11 @@ export default function OrdersPage() {
 
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -146,6 +155,70 @@ export default function OrdersPage() {
       return orderNumber.includes(query) || productNames.includes(query);
     });
   }, [orders, activeFilter, search]);
+
+  const handleOpenCancelDialog = (order) => {
+    setCancelError("");
+    setOrderToCancel(order);
+    setCancelDialogOpen(true);
+  };
+
+  const handleCloseCancelDialog = () => {
+    if (cancellingOrder) {
+      return;
+    }
+
+    setCancelDialogOpen(false);
+    setOrderToCancel(null);
+    setCancelError("");
+  };
+
+  const handleCancelOrder = async () => {
+    if (!orderToCancel || !user?.id) {
+      return;
+    }
+
+    try {
+      setCancellingOrder(true);
+      setCancelError("");
+
+      const token = localStorage.getItem("token");
+
+      const response = await cancelOrder(orderToCancel.id, token, user.id);
+
+      const updatedOrder = response.data;
+
+      /*
+       * Update the order directly in the list.
+       * No full page refresh required.
+       */
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          order.id === updatedOrder.id ? updatedOrder : order,
+        ),
+      );
+
+      /*
+       * If this order was also the active checkout order,
+       * remove it from sessionStorage.
+       */
+      const checkoutOrderId = sessionStorage.getItem("checkoutOrderId");
+
+      if (checkoutOrderId === String(updatedOrder.id)) {
+        sessionStorage.removeItem("checkoutOrderId");
+      }
+
+      setCancelDialogOpen(false);
+      setOrderToCancel(null);
+    } catch (error) {
+      console.error("Failed to cancel order:", error);
+
+      setCancelError(
+        error.response?.data?.message || "Unable to cancel this order.",
+      );
+    } finally {
+      setCancellingOrder(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -526,11 +599,167 @@ export default function OrdersPage() {
                 key={order.id}
                 order={order}
                 onDetails={() => navigate(`/orders/${order.id}`)}
+                onCancel={handleOpenCancelDialog}
               />
             ))}
           </Stack>
         )}
       </Box>
+
+      {/* =====================================================
+          CANCEL ORDER CONFIRMATION DIALOG
+      ===================================================== */}
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={handleCloseCancelDialog}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            backgroundColor: COLORS.paper,
+            border: `1px solid ${COLORS.border}`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            color: COLORS.ink,
+            fontWeight: 800,
+            fontSize: 20,
+            pb: 1,
+          }}
+        >
+          Cancel this order?
+        </DialogTitle>
+
+        <DialogContent>
+          {cancelError && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 2,
+                borderRadius: 2,
+              }}
+            >
+              {cancelError}
+            </Alert>
+          )}
+
+          <Typography
+            sx={{
+              color: COLORS.muted,
+              fontSize: 14,
+              lineHeight: 1.7,
+            }}
+          >
+            {orderToCancel?.status === "CONFIRMED" &&
+            orderToCancel?.paymentStatus === "PAID"
+              ? "This order has already been paid. Your payment will be refunded to the original payment method after cancellation."
+              : "Are you sure you want to cancel this order?"}
+          </Typography>
+
+          {orderToCancel && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 1.5,
+                borderRadius: 2,
+                backgroundColor: "#F8F3E8",
+                border: `1px solid ${COLORS.border}`,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: '"Courier New", monospace',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: COLORS.ink,
+                }}
+              >
+                {orderToCancel.orderNumber}
+              </Typography>
+
+              <Typography
+                sx={{
+                  mt: 0.5,
+                  fontSize: 13,
+                  color: COLORS.muted,
+                }}
+              >
+                Total: ₹
+                {Number(orderToCancel.totalAmount || 0).toLocaleString("en-IN")}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2.5,
+            pt: 1,
+            gap: 1,
+          }}
+        >
+          <Button
+            onClick={handleCloseCancelDialog}
+            disabled={cancellingOrder}
+            sx={{
+              color: COLORS.ink,
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: 2,
+
+              "&:hover": {
+                backgroundColor: "#F3EDE2",
+              },
+            }}
+          >
+            Keep Order
+          </Button>
+
+          <Button
+            variant="contained"
+            startIcon={!cancellingOrder ? <CancelOutlined /> : undefined}
+            onClick={handleCancelOrder}
+            disabled={cancellingOrder || !orderToCancel}
+            sx={{
+              minWidth: 140,
+              py: 1,
+              px: 2,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              backgroundColor: COLORS.red,
+              boxShadow: "none",
+
+              "&:hover": {
+                backgroundColor: "#A92F2F",
+                boxShadow: "none",
+              },
+
+              "&:disabled": {
+                backgroundColor: "#D7A0A0",
+                color: COLORS.white,
+              },
+            }}
+          >
+            {cancellingOrder ? (
+              <CircularProgress
+                size={20}
+                thickness={4}
+                sx={{
+                  color: COLORS.white,
+                }}
+              />
+            ) : (
+              "Cancel Order"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
@@ -600,7 +829,7 @@ function SummaryCard({ icon, label, value, accent }) {
    ORDER CARD
 ============================================================ */
 
-function OrderCard({ order, onDetails }) {
+function OrderCard({ order, onDetails, onCancel }) {
   const itemCount = (order.items || []).reduce(
     (total, item) => total + Number(item.quantity || 0),
     0,
@@ -875,35 +1104,73 @@ function OrderCard({ order, onDetails }) {
             </Box>
           </Stack>
 
-          <Button
-            variant="contained"
-            endIcon={<ArrowForwardRounded />}
-            onClick={onDetails}
+          <Stack
+            direction={{
+              xs: "column",
+              sm: "row",
+            }}
+            spacing={1}
             sx={{
-              alignSelf: {
-                xs: "stretch",
+              width: {
+                xs: "100%",
                 sm: "auto",
-              },
-              minWidth: {
-                sm: 155,
-              },
-              py: 1,
-              px: 2,
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 700,
-              backgroundColor: COLORS.gold,
-              color: "#2C271F",
-              boxShadow: "none",
-
-              "&:hover": {
-                backgroundColor: COLORS.goldDark,
-                boxShadow: "none",
               },
             }}
           >
-            View Details
-          </Button>
+            {isCancellableOrder(order) && (
+              <Button
+                variant="outlined"
+                startIcon={<CancelOutlined />}
+                onClick={() => onCancel(order)}
+                sx={{
+                  minWidth: {
+                    sm: 145,
+                  },
+                  py: 1,
+                  px: 2,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  color: COLORS.red,
+                  borderColor: "#E3A8A8",
+                  backgroundColor: COLORS.white,
+
+                  "&:hover": {
+                    borderColor: COLORS.red,
+                    backgroundColor: COLORS.softRed,
+                  },
+                }}
+              >
+                Cancel Order
+              </Button>
+            )}
+
+            <Button
+              variant="contained"
+              endIcon={<ArrowForwardRounded />}
+              onClick={onDetails}
+              sx={{
+                minWidth: {
+                  sm: 155,
+                },
+                py: 1,
+                px: 2,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 700,
+                backgroundColor: COLORS.gold,
+                color: "#2C271F",
+                boxShadow: "none",
+
+                "&:hover": {
+                  backgroundColor: COLORS.goldDark,
+                  boxShadow: "none",
+                },
+              }}
+            >
+              View Details
+            </Button>
+          </Stack>
         </Stack>
       </Box>
     </Paper>
@@ -1043,6 +1310,21 @@ function EmptyOrders({ onShop }) {
         Start Shopping
       </Button>
     </Paper>
+  );
+}
+
+function isCancellableOrder(order) {
+  if (!order) {
+    return false;
+  }
+
+  if (order.status === "CANCELLED") {
+    return false;
+  }
+
+  return (
+    (order.status === "PENDING_PAYMENT" && order.paymentStatus === "PENDING") ||
+    (order.status === "CONFIRMED" && order.paymentStatus === "PAID")
   );
 }
 
