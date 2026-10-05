@@ -38,7 +38,8 @@ public class PaymentService {
                 userId);
 
         if (order == null) {
-            throw new RuntimeException("Order not found");
+            throw new RuntimeException(
+                    "Order not found");
         }
 
         if (!order.getUserId().equals(userId)) {
@@ -46,14 +47,23 @@ public class PaymentService {
                     "You cannot pay for this order");
         }
 
-        if (!"PENDING_PAYMENT".equals(
-                order.getStatus())) {
+        /*
+         * ---------------------------------------------------------
+         * ORDER MUST BE PAYABLE
+         * ---------------------------------------------------------
+         *
+         * Only:
+         *
+         * status = PENDING_PAYMENT
+         * paymentStatus = PENDING
+         *
+         * can create a Stripe Checkout Session.
+         */
+        if (!"PENDING_PAYMENT".equals(order.getStatus())
+                || !"PENDING".equals(order.getPaymentStatus())) {
+
             throw new RuntimeException(
                     "Order is not available for payment");
-        }
-        if ("PAID".equals(order.getPaymentStatus())) {
-            throw new RuntimeException(
-                    "Order has already been paid");
         }
 
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
@@ -89,12 +99,12 @@ public class PaymentService {
                 .setMode(
                         SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl(
-                        frontendUrl +
-                                "/payment/success?session_id={CHECKOUT_SESSION_ID}")
+                        frontendUrl
+                                + "/payment/success?session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(
-                        frontendUrl +
-                                "/payment/cancel?orderId=" +
-                                orderId)
+                        frontendUrl
+                                + "/payment/cancel?orderId="
+                                + orderId)
                 .addAllLineItem(lineItems)
                 .putMetadata(
                         "orderId",
