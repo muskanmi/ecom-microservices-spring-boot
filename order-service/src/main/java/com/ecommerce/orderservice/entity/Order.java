@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,14 @@ public class Order {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
+
+    @Column(length = 100)
+    private String carrier;
+
+    @Column(length = 100)
+    private String trackingNumber;
+
+    private LocalDate expectedDeliveryDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

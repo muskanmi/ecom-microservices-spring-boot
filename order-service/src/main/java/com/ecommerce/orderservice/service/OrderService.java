@@ -518,6 +518,131 @@ public class OrderService {
         return mapToResponse(savedOrder);
     }
 
+    @Transactional
+    public OrderResponse updateOrderStatus(
+            Long orderId,
+            String requestedStatus) {
+
+        System.out.println(
+                "===== ORDER FULFILLMENT STATUS UPDATE =====");
+
+        System.out.println(
+                "Order ID: " + orderId);
+
+        System.out.println(
+                "Requested status: " + requestedStatus);
+
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(
+                        () -> new RuntimeException(
+                                "Order not found"));
+
+        System.out.println(
+                "Current status: "
+                        + order.getStatus());
+
+        System.out.println(
+                "Current payment status: "
+                        + order.getPaymentStatus());
+
+        OrderStatus newStatus;
+
+        try {
+
+            newStatus = OrderStatus.valueOf(
+                    requestedStatus.trim().toUpperCase());
+
+        } catch (IllegalArgumentException e) {
+
+            throw new RuntimeException(
+                    "Invalid order status: "
+                            + requestedStatus);
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * IDEMPOTENCY
+         * ---------------------------------------------------------
+         *
+         * If the order is already in the requested state,
+         * simply return it.
+         */
+        if (order.getStatus() == newStatus) {
+
+            System.out.println(
+                    "Order already has requested status.");
+
+            return mapToResponse(order);
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * FULFILLMENT STATUS VALIDATION
+         * ---------------------------------------------------------
+         *
+         * Only these transitions are allowed:
+         *
+         * CONFIRMED -> SHIPPED
+         * SHIPPED -> OUT_FOR_DELIVERY
+         * OUT_FOR_DELIVERY -> DELIVERED
+         */
+        boolean validTransition = (order.getStatus() == OrderStatus.CONFIRMED
+                && newStatus == OrderStatus.SHIPPED)
+
+                || (order.getStatus() == OrderStatus.SHIPPED
+                        && newStatus == OrderStatus.OUT_FOR_DELIVERY)
+
+                || (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY
+                        && newStatus == OrderStatus.DELIVERED);
+
+        if (!validTransition) {
+
+            throw new RuntimeException(
+                    "Invalid order status transition: "
+                            + order.getStatus()
+                            + " -> "
+                            + newStatus);
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * PAYMENT VALIDATION
+         * ---------------------------------------------------------
+         *
+         * An order cannot be shipped unless payment
+         * has been successfully completed.
+         */
+        if (newStatus == OrderStatus.SHIPPED
+                && order.getPaymentStatus() != PaymentStatus.PAID) {
+
+            throw new RuntimeException(
+                    "Only paid orders can be shipped.");
+        }
+
+        /*
+         * ---------------------------------------------------------
+         * UPDATE STATUS
+         * ---------------------------------------------------------
+         */
+        order.setStatus(newStatus);
+
+        Order savedOrder = orderRepository.save(order);
+
+        System.out.println(
+                "===== ORDER STATUS UPDATED =====");
+
+        System.out.println(
+                "Order ID: "
+                        + savedOrder.getId());
+
+        System.out.println(
+                "New status: "
+                        + savedOrder.getStatus());
+
+        return mapToResponse(savedOrder);
+    }
+
     private String generateOrderNumber() {
 
         return "ORD-" +
