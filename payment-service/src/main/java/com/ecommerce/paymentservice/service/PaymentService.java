@@ -4,6 +4,7 @@ import com.ecommerce.paymentservice.client.OrderClient;
 import com.ecommerce.paymentservice.dto.OrderItemResponse;
 import com.ecommerce.paymentservice.dto.OrderResponse;
 import com.ecommerce.paymentservice.entity.Payment;
+import com.ecommerce.paymentservice.exception.OrderNotPayableException;
 import com.ecommerce.paymentservice.repository.PaymentRepository;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -62,7 +63,7 @@ public class PaymentService {
         if (!"PENDING_PAYMENT".equals(order.getStatus())
                 || !"PENDING".equals(order.getPaymentStatus())) {
 
-            throw new RuntimeException(
+            throw new OrderNotPayableException(
                     "Order is not available for payment");
         }
 
