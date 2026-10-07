@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,4 +39,10 @@ public class OrderResponse {
     private LocalDateTime createdAt;
 
     private List<OrderItemResponse> items;
+
+    private String carrier;
+
+    private String trackingNumber;
+
+    private LocalDate expectedDeliveryDate;
 }

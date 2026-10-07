@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ecommerce.orderservice.client.CatalogStockClient;
+import com.ecommerce.orderservice.client.NotificationClient;
 import com.ecommerce.orderservice.client.PaymentClient;
 import com.ecommerce.orderservice.dto.CartDetailsResponse;
 import com.ecommerce.orderservice.dto.CartItemDetailResponse;
@@ -18,8 +19,10 @@ import com.ecommerce.orderservice.dto.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.OrderItemResponse;
 import com.ecommerce.orderservice.dto.OrderResponse;
 import com.ecommerce.orderservice.dto.PaymentRefundResponse;
+import com.ecommerce.orderservice.dto.SendEmailRequest;
 import com.ecommerce.orderservice.dto.ShippingAddressRequest;
 import com.ecommerce.orderservice.dto.ShippingAddressResponse;
+import com.ecommerce.orderservice.dto.UpdateShippingInfoRequest;
 import com.ecommerce.orderservice.entity.Order;
 import com.ecommerce.orderservice.entity.OrderItem;
 import com.ecommerce.orderservice.entity.OrderStatus;
@@ -32,6 +35,7 @@ import feign.FeignException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -44,6 +48,7 @@ public class OrderService {
     private final CartService cartService;
     private final CatalogStockClient catalogStockClient;
     private final PaymentClient paymentClient;
+    private final NotificationClient notificationClient;
 
     @Value("${internal.service.key}")
     private String internalServiceKey;
@@ -523,35 +528,17 @@ public class OrderService {
             Long orderId,
             String requestedStatus) {
 
-        System.out.println(
-                "===== ORDER FULFILLMENT STATUS UPDATE =====");
-
-        System.out.println(
-                "Order ID: " + orderId);
-
-        System.out.println(
-                "Requested status: " + requestedStatus);
-
-        Order order = orderRepository
-                .findById(orderId)
-                .orElseThrow(
-                        () -> new RuntimeException(
-                                "Order not found"));
-
-        System.out.println(
-                "Current status: "
-                        + order.getStatus());
-
-        System.out.println(
-                "Current payment status: "
-                        + order.getPaymentStatus());
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
 
         OrderStatus newStatus;
 
         try {
 
             newStatus = OrderStatus.valueOf(
-                    requestedStatus.trim().toUpperCase());
+                    requestedStatus
+                            .trim()
+                            .toUpperCase());
 
         } catch (IllegalArgumentException e) {
 
@@ -565,23 +552,19 @@ public class OrderService {
          * IDEMPOTENCY
          * ---------------------------------------------------------
          *
-         * If the order is already in the requested state,
-         * simply return it.
+         * If the order already has the requested status,
+         * do nothing and return the existing order.
+         *
+         * This also prevents duplicate notification emails.
          */
         if (order.getStatus() == newStatus) {
-
-            System.out.println(
-                    "Order already has requested status.");
-
             return mapToResponse(order);
         }
 
         /*
          * ---------------------------------------------------------
-         * FULFILLMENT STATUS VALIDATION
+         * VALID STATUS TRANSITIONS
          * ---------------------------------------------------------
-         *
-         * Only these transitions are allowed:
          *
          * CONFIRMED -> SHIPPED
          * SHIPPED -> OUT_FOR_DELIVERY
@@ -610,8 +593,7 @@ public class OrderService {
          * PAYMENT VALIDATION
          * ---------------------------------------------------------
          *
-         * An order cannot be shipped unless payment
-         * has been successfully completed.
+         * An order must be paid before it can be shipped.
          */
         if (newStatus == OrderStatus.SHIPPED
                 && order.getPaymentStatus() != PaymentStatus.PAID) {
@@ -622,25 +604,217 @@ public class OrderService {
 
         /*
          * ---------------------------------------------------------
-         * UPDATE STATUS
+         * UPDATE ORDER STATUS
          * ---------------------------------------------------------
          */
         order.setStatus(newStatus);
 
+        /*
+         * Save first.
+         *
+         * Only send the notification after the order status
+         * has been successfully persisted.
+         */
         Order savedOrder = orderRepository.save(order);
 
-        System.out.println(
-                "===== ORDER STATUS UPDATED =====");
-
-        System.out.println(
-                "Order ID: "
-                        + savedOrder.getId());
-
-        System.out.println(
-                "New status: "
-                        + savedOrder.getStatus());
+        /*
+         * ---------------------------------------------------------
+         * SEND CUSTOMER NOTIFICATION
+         * ---------------------------------------------------------
+         *
+         * Notification failure is handled inside
+         * sendOrderStatusNotification(), so an email problem
+         * will not break the order-status update.
+         */
+        sendOrderStatusNotification(
+                savedOrder,
+                newStatus);
 
         return mapToResponse(savedOrder);
+    }
+
+    private void sendOrderStatusNotification(
+            Order order,
+            OrderStatus status) {
+
+        String customerEmail = order.getCustomerEmail();
+
+        if (customerEmail == null || customerEmail.isBlank()) {
+            System.out.println(
+                    "Order status notification skipped: customer email is missing.");
+            return;
+        }
+
+        String subject;
+        String message;
+
+        String expectedDelivery = order.getExpectedDeliveryDate() != null
+                ? order.getExpectedDeliveryDate()
+                        .format(DateTimeFormatter.ofPattern("dd MMMM yyyy"))
+                : "Not available";
+
+        switch (status) {
+
+            case SHIPPED -> {
+
+                subject = "Your Order Has Shipped - "
+                        + order.getOrderNumber();
+
+                message = "Hello,\n\n"
+                        + "Good news! Your order "
+                        + order.getOrderNumber()
+                        + " has been shipped.\n\n"
+
+                        + "Carrier: "
+                        + safeValue(order.getCarrier())
+                        + "\n"
+
+                        + "Tracking Number: "
+                        + safeValue(order.getTrackingNumber())
+                        + "\n"
+
+                        + "Expected Delivery: "
+                        + expectedDelivery
+                        + "\n\n"
+
+                        + "You can track your order from your Marketplace account.\n\n"
+
+                        + "Thank you for shopping with Marketplace.\n\n"
+                        + "Regards,\n"
+                        + "Marketplace Team";
+            }
+
+            case OUT_FOR_DELIVERY -> {
+
+                subject = "Your Order Is Out for Delivery - "
+                        + order.getOrderNumber();
+
+                message = "Hello,\n\n"
+                        + "Your order "
+                        + order.getOrderNumber()
+                        + " is now out for delivery.\n\n"
+
+                        + "Carrier: "
+                        + safeValue(order.getCarrier())
+                        + "\n"
+
+                        + "Tracking Number: "
+                        + safeValue(order.getTrackingNumber())
+                        + "\n\n"
+
+                        + "Please keep your phone available in case the delivery partner needs to contact you.\n\n"
+
+                        + "Thank you for shopping with Marketplace.\n\n"
+                        + "Regards,\n"
+                        + "Marketplace Team";
+            }
+
+            case DELIVERED -> {
+
+                subject = "Order Delivered - "
+                        + order.getOrderNumber();
+
+                message = "Hello,\n\n"
+                        + "Your order "
+                        + order.getOrderNumber()
+                        + " has been delivered successfully.\n\n"
+
+                        + "We hope you enjoy your purchase!\n\n"
+
+                        + "Thank you for shopping with Marketplace.\n\n"
+                        + "Regards,\n"
+                        + "Marketplace Team";
+            }
+
+            default -> {
+                return;
+            }
+        }
+
+        try {
+
+            SendEmailRequest request = new SendEmailRequest(
+                    customerEmail,
+                    subject,
+                    message);
+
+            notificationClient.sendEmail(
+                    internalServiceKey,
+                    request);
+
+            System.out.println(
+                    "===== ORDER STATUS NOTIFICATION SENT =====");
+
+            System.out.println(
+                    "Order: "
+                            + order.getOrderNumber());
+
+            System.out.println(
+                    "Status: "
+                            + status);
+
+            System.out.println(
+                    "Recipient: "
+                            + customerEmail);
+
+        } catch (Exception e) {
+
+            /*
+             * Notification failure must NOT fail
+             * the order-status update.
+             */
+
+            System.out.println(
+                    "===== ORDER STATUS NOTIFICATION FAILED =====");
+
+            System.out.println(
+                    "Order: "
+                            + order.getOrderNumber());
+
+            System.out.println(
+                    "Status: "
+                            + status);
+
+            System.out.println(
+                    "Reason: "
+                            + e.getMessage());
+        }
+    }
+
+    private String safeValue(String value) {
+        return value == null || value.isBlank()
+                ? "Not available"
+                : value;
+    }
+
+    @Transactional
+    public OrderResponse updateShippingInfo(
+            Long orderId,
+            UpdateShippingInfoRequest request) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new RuntimeException(
+                    "Shipping information cannot be added to a cancelled order.");
+        }
+
+        if (order.getStatus() == OrderStatus.DELIVERED) {
+            throw new RuntimeException(
+                    "Shipping information cannot be updated for a delivered order.");
+        }
+
+        if (order.getPaymentStatus() != PaymentStatus.PAID) {
+            throw new RuntimeException(
+                    "Shipping information can only be added for paid orders.");
+        }
+
+        order.setCarrier(request.getCarrier().trim());
+        order.setTrackingNumber(request.getTrackingNumber().trim());
+        order.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
+
+        return mapToResponse(orderRepository.save(order));
     }
 
     private String generateOrderNumber() {
@@ -733,6 +907,9 @@ public class OrderService {
                 order.getPaymentStatus().name(),
                 addressResponse,
                 order.getCreatedAt(),
-                items);
+                items,
+                order.getCarrier(),
+                order.getTrackingNumber(),
+                order.getExpectedDeliveryDate());
     }
 }

@@ -11,6 +11,7 @@ import com.ecommerce.orderservice.dto.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.OrderResponse;
 import com.ecommerce.orderservice.dto.UpdateOrderStatusRequest;
 import com.ecommerce.orderservice.dto.UpdatePaymentStatusRequest;
+import com.ecommerce.orderservice.dto.UpdateShippingInfoRequest;
 import com.ecommerce.orderservice.service.OrderService;
 
 import java.util.List;
@@ -98,5 +99,21 @@ public class OrderController {
                 orderService.updateOrderStatus(
                         orderId,
                         request.getStatus()));
+    }
+
+    @PutMapping("/internal/{orderId}/shipping")
+    public ResponseEntity<OrderResponse> updateShippingInfo(
+            @PathVariable Long orderId,
+            @Valid @RequestBody UpdateShippingInfoRequest request,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.updateShippingInfo(
+                        orderId,
+                        request));
     }
 }

@@ -467,6 +467,246 @@ export default function OrderDetailsPage() {
               )}
             </Paper>
 
+            {/* SHIPPING & TRACKING */}
+            {(order.carrier ||
+              order.trackingNumber ||
+              order.expectedDeliveryDate) && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: {
+                    xs: 2,
+                    md: 2.8,
+                  },
+                  borderRadius: 3,
+                  border: `1px solid ${COLORS.border}`,
+                  backgroundColor: COLORS.paper,
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1} mb={2.2}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.7,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: COLORS.ink,
+                      backgroundColor: "#EAF1EF",
+                    }}
+                  >
+                    <LocalShippingOutlined fontSize="small" />
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: COLORS.ink,
+                      }}
+                    >
+                      Shipping & tracking
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        color: COLORS.muted,
+                        mt: 0.2,
+                      }}
+                    >
+                      Delivery information for this order
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      sm: "repeat(3, 1fr)",
+                    },
+                    gap: 1.5,
+                  }}
+                >
+                  {/* CARRIER */}
+                  <Box
+                    sx={{
+                      p: 1.6,
+                      borderRadius: 2,
+                      backgroundColor: "#F6F2EA",
+                      border: `1px solid ${COLORS.border}`,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: COLORS.muted,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Carrier
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        mt: 0.6,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: COLORS.ink,
+                      }}
+                    >
+                      {order.carrier || "Not assigned"}
+                    </Typography>
+                  </Box>
+
+                  {/* TRACKING NUMBER */}
+                  <Box
+                    sx={{
+                      p: 1.6,
+                      borderRadius: 2,
+                      backgroundColor: "#F6F2EA",
+                      border: `1px solid ${COLORS.border}`,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: COLORS.muted,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Tracking number
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        mt: 0.6,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: COLORS.ink,
+                        fontFamily: '"Courier New", monospace',
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {order.trackingNumber || "Not assigned"}
+                    </Typography>
+                  </Box>
+
+                  {/* EXPECTED DELIVERY */}
+                  <Box
+                    sx={{
+                      p: 1.6,
+                      borderRadius: 2,
+                      backgroundColor: COLORS.softGreen,
+                      border: "1px solid #C9E8D6",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: COLORS.muted,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Expected delivery
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        mt: 0.6,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: COLORS.green,
+                      }}
+                    >
+                      {order.expectedDeliveryDate
+                        ? formatShippingDate(order.expectedDeliveryDate)
+                        : "Not available"}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* STATUS MESSAGE */}
+                {order.status === "SHIPPED" && (
+                  <Box
+                    sx={{
+                      mt: 1.8,
+                      px: 1.5,
+                      py: 1.2,
+                      borderRadius: 2,
+                      backgroundColor: COLORS.softBlue,
+                      border: "1px solid #CEDDF6",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: COLORS.blue,
+                      }}
+                    >
+                      Your order has been shipped and is on its way.
+                    </Typography>
+                  </Box>
+                )}
+
+                {order.status === "OUT_FOR_DELIVERY" && (
+                  <Box
+                    sx={{
+                      mt: 1.8,
+                      px: 1.5,
+                      py: 1.2,
+                      borderRadius: 2,
+                      backgroundColor: COLORS.softGold,
+                      border: "1px solid #F0D89E",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: COLORS.goldText,
+                      }}
+                    >
+                      Your order is out for delivery.
+                    </Typography>
+                  </Box>
+                )}
+
+                {order.status === "DELIVERED" && (
+                  <Box
+                    sx={{
+                      mt: 1.8,
+                      px: 1.5,
+                      py: 1.2,
+                      borderRadius: 2,
+                      backgroundColor: COLORS.softGreen,
+                      border: "1px solid #C9E8D6",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: COLORS.green,
+                      }}
+                    >
+                      Your order has been delivered successfully.
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            )}
             {/* ORDER ITEMS */}
             <Paper
               elevation={0}
@@ -1149,17 +1389,20 @@ export default function OrderDetailsPage() {
 function OrderTimeline({ status, paymentStatus }) {
   const steps = [
     {
+      key: "ORDER_PLACED",
       label: "Order placed",
       icon: <Inventory2Outlined />,
       done: true,
     },
     {
+      key: "PAYMENT",
       label: "Payment",
       icon: <PaymentRounded />,
       done: paymentStatus === "PAID" || paymentStatus === "REFUNDED",
       active: paymentStatus === "PENDING",
     },
     {
+      key: "CONFIRMED",
       label: "Confirmed",
       icon: <CheckCircleRounded />,
       done: ["CONFIRMED", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(
@@ -1167,44 +1410,78 @@ function OrderTimeline({ status, paymentStatus }) {
       ),
     },
     {
-      label: "Delivery",
+      key: "SHIPPED",
+      label: "Shipped",
       icon: <LocalShippingOutlined />,
+      done: ["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(status),
+    },
+    {
+      key: "OUT_FOR_DELIVERY",
+      label: "Out for delivery",
+      icon: <LocalShippingOutlined />,
+      done: ["OUT_FOR_DELIVERY", "DELIVERED"].includes(status),
+    },
+    {
+      key: "DELIVERED",
+      label: "Delivered",
+      icon: <CheckCircleRounded />,
       done: status === "DELIVERED",
     },
   ];
+
+  const activeIndex =
+    paymentStatus === "PENDING"
+      ? 1
+      : steps.findIndex((step) => {
+          if (status === "CONFIRMED") {
+            return step.key === "CONFIRMED";
+          }
+
+          if (status === "SHIPPED") {
+            return step.key === "SHIPPED";
+          }
+
+          if (status === "OUT_FOR_DELIVERY") {
+            return step.key === "OUT_FOR_DELIVERY";
+          }
+
+          if (status === "DELIVERED") {
+            return step.key === "DELIVERED";
+          }
+
+          return false;
+        });
 
   return (
     <Box
       sx={{
         display: "grid",
         gridTemplateColumns: {
-          xs: "1fr 1fr",
-          sm: "repeat(4, 1fr)",
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(3, 1fr)",
+          md: "repeat(6, 1fr)",
         },
         gap: {
-          xs: 1.5,
-          sm: 1,
+          xs: 2,
+          sm: 1.5,
+          md: 0.8,
         },
       }}
     >
       {steps.map((step, index) => {
-        const isCurrent =
-          step.active ||
-          (!step.done &&
-            !step.active &&
-            index ===
-              steps.findIndex(
-                (currentStep) => !currentStep.done && currentStep.active,
-              ));
+        const isDone = step.done;
+        const isCurrent = index === activeIndex;
 
         return (
           <Box
-            key={step.label}
+            key={step.key}
             sx={{
               textAlign: "center",
               position: "relative",
+              minWidth: 0,
             }}
           >
+            {/* ICON */}
             <Box
               sx={{
                 width: 42,
@@ -1214,47 +1491,57 @@ function OrderTimeline({ status, paymentStatus }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: step.done
+
+                backgroundColor: isDone
                   ? COLORS.softGreen
                   : isCurrent
                     ? COLORS.softGold
                     : "#F0EDE7",
-                color: step.done
+
+                color: isDone
                   ? COLORS.green
                   : isCurrent
                     ? COLORS.goldText
                     : "#9C9488",
+
                 border: `1px solid ${
-                  step.done ? "#C7E6D4" : isCurrent ? "#EFD79F" : COLORS.border
+                  isDone ? "#C7E6D4" : isCurrent ? "#EFD79F" : COLORS.border
                 }`,
               }}
             >
               {step.icon}
             </Box>
 
+            {/* LABEL */}
             <Typography
               sx={{
                 mt: 1,
-                fontSize: 12,
-                fontWeight: step.done || isCurrent ? 700 : 500,
-                color: step.done || isCurrent ? COLORS.ink : COLORS.muted,
+                fontSize: {
+                  xs: 11,
+                  sm: 11,
+                },
+                lineHeight: 1.35,
+                fontWeight: isDone || isCurrent ? 700 : 500,
+                color: isDone || isCurrent ? COLORS.ink : COLORS.muted,
               }}
             >
               {step.label}
             </Typography>
 
+            {/* CONNECTOR */}
             {index < steps.length - 1 && (
               <Box
                 sx={{
                   display: {
                     xs: "none",
-                    sm: "block",
+                    md: "block",
                   },
                   position: "absolute",
                   top: 21,
-                  left: "calc(50% + 28px)",
-                  right: "calc(-50% + 28px)",
+                  left: "calc(50% + 25px)",
+                  right: "calc(-50% + 25px)",
                   height: 2,
+
                   backgroundColor: steps[index + 1].done
                     ? "#BFE0CD"
                     : COLORS.border,
@@ -1452,6 +1739,20 @@ function formatDateLong(value) {
   }
 
   return new Date(value).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatShippingDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "long",
     year: "numeric",
