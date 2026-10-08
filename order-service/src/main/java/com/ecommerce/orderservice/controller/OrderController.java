@@ -116,4 +116,29 @@ public class OrderController {
                         orderId,
                         request));
     }
+
+    @GetMapping("/internal/admin")
+    public ResponseEntity<List<OrderResponse>> getAllOrdersForAdmin(
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.getAllOrdersForAdmin());
+    }
+
+    @GetMapping("/internal/admin/{orderId}")
+    public ResponseEntity<OrderResponse> getOrderForAdmin(
+            @PathVariable Long orderId,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.getOrderForAdmin(orderId));
+    }
 }

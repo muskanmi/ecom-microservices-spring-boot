@@ -912,4 +912,23 @@ public class OrderService {
                 order.getTrackingNumber(),
                 order.getExpectedDeliveryDate());
     }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getAllOrdersForAdmin() {
+
+        return orderRepository
+                .findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderForAdmin(Long orderId) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        return mapToResponse(order);
+    }
 }
