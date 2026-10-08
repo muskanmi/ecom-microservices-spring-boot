@@ -1,5 +1,7 @@
 package com.ecommerce.selleradminservice.controller;
 
+import com.ecommerce.selleradminservice.dto.CatalogProductResponse;
+import com.ecommerce.selleradminservice.dto.CreateProductRequest;
 import com.ecommerce.selleradminservice.dto.OrderResponse;
 import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
@@ -9,23 +11,24 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/orders")
+@RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class SellerAdminController {
 
     private final SellerAdminService sellerAdminService;
 
-    @GetMapping
+    @GetMapping("/orders")
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
 
         return ResponseEntity.ok(
                 sellerAdminService.getAllOrders());
     }
 
-    @GetMapping("/{orderId}")
+    @GetMapping("/orders/{orderId}")
     public ResponseEntity<OrderResponse> getOrderById(
             @PathVariable Long orderId) {
 
@@ -33,7 +36,7 @@ public class SellerAdminController {
                 sellerAdminService.getOrderById(orderId));
     }
 
-    @PutMapping("/{orderId}/shipping")
+    @PutMapping("/orders/{orderId}/shipping")
     public ResponseEntity<OrderResponse> updateShippingInfo(
             @PathVariable Long orderId,
             @Valid @RequestBody UpdateShippingInfoRequest request) {
@@ -44,7 +47,7 @@ public class SellerAdminController {
                         request));
     }
 
-    @PutMapping("/{orderId}/status")
+    @PutMapping("/orders/{orderId}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(
             @PathVariable Long orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
@@ -53,5 +56,26 @@ public class SellerAdminController {
                 sellerAdminService.updateOrderStatus(
                         orderId,
                         request));
+    }
+
+    @GetMapping("/products")
+    public ResponseEntity<List<CatalogProductResponse>> getAllProducts(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice) {
+
+        return ResponseEntity.ok(
+                sellerAdminService.getAllProducts(
+                        category,
+                        minPrice,
+                        maxPrice));
+    }
+
+    @PostMapping("/products")
+    public ResponseEntity<CatalogProductResponse> createProduct(
+            @RequestBody CreateProductRequest request) {
+
+        return ResponseEntity.ok(
+                sellerAdminService.createProduct(request));
     }
 }
