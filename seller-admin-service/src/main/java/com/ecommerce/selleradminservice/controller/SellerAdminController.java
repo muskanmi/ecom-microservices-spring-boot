@@ -4,6 +4,7 @@ import com.ecommerce.selleradminservice.dto.CatalogProductResponse;
 import com.ecommerce.selleradminservice.dto.CreateProductRequest;
 import com.ecommerce.selleradminservice.dto.OrderResponse;
 import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
+import com.ecommerce.selleradminservice.dto.UpdateProductRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
 import com.ecommerce.selleradminservice.service.SellerAdminService;
 import jakarta.validation.Valid;
@@ -77,5 +78,25 @@ public class SellerAdminController {
 
         return ResponseEntity.ok(
                 sellerAdminService.createProduct(request));
+    }
+
+    @PutMapping("/products/{productId}")
+    public ResponseEntity<CatalogProductResponse> updateProduct(
+            @PathVariable Long productId,
+            @RequestBody UpdateProductRequest request) {
+
+        return ResponseEntity.ok(
+                sellerAdminService.updateProduct(
+                        productId,
+                        request));
+    }
+
+    @DeleteMapping("/products/{productId}")
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable Long productId) {
+
+        sellerAdminService.deleteProduct(productId);
+
+        return ResponseEntity.noContent().build();
     }
 }

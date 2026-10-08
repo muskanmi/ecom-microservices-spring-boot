@@ -6,6 +6,7 @@ import com.ecommerce.selleradminservice.dto.CatalogProductResponse;
 import com.ecommerce.selleradminservice.dto.CreateProductRequest;
 import com.ecommerce.selleradminservice.dto.OrderResponse;
 import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
+import com.ecommerce.selleradminservice.dto.UpdateProductRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,5 +73,19 @@ public class SellerAdminService {
             CreateProductRequest request) {
 
         return catalogClient.createProduct(request);
+    }
+
+    public CatalogProductResponse updateProduct(
+            Long productId,
+            UpdateProductRequest request) {
+
+        return catalogClient.updateProduct(
+                productId,
+                request);
+    }
+
+    public void deleteProduct(Long productId) {
+
+        catalogClient.deleteProduct(productId);
     }
 }
