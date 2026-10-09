@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Marketplace — Orders</title>
+
+    <link rel="stylesheet" th:href="@{/admin/admin.css}" />
+
+    <style>
+      .orders-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        margin-bottom: 20px;
+      }
+
+      .orders-filter {
+        height: 38px;
+
+        border: 1px solid var(--border);
+
+        background: var(--cream-card);
+
+        border-radius: 4px;
+
+        padding: 0 12px;
+
+        color: var(--brown);
+
+        outline: none;
+      }
+
+      .orders-panel {
+        background: var(--cream-card);
+
+        border: 1px solid var(--border);
+
+        border-radius: 5px;
+
+        overflow: hidden;
+      }
+
+      .orders-table-wrapper {
+        overflow-x: auto;
+      }
+
+      .admin-orders-table {
+        width: 100%;
+
+        border-collapse: collapse;
+
+        min-width: 900px;
+      }
+
+      .admin-orders-table th {
+        padding: 13px 18px;
+
+        text-align: left;
+
+        background: #faf7ef;
+
+        border-bottom: 1px solid var(--border);
+
+        font-family: Georgia, serif;
+
+        font-size: 8px;
+
+        letter-spacing: 0.16em;
+
+        color: #999083;
+      }
+
+      .admin-orders-table td {
+        padding: 15px 18px;
+
+        border-bottom: 1px solid var(--border-light);
+
+        font-size: 11px;
+
+        color: #675f56;
+      }
+
+      .admin-orders-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .admin-order-id {
+        font-family: Georgia, serif;
+
+        color: var(--teal);
+
+        font-weight: 600;
+      }
+
+      .customer {
+        display: flex;
+
+        flex-direction: column;
+      }
+
+      .customer strong {
+        color: var(--brown);
+
+        font-size: 11px;
+      }
+
+      .customer span {
+        margin-top: 3px;
+
+        font-size: 9px;
+
+        color: var(--muted);
+      }
+
+      .order-amount {
+        color: var(--brown);
+
+        font-weight: 600;
+      }
+
+      .order-status {
+        border: none;
+
+        border-radius: 3px;
+
+        padding: 6px 9px;
+
+        font-size: 8px;
+
+        font-weight: 600;
+
+        background: var(--teal-light);
+
+        color: var(--teal);
+
+        cursor: pointer;
+      }
+
+      .order-status.pending {
+        background: var(--orange-light);
+
+        color: var(--orange);
+      }
+
+      .order-status.shipped {
+        background: #edf2f7;
+
+        color: #4c6d83;
+      }
+
+      .order-status.delivered {
+        background: var(--green-light);
+
+        color: var(--green);
+      }
+
+      .order-status.cancelled {
+        background: var(--red-light);
+
+        color: var(--red);
+      }
+
+      .shipping-button {
+        border: 1px solid var(--border);
+
+        background: #fffdf8;
+
+        color: var(--teal);
+
+        padding: 7px 9px;
+
+        border-radius: 4px;
+
+        cursor: pointer;
+
+        font-size: 9px;
+      }
+
+      .shipping-button:hover {
+        background: var(--teal-light);
+      }
+
+      .empty-orders {
+        padding: 70px 20px;
+
+        text-align: center;
+
+        color: var(--muted);
+      }
+
+      .empty-orders h3 {
+        font-family: Georgia, serif;
+
+        color: var(--teal);
+
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="admin-layout">
+      <!-- SIDEBAR -->
+
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark">▣</div>
+
+          <div class="brand-copy">
+            <div class="brand-name">MARKETPLACE</div>
+
+            <div class="brand-tagline">SELLER CONSOLE</div>
+          </div>
+        </div>
+
+        <div class="sidebar-label">ADMIN</div>
+
+        <nav class="sidebar-nav">
+          <a href="/admin" class="nav-item">
+            <span class="nav-symbol"> ⌂ </span>
+
+            <span> Dashboard </span>
+          </a>
+
+          <a href="/admin/products" class="nav-item">
+            <span class="nav-symbol"> □ </span>
+
+            <span> Products </span>
+          </a>
+
+          <a href="/admin/orders" class="nav-item active">
+            <span class="nav-symbol"> ▤ </span>
+
+            <span> Orders </span>
+          </a>
+        </nav>
+
+        <div class="sidebar-label second-label">STORE</div>
+
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item">
+            <span class="nav-symbol"> ◈ </span>
+
+            <span> Inventory </span>
+          </a>
+
+          <a href="#" class="nav-item">
+            <span class="nav-symbol"> ◌ </span>
+
+            <span> Customers </span>
+          </a>
+
+          <a href="#" class="nav-item">
+            <span class="nav-symbol"> ◫ </span>
+
+            <span> Analytics </span>
+          </a>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-bottom">
+          <a href="#" class="nav-item">
+            <span class="nav-symbol"> ⚙ </span>
+
+            <span> Store Settings </span>
+          </a>
+
+          <a href="#" class="nav-item">
+            <span class="nav-symbol"> ? </span>
+
+            <span> Help & Support </span>
+          </a>
+
+          <div class="sidebar-line"></div>
+
+          <div class="seller-profile">
+            <div class="seller-avatar">M</div>
+
+            <div class="seller-details">
+              <strong> Muskan </strong>
+
+              <span> Seller Admin </span>
+            </div>
+
+            <button class="seller-menu">⋮</button>
+          </div>
+
+          <a href="#" class="logout">
+            <span> ↪ </span>
+
+            <span> Log out </span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+
+      <main class="main-content">
+        <!-- TOPBAR -->
+
+        <header class="topbar">
+          <div class="mobile-brand">
+            <button id="mobileMenuBtn" class="mobile-menu">☰</button>
+
+            <span> MARKETPLACE </span>
+          </div>
+
+          <div class="search-box">
+            <span class="search-icon"> ⌕ </span>
+
+            <input
+              id="orderSearch"
+              type="text"
+              placeholder="Search orders or customers..."
+            />
+          </div>
+
+          <div class="top-actions">
+            <button class="top-action">
+              ♡
+
+              <span class="notification-badge"> 3 </span>
+            </button>
+
+            <div class="top-divider"></div>
+
+            <div class="seller-top-profile">
+              <div class="seller-top-avatar">M</div>
+
+              <div class="seller-top-info">
+                <strong> Muskan </strong>
+
+                <span> SELLER ADMIN </span>
+              </div>
+
+              <span class="chevron"> ⌄ </span>
+            </div>
+          </div>
+        </header>
+
+        <!-- PAGE -->
+
+        <section class="page-content">
+          <div class="page-intro">
+            <div>
+              <div class="eyebrow">MARKETPLACE · SALES</div>
+
+              <h1>Orders</h1>
+
+              <p>Review and process orders from your customers.</p>
+            </div>
+          </div>
+
+          <div class="orders-toolbar">
+            <div class="panel-eyebrow">CUSTOMER ORDERS</div>
+
+            <select id="statusFilter" class="orders-filter">
+              <option value="">All statuses</option>
+
+              <option value="PENDING">Pending</option>
+
+              <option value="PROCESSING">Processing</option>
+
+              <option value="SHIPPED">Shipped</option>
+
+              <option value="DELIVERED">Delivered</option>
+
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
+          <section class="orders-panel">
+            <div class="orders-table-wrapper">
+              <table class="admin-orders-table">
+                <thead>
+                  <tr>
+                    <th>ORDER</th>
+
+                    <th>CUSTOMER</th>
+
+                    <th>DATE</th>
+
+                    <th>AMOUNT</th>
+
+                    <th>STATUS</th>
+
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+
+                <tbody id="ordersBody">
+                  <tr>
+                    <td colspan="6">
+                      <div class="empty-orders">Loading orders...</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <footer class="footer">
+          <span> MARKETPLACE · SELLER CONSOLE </span>
+
+          <span> © 2026 </span>
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      let allOrders = [];
+
+      function value(obj, keys, fallback = "") {
+        for (const key of keys) {
+          if (obj && obj[key] !== undefined && obj[key] !== null) {
+            return obj[key];
+          }
+        }
+
+        return fallback;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function statusClass(status) {
+        const normalized = String(status).toLowerCase();
+
+        if (normalized.includes("cancel")) {
+          return "cancelled";
+        }
+
+        if (normalized.includes("deliver")) {
+          return "delivered";
+        }
+
+        if (normalized.includes("ship")) {
+          return "shipped";
+        }
+
+        return "pending";
+      }
+
+      function renderOrders(orders) {
+        const body = document.getElementById("ordersBody");
+
+        if (!orders || orders.length === 0) {
+          body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="6">
+
+                        <div class="empty-orders">
+
+                            <h3>
+                                No orders found
+                            </h3>
+
+                            <p>
+                                There are currently no orders to display.
+                            </p>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+          return;
+        }
+
+        body.innerHTML = orders
+          .map((order) => {
+            const id = value(order, ["id", "orderId"], "—");
+
+            const customer = value(
+              order,
+              ["customerName", "userName", "name"],
+              "Customer",
+            );
+
+            const date = value(order, ["createdAt", "orderDate", "date"], "—");
+
+            const amount = value(order, ["totalAmount", "total", "amount"], 0);
+
+            const status = value(order, ["status", "orderStatus"], "PENDING");
+
+            const cssClass = statusClass(status);
+
+            return `
+
+                    <tr>
+
+                        <td>
+
+                            <span class="admin-order-id">
+                                #${escapeHtml(id)}
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <div class="customer">
+
+                                <strong>
+                                    ${escapeHtml(customer)}
+                                </strong>
+
+                                <span>
+                                    Customer
+                                </span>
+
+                            </div>
+
+                        </td>
+
+
+                        <td>
+                            ${escapeHtml(date)}
+                        </td>
+
+
+                        <td class="order-amount">
+
+                            ₹${Number(amount).toLocaleString("en-IN")}
+
+                        </td>
+
+
+                        <td>
+
+                            <span
+                                class="order-status ${cssClass}">
+
+                                ${escapeHtml(status)}
+
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <button
+                                class="shipping-button"
+                                onclick="viewOrder('${id}')">
+
+                                View →
+
+                            </button>
+
+                        </td>
+
+                    </tr>
+
+                `;
+          })
+          .join("");
+      }
+
+      async function loadOrders() {
+        const body = document.getElementById("ordersBody");
+
+        try {
+          const response = await fetch("/api/admin/orders");
+
+          if (!response.ok) {
+            throw new Error("Unable to load orders");
+          }
+
+          const data = await response.json();
+
+          allOrders = Array.isArray(data)
+            ? data
+            : data.content || data.orders || data.data || [];
+
+          renderOrders(allOrders);
+        } catch (error) {
+          console.error(error);
+
+          body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="6">
+
+                        <div class="empty-orders">
+
+                            <h3>
+                                Unable to load orders
+                            </h3>
+
+                            <p>
+                                Check that the order service
+                                and seller-admin service are running.
+                            </p>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+            `;
+        }
+      }
+
+      function applyFilters() {
+        const search = document
+          .getElementById("orderSearch")
+          .value.toLowerCase()
+          .trim();
+
+        const status = document.getElementById("statusFilter").value;
+
+        const filtered = allOrders.filter((order) => {
+          const id = String(value(order, ["id", "orderId"], "")).toLowerCase();
+
+          const customer = String(
+            value(order, ["customerName", "userName", "name"], ""),
+          ).toLowerCase();
+
+          const orderStatus = String(
+            value(order, ["status", "orderStatus"], ""),
+          );
+
+          const matchesSearch =
+            !search || id.includes(search) || customer.includes(search);
+
+          const matchesStatus = !status || orderStatus === status;
+
+          return matchesSearch && matchesStatus;
+        });
+
+        renderOrders(filtered);
+      }
+
+      function viewOrder(id) {
+        window.location.href = "/admin/orders/" + id;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        loadOrders();
+
+        document
+          .getElementById("orderSearch")
+          ?.addEventListener("input", applyFilters);
+
+        document
+          .getElementById("statusFilter")
+          ?.addEventListener("change", applyFilters);
+
+        const mobileButton = document.getElementById("mobileMenuBtn");
+
+        const sidebar = document.getElementById("sidebar");
+
+        mobileButton?.addEventListener("click", () => {
+          sidebar?.classList.toggle("open");
+        });
+      });
+    </script>
+  </body>
+</html>

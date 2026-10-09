@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Edit Product - Marketplace Seller Console</title>
+
+    <link rel="stylesheet" th:href="@{/admin/admin.css}" />
+  </head>
+
+  <body>
+    <div class="admin-layout">
+      <!-- ================= SIDEBAR ================= -->
+
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon">M</div>
+
+          <div>
+            <div class="brand-title">Marketplace</div>
+
+            <div class="brand-subtitle">Seller Console</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/admin" class="nav-item">
+            <span class="nav-icon"> ▦ </span>
+
+            <span> Dashboard </span>
+          </a>
+
+          <a href="/admin/products" class="nav-item active">
+            <span class="nav-icon"> □ </span>
+
+            <span> Products </span>
+          </a>
+
+          <a href="/admin/orders" class="nav-item">
+            <span class="nav-icon"> ▤ </span>
+
+            <span> Orders </span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="sidebar-user">
+            <div class="sidebar-avatar">M</div>
+
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-name">Muskan</div>
+
+              <div class="sidebar-user-role">Administrator</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ================= MAIN ================= -->
+
+      <main class="main-content">
+        <!-- HEADER -->
+
+        <header class="top-header">
+          <div class="header-search">
+            <span class="search-icon"> ⌕ </span>
+
+            <input type="text" placeholder="Search products, orders..." />
+          </div>
+
+          <div class="header-right">
+            <button type="button" class="notification-button">♢</button>
+
+            <div class="header-avatar">M</div>
+
+            <div class="header-user">Muskan</div>
+          </div>
+        </header>
+
+        <!-- ================= PAGE ================= -->
+
+        <section class="page-content">
+          <!-- PAGE HEADER -->
+
+          <div class="page-header">
+            <div>
+              <h1>Edit Product</h1>
+
+              <p>Update product information and images.</p>
+            </div>
+
+            <a href="/admin/products" class="secondary-button">
+              ← Back to Products
+            </a>
+          </div>
+
+          <!-- LOADING -->
+
+          <div id="loadingState" class="loading-state">
+            <div class="large-spinner"></div>
+
+            <p>Loading product...</p>
+          </div>
+
+          <!-- ERROR -->
+
+          <div id="errorMessage" class="alert alert-error hidden"></div>
+
+          <!-- PRODUCT CONTENT -->
+
+          <form id="editProductForm" class="product-form hidden">
+            <!-- ================= PRODUCT HEADER ================= -->
+
+            <div class="form-card">
+              <div class="product-edit-header">
+                <div class="main-product-image-container">
+                  <div id="mainProductImage" class="main-product-image">
+                    <div class="image-placeholder">
+                      <span> □ </span>
+
+                      <small> No image </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="product-title-info">
+                  <h2 id="productDisplayName">Product</h2>
+
+                  <p>
+                    Product ID:
+                    <strong id="productIdDisplay"> - </strong>
+                  </p>
+
+                  <span id="imageStatus" class="image-status"> </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ================= PRODUCT INFORMATION ================= -->
+
+            <div class="form-card">
+              <div class="form-card-header">
+                <div>
+                  <h2>Product Information</h2>
+
+                  <p>Update the product details.</p>
+                </div>
+              </div>
+
+              <div class="form-card-body">
+                <div class="form-group full-width">
+                  <label for="productName">
+                    Product Name
+
+                    <span class="required"> * </span>
+                  </label>
+
+                  <input id="productName" type="text" required />
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="description"> Description </label>
+
+                  <textarea id="description" rows="5"> </textarea>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="price">
+                      Price
+                      <span class="required">*</span>
+                    </label>
+
+                    <div class="input-prefix">
+                      <span> ₹ </span>
+
+                      <input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="mrp"> MRP </label>
+
+                    <div class="input-prefix">
+                      <span> ₹ </span>
+
+                      <input id="mrp" type="number" min="0" step="0.01" />
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="stock">
+                      Stock
+
+                      <span class="required"> * </span>
+                    </label>
+
+                    <input id="stock" type="number" min="0" step="1" required />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="categoryId">
+                      Category ID
+
+                      <span class="required"> * </span>
+                    </label>
+
+                    <input id="categoryId" type="number" min="1" required />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ================= EXISTING IMAGES ================= -->
+
+            <div class="form-card">
+              <div class="form-card-header">
+                <div>
+                  <h2>Product Images</h2>
+
+                  <p>Manage the images currently attached to this product.</p>
+                </div>
+              </div>
+
+              <div class="form-card-body">
+                <div id="existingImages" class="image-preview-grid"></div>
+
+                <div id="noImagesMessage" class="no-images-message hidden">
+                  <div class="no-images-icon">□</div>
+
+                  <p>No images have been uploaded for this product.</p>
+                </div>
+
+                <!-- ================= ADD IMAGES ================= -->
+
+                <div class="add-images-section">
+                  <input
+                    id="additionalImages"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    hidden
+                  />
+
+                  <label
+                    for="additionalImages"
+                    class="image-upload-box compact-upload"
+                  >
+                    <div class="upload-icon">+</div>
+
+                    <div class="upload-title">Add More Images</div>
+
+                    <div class="upload-description">PNG, JPG or WEBP</div>
+
+                    <div class="upload-limit">Maximum 10MB per image</div>
+                  </label>
+
+                  <div id="newImagePreview" class="image-preview-grid"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ================= ACTIONS ================= -->
+
+            <div class="form-actions">
+              <a href="/admin/products" class="secondary-button"> Cancel </a>
+
+              <button
+                id="updateProductButton"
+                type="submit"
+                class="primary-button"
+              >
+                <span id="updateButtonText"> Save Changes </span>
+
+                <span id="updateButtonLoader" class="button-loader hidden">
+                </span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      /*
+       * ===============================
+       * GET PRODUCT ID FROM URL
+       * ===============================
+       *
+       * URL:
+       *
+       * /admin/products/1/edit
+       *
+       */
+
+      const pathParts = window.location.pathname.split("/").filter(Boolean);
+
+      const productId = pathParts[pathParts.length - 2];
+
+      /*
+       * ===============================
+       * ELEMENTS
+       * ===============================
+       */
+
+      const loadingState = document.getElementById("loadingState");
+
+      const editProductForm = document.getElementById("editProductForm");
+
+      const errorMessage = document.getElementById("errorMessage");
+
+      const existingImages = document.getElementById("existingImages");
+
+      const noImagesMessage = document.getElementById("noImagesMessage");
+
+      const additionalImages = document.getElementById("additionalImages");
+
+      const newImagePreview = document.getElementById("newImagePreview");
+
+      const newImages = [];
+
+      /*
+       * ===============================
+       * LOAD PRODUCT
+       * ===============================
+       */
+
+      document.addEventListener("DOMContentLoaded", loadProduct);
+
+      async function loadProduct() {
+        try {
+          if (!productId) {
+            throw new Error("Product ID was not found in the URL.");
+          }
+
+          const response = await fetch(`/api/admin/products/${productId}`);
+
+          if (!response.ok) {
+            throw new Error("Unable to load product.");
+          }
+
+          const product = await response.json();
+
+          populateProduct(product);
+
+          loadingState.classList.add("hidden");
+
+          editProductForm.classList.remove("hidden");
+        } catch (error) {
+          console.error(error);
+
+          loadingState.classList.add("hidden");
+
+          showError(error.message || "Unable to load product.");
+        }
+      }
+
+      /*
+       * ===============================
+       * POPULATE PRODUCT
+       * ===============================
+       */
+
+      function populateProduct(product) {
+        document.getElementById("productDisplayName").textContent =
+          product.name || "Product";
+
+        document.getElementById("productIdDisplay").textContent =
+          product.id || productId;
+
+        document.getElementById("productName").value = product.name || "";
+
+        document.getElementById("description").value =
+          product.description || "";
+
+        document.getElementById("price").value = product.price ?? "";
+
+        document.getElementById("mrp").value = product.mrp ?? "";
+
+        document.getElementById("stock").value = product.stock ?? "";
+
+        document.getElementById("categoryId").value = product.categoryId ?? "";
+
+        /*
+         * IMPORTANT:
+         *
+         * Product images come from:
+         *
+         * product.images
+         *
+         */
+
+        renderExistingImages(product.images || []);
+      }
+
+      /*
+       * ===============================
+       * RENDER EXISTING IMAGES
+       * ===============================
+       */
+
+      function renderExistingImages(images) {
+        existingImages.innerHTML = "";
+
+        if (!images || images.length === 0) {
+          noImagesMessage.classList.remove("hidden");
+
+          document.getElementById("imageStatus").textContent =
+            "No images uploaded";
+
+          /*
+           * Keep placeholder in main image.
+           */
+
+          return;
+        }
+
+        noImagesMessage.classList.add("hidden");
+
+        document.getElementById("imageStatus").textContent =
+          `${images.length} image${images.length === 1 ? "" : "s"}`;
+
+        /*
+         * First image becomes main image.
+         */
+
+        setMainProductImage(images[0].imageUrl);
+
+        /*
+         * Render all existing images.
+         */
+
+        images.forEach((image, index) => {
+          const wrapper = document.createElement("div");
+
+          wrapper.className = "image-preview-item existing-image-item";
+
+          wrapper.innerHTML = `
+
+                <img
+                    src="${resolveImageUrl(image.imageUrl)}"
+                    alt="Product image ${index + 1}"
+                    onclick="setMainProductImage('${escapeAttribute(image.imageUrl)}')"
+                    onerror="handleImageError(this)">
+
+
+                <button
+                    type="button"
+                    class="remove-image-button"
+                    onclick="deleteExistingImage(${image.id})"
+                    aria-label="Delete image">
+
+                    ×
+
+                </button>
+
+
+                ${
+                  index === 0
+                    ? `<span class="primary-image-badge">
+                                Primary
+                           </span>`
+                    : ""
+                }
+
+            `;
+
+          existingImages.appendChild(wrapper);
+        });
+      }
+
+      /*
+       * ===============================
+       * MAIN PRODUCT IMAGE
+       * ===============================
+       */
+
+      function setMainProductImage(imageUrl) {
+        const mainImage = document.getElementById("mainProductImage");
+
+        if (!imageUrl) {
+          mainImage.innerHTML = `
+
+                <div class="image-placeholder">
+
+                    <span>
+                        □
+                    </span>
+
+                    <small>
+                        No image
+                    </small>
+
+                </div>
+
+            `;
+
+          return;
+        }
+
+        mainImage.innerHTML = `
+
+            <img
+                src="${resolveImageUrl(imageUrl)}"
+                alt="Product image"
+                onerror="handleImageError(this)">
+
+        `;
+      }
+
+      /*
+       * ===============================
+       * IMAGE URL
+       * ===============================
+       *
+       * If backend returns:
+       *
+       * /uploads/products/abc.jpg
+       *
+       * browser uses current host.
+       *
+       * If backend returns:
+       *
+       * https://...
+       *
+       * it is used directly.
+       */
+
+      function resolveImageUrl(imageUrl) {
+        if (!imageUrl) {
+          return "";
+        }
+
+        /*
+         * Images are stored/served by catalog-service.
+         *
+         * seller-admin-service -> 8087
+         * catalog-service      -> 8082
+         *
+         * Backend returns paths such as:
+         *
+         * /uploads/products/example.jpg
+         *
+         * Therefore the browser must request:
+         *
+         * http://localhost:8082/uploads/products/example.jpg
+         */
+
+        if (
+          imageUrl.startsWith("http://") ||
+          imageUrl.startsWith("https://") ||
+          imageUrl.startsWith("data:")
+        ) {
+          return imageUrl;
+        }
+
+        if (imageUrl.startsWith("/")) {
+          return `http://localhost:8082${imageUrl}`;
+        }
+
+        return `http://localhost:8082/${imageUrl}`;
+      }
+
+      /*
+       * ===============================
+       * ADDITIONAL IMAGE SELECTION
+       * ===============================
+       */
+
+      additionalImages.addEventListener("change", function () {
+        const files = Array.from(additionalImages.files);
+
+        files.forEach((file) => {
+          if (!file.type.startsWith("image/")) {
+            return;
+          }
+
+          if (file.size > 10 * 1024 * 1024) {
+            showError(`${file.name} is larger than 10MB.`);
+
+            return;
+          }
+
+          newImages.push(file);
+        });
+
+        additionalImages.value = "";
+
+        renderNewImages();
+      });
+
+      /*
+       * ===============================
+       * RENDER NEW IMAGES
+       * ===============================
+       */
+
+      function renderNewImages() {
+        newImagePreview.innerHTML = "";
+
+        newImages.forEach((file, index) => {
+          const reader = new FileReader();
+
+          reader.onload = function (event) {
+            const wrapper = document.createElement("div");
+
+            wrapper.className = "image-preview-item";
+
+            wrapper.innerHTML = `
+
+                            <img
+                                src="${event.target.result}"
+                                alt="New product image">
+
+
+                            <button
+                                type="button"
+                                class="remove-image-button"
+                                onclick="removeNewImage(${index})">
+
+                                ×
+
+                            </button>
+
+
+                            <div class="image-name">
+                                ${escapeHtml(file.name)}
+                            </div>
+
+                        `;
+
+            newImagePreview.appendChild(wrapper);
+          };
+
+          reader.readAsDataURL(file);
+        });
+      }
+
+      /*
+       * ===============================
+       * REMOVE NEW IMAGE
+       * ===============================
+       */
+
+      function removeNewImage(index) {
+        newImages.splice(index, 1);
+
+        renderNewImages();
+      }
+
+      /*
+       * ===============================
+       * DELETE EXISTING IMAGE
+       * ===============================
+       */
+
+      async function deleteExistingImage(imageId) {
+        const confirmed = confirm(
+          "Are you sure you want to delete this image?",
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `/api/admin/products/${productId}/images/${imageId}`,
+            {
+              method: "DELETE",
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error("Unable to delete image.");
+          }
+
+          /*
+           * Reload product so that the
+           * main image and gallery stay correct.
+           */
+
+          await loadProductAgain();
+        } catch (error) {
+          console.error(error);
+
+          showError(error.message || "Unable to delete image.");
+        }
+      }
+
+      /*
+       * ===============================
+       * RELOAD PRODUCT AFTER IMAGE DELETE
+       * ===============================
+       */
+
+      async function loadProductAgain() {
+        const response = await fetch(`/api/admin/products/${productId}`);
+
+        if (!response.ok) {
+          throw new Error("Unable to refresh product.");
+        }
+
+        const product = await response.json();
+
+        populateProduct(product);
+      }
+
+      /*
+       * ===============================
+       * UPDATE PRODUCT
+       * ===============================
+       */
+
+      editProductForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        hideError();
+
+        const updateButton = document.getElementById("updateProductButton");
+
+        const updateButtonText = document.getElementById("updateButtonText");
+
+        const updateButtonLoader =
+          document.getElementById("updateButtonLoader");
+
+        updateButton.disabled = true;
+
+        updateButtonText.textContent = "Saving...";
+
+        updateButtonLoader.classList.remove("hidden");
+
+        try {
+          /*
+           * STEP 1:
+           *
+           * Update product details.
+           */
+
+          const updateResponse = await fetch(
+            `/api/admin/products/${productId}`,
+            {
+              method: "PUT",
+
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              body: JSON.stringify({
+                name: document.getElementById("productName").value.trim(),
+
+                description: document
+                  .getElementById("description")
+                  .value.trim(),
+
+                price: Number(document.getElementById("price").value),
+
+                mrp: document.getElementById("mrp").value
+                  ? Number(document.getElementById("mrp").value)
+                  : null,
+
+                stock: Number(document.getElementById("stock").value),
+
+                categoryId: Number(document.getElementById("categoryId").value),
+              }),
+            },
+          );
+
+          if (!updateResponse.ok) {
+            throw new Error("Unable to update product.");
+          }
+
+          /*
+           * STEP 2:
+           *
+           * Upload any newly selected images.
+           */
+
+          if (newImages.length > 0) {
+            const formData = new FormData();
+
+            newImages.forEach((file) => {
+              formData.append("files", file);
+            });
+
+            const imageResponse = await fetch(
+              `/api/admin/products/${productId}/images`,
+              {
+                method: "POST",
+                body: formData,
+              },
+            );
+
+            if (!imageResponse.ok) {
+              throw new Error("Product was updated, but image upload failed.");
+            }
+          }
+
+          /*
+           * Return to products.
+           */
+
+          window.location.href = "/admin/products";
+        } catch (error) {
+          console.error(error);
+
+          showError(error.message || "Unable to update product.");
+
+          updateButton.disabled = false;
+
+          updateButtonText.textContent = "Save Changes";
+
+          updateButtonLoader.classList.add("hidden");
+        }
+      });
+
+      /*
+       * ===============================
+       * IMAGE ERROR
+       * ===============================
+       */
+
+      function handleImageError(image) {
+        image.style.display = "none";
+
+        const parent = image.parentElement;
+
+        if (parent && !parent.querySelector(".broken-image-message")) {
+          const message = document.createElement("div");
+
+          message.className = "broken-image-message";
+
+          message.innerHTML = `
+                <span>□</span>
+                <small>Image unavailable</small>
+            `;
+
+          parent.appendChild(message);
+        }
+      }
+
+      /*
+       * ===============================
+       * ERROR
+       * ===============================
+       */
+
+      function showError(message) {
+        errorMessage.textContent = message;
+
+        errorMessage.classList.remove("hidden");
+
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
+
+      function hideError() {
+        errorMessage.textContent = "";
+
+        errorMessage.classList.add("hidden");
+      }
+
+      /*
+       * ===============================
+       * HTML ESCAPING
+       * ===============================
+       */
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function escapeAttribute(value) {
+        return String(value).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      }
+    </script>
+  </body>
+</html>

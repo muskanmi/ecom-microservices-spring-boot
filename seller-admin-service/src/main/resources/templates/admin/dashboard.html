@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Marketplace — Seller Admin</title>
+
+    <link rel="stylesheet" th:href="@{/admin/admin.css}" />
+  </head>
+
+  <body>
+    <div class="admin-layout">
+      <!-- =====================================================
+         SIDEBAR
+         ===================================================== -->
+
+      <aside class="sidebar" id="sidebar">
+        <!-- BRAND -->
+
+        <div class="brand">
+          <div class="brand-mark">
+            <span>▣</span>
+          </div>
+
+          <div class="brand-copy">
+            <div class="brand-name">MARKETPLACE</div>
+
+            <div class="brand-tagline">SELLER CONSOLE</div>
+          </div>
+        </div>
+
+        <!-- NAVIGATION -->
+
+        <div class="sidebar-label">ADMIN</div>
+
+        <nav class="sidebar-nav">
+          <a href="/admin" class="nav-item active">
+            <span class="nav-symbol">⌂</span>
+
+            <span> Dashboard </span>
+          </a>
+
+          <a href="/admin/products" class="nav-item">
+            <span class="nav-symbol">□</span>
+
+            <span> Products </span>
+          </a>
+
+          <a href="/admin/orders" class="nav-item">
+            <span class="nav-symbol">▤</span>
+
+            <span> Orders </span>
+          </a>
+        </nav>
+
+        <div class="sidebar-label second-label">STORE</div>
+
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item">
+            <span class="nav-symbol">◈</span>
+
+            <span> Inventory </span>
+          </a>
+
+          <a href="#" class="nav-item">
+            <span class="nav-symbol">◌</span>
+
+            <span> Customers </span>
+          </a>
+
+          <a href="#" class="nav-item">
+            <span class="nav-symbol">◫</span>
+
+            <span> Analytics </span>
+          </a>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-bottom">
+          <a href="#" class="nav-item">
+            <span class="nav-symbol">⚙</span>
+
+            <span> Store Settings </span>
+          </a>
+
+          <a href="#" class="nav-item">
+            <span class="nav-symbol">?</span>
+
+            <span> Help & Support </span>
+          </a>
+
+          <div class="sidebar-line"></div>
+
+          <!-- SELLER PROFILE -->
+
+          <div class="seller-profile">
+            <div class="seller-avatar">M</div>
+
+            <div class="seller-details">
+              <strong> Muskan </strong>
+
+              <span> Seller Admin </span>
+            </div>
+
+            <button class="seller-menu">⋮</button>
+          </div>
+
+          <a href="#" class="logout">
+            <span> ↪ </span>
+
+            <span> Log out </span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- =====================================================
+         MAIN
+         ===================================================== -->
+
+      <main class="main-content">
+        <!-- =================================================
+             TOP HEADER
+             ================================================= -->
+
+        <header class="topbar">
+          <div class="mobile-brand">
+            <button id="mobileMenuBtn" class="mobile-menu">☰</button>
+
+            <span> MARKETPLACE </span>
+          </div>
+
+          <!-- SEARCH -->
+
+          <div class="search-box">
+            <span class="search-icon"> ⌕ </span>
+
+            <input
+              type="text"
+              placeholder="Search products, orders and more..."
+            />
+          </div>
+
+          <!-- RIGHT -->
+
+          <div class="top-actions">
+            <button class="top-action">
+              ♡
+
+              <span class="notification-badge"> 3 </span>
+            </button>
+
+            <div class="top-divider"></div>
+
+            <div class="seller-top-profile">
+              <div class="seller-top-avatar">M</div>
+
+              <div class="seller-top-info">
+                <strong> Muskan </strong>
+
+                <span> SELLER ADMIN </span>
+              </div>
+
+              <span class="chevron"> ⌄ </span>
+            </div>
+          </div>
+        </header>
+
+        <!-- =================================================
+             PAGE
+             ================================================= -->
+
+        <section class="page-content">
+          <!-- PAGE INTRO -->
+
+          <div class="page-intro">
+            <div>
+              <div class="eyebrow">MARKETPLACE · SELLER DASHBOARD</div>
+
+              <h1>Welcome back, Muskan</h1>
+
+              <p>Here's what's happening with your store today.</p>
+            </div>
+
+            <div class="intro-date">
+              <span> TODAY </span>
+
+              <strong> 08 OCTOBER 2026 </strong>
+            </div>
+          </div>
+
+          <!-- =================================================
+                 STAT CARDS
+                 ================================================= -->
+
+          <div class="stats-grid">
+            <!-- PRODUCTS -->
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-eyebrow"> CATALOG </span>
+
+                <div class="stat-symbol">□</div>
+              </div>
+
+              <div class="stat-number">128</div>
+
+              <div class="stat-title">Total Products</div>
+
+              <div class="stat-meta positive">↑ 12.5% this month</div>
+            </div>
+
+            <!-- ORDERS -->
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-eyebrow"> SALES </span>
+
+                <div class="stat-symbol">▤</div>
+              </div>
+
+              <div class="stat-number">342</div>
+
+              <div class="stat-title">Total Orders</div>
+
+              <div class="stat-meta positive">↑ 8.2% this month</div>
+            </div>
+
+            <!-- PENDING -->
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-eyebrow"> ATTENTION </span>
+
+                <div class="stat-symbol warning-symbol">◷</div>
+              </div>
+
+              <div class="stat-number">18</div>
+
+              <div class="stat-title">Pending Orders</div>
+
+              <div class="stat-meta warning">Requires your attention</div>
+            </div>
+
+            <!-- DELIVERY -->
+
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-eyebrow"> SHIPPING </span>
+
+                <div class="stat-symbol">↗</div>
+              </div>
+
+              <div class="stat-number">24</div>
+
+              <div class="stat-title">In Delivery</div>
+
+              <div class="stat-meta positive">All shipments on track</div>
+            </div>
+          </div>
+
+          <!-- =================================================
+                 MAIN DASHBOARD
+                 ================================================= -->
+
+          <div class="dashboard-grid">
+            <!-- RECENT ORDERS -->
+
+            <section class="panel orders-panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-eyebrow">ACTIVITY</div>
+
+                  <h2>Recent Orders</h2>
+
+                  <p>Your latest customer orders</p>
+                </div>
+
+                <a href="/admin/orders" class="panel-link"> View all → </a>
+              </div>
+
+              <div class="orders-list">
+                <!-- ORDER 1 -->
+
+                <div class="order-row">
+                  <div class="order-product-image bag">👜</div>
+
+                  <div class="order-info">
+                    <strong> ORD-10123 </strong>
+
+                    <span> May 19, 2026 · Arjun Sharma </span>
+                  </div>
+
+                  <div class="order-right">
+                    <span class="order-status delivered"> Delivered </span>
+
+                    <strong> ₹1,299 </strong>
+                  </div>
+                </div>
+
+                <!-- ORDER 2 -->
+
+                <div class="order-row">
+                  <div class="order-product-image watch">⌚</div>
+
+                  <div class="order-info">
+                    <strong> ORD-10122 </strong>
+
+                    <span> May 17, 2026 · Priya Mehta </span>
+                  </div>
+
+                  <div class="order-right">
+                    <span class="order-status delivered"> Delivered </span>
+
+                    <strong> ₹2,499 </strong>
+                  </div>
+                </div>
+
+                <!-- ORDER 3 -->
+
+                <div class="order-row">
+                  <div class="order-product-image shoe">👟</div>
+
+                  <div class="order-info">
+                    <strong> ORD-10121 </strong>
+
+                    <span> May 16, 2026 · Rahul Verma </span>
+                  </div>
+
+                  <div class="order-right">
+                    <span class="order-status shipped"> Shipped </span>
+
+                    <strong> ₹1,799 </strong>
+                  </div>
+                </div>
+
+                <!-- ORDER 4 -->
+
+                <div class="order-row">
+                  <div class="order-product-image dress">👗</div>
+
+                  <div class="order-info">
+                    <strong> ORD-10120 </strong>
+
+                    <span> May 15, 2026 · Neha Kapoor </span>
+                  </div>
+
+                  <div class="order-right">
+                    <span class="order-status pending"> Pending </span>
+
+                    <strong> ₹2,199 </strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- CATALOG -->
+
+            <section class="panel catalog-panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-eyebrow">YOUR STORE</div>
+
+                  <h2>Catalog Snapshot</h2>
+
+                  <p>Current inventory overview</p>
+                </div>
+
+                <a href="/admin/products" class="panel-link"> Manage → </a>
+              </div>
+
+              <div class="catalog-body">
+                <!-- ACTIVE -->
+
+                <div class="catalog-row">
+                  <div class="catalog-icon active">✓</div>
+
+                  <div class="catalog-info">
+                    <span> Active Products </span>
+
+                    <strong> 108 </strong>
+                  </div>
+
+                  <span class="catalog-percentage"> 84% </span>
+                </div>
+
+                <div class="catalog-progress">
+                  <span class="progress-active" style="width: 84%"> </span>
+                </div>
+
+                <!-- LOW STOCK -->
+
+                <div class="catalog-row">
+                  <div class="catalog-icon low">!</div>
+
+                  <div class="catalog-info">
+                    <span> Low Stock </span>
+
+                    <strong> 12 </strong>
+                  </div>
+
+                  <span class="catalog-percentage low-text"> 9% </span>
+                </div>
+
+                <div class="catalog-progress">
+                  <span class="progress-low" style="width: 9%"> </span>
+                </div>
+
+                <!-- OUT OF STOCK -->
+
+                <div class="catalog-row">
+                  <div class="catalog-icon out">×</div>
+
+                  <div class="catalog-info">
+                    <span> Out of Stock </span>
+
+                    <strong> 8 </strong>
+                  </div>
+
+                  <span class="catalog-percentage out-text"> 6% </span>
+                </div>
+
+                <div class="catalog-progress">
+                  <span class="progress-out" style="width: 6%"> </span>
+                </div>
+
+                <div class="catalog-separator"></div>
+
+                <div class="catalog-total">
+                  <div>
+                    <span> Total inventory </span>
+
+                    <strong> 128 Products </strong>
+                  </div>
+
+                  <a href="/admin/products"> View catalog → </a>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- =================================================
+                 QUICK ACTIONS
+                 ================================================= -->
+
+          <section class="quick-section">
+            <div class="section-heading">
+              <div>
+                <div class="panel-eyebrow">STORE MANAGEMENT</div>
+
+                <h2>Quick Actions</h2>
+              </div>
+            </div>
+
+            <div class="quick-grid">
+              <a href="/admin/products/new" class="quick-card">
+                <div class="quick-number">01</div>
+
+                <div class="quick-content">
+                  <h3>Add Product</h3>
+
+                  <p>Add a new product to your catalog.</p>
+                </div>
+
+                <span class="quick-arrow"> → </span>
+              </a>
+
+              <a href="/admin/products" class="quick-card">
+                <div class="quick-number">02</div>
+
+                <div class="quick-content">
+                  <h3>Manage Products</h3>
+
+                  <p>Update prices, stock and product details.</p>
+                </div>
+
+                <span class="quick-arrow"> → </span>
+              </a>
+
+              <a href="/admin/orders" class="quick-card">
+                <div class="quick-number">03</div>
+
+                <div class="quick-content">
+                  <h3>Manage Orders</h3>
+
+                  <p>Review and process customer orders.</p>
+                </div>
+
+                <span class="quick-arrow"> → </span>
+              </a>
+            </div>
+          </section>
+        </section>
+
+        <!-- FOOTER -->
+
+        <footer class="footer">
+          <span> MARKETPLACE · SELLER CONSOLE </span>
+
+          <span> © 2026 </span>
+        </footer>
+      </main>
+    </div>
+
+    <script th:src="@{/admin/admin.js}"></script>
+  </body>
+</html>

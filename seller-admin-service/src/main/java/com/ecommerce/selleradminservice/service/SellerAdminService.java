@@ -2,6 +2,7 @@ package com.ecommerce.selleradminservice.service;
 
 import com.ecommerce.selleradminservice.client.CatalogClient;
 import com.ecommerce.selleradminservice.client.OrderClient;
+import com.ecommerce.selleradminservice.dto.CatalogProductImageResponse;
 import com.ecommerce.selleradminservice.dto.CatalogProductResponse;
 import com.ecommerce.selleradminservice.dto.CreateProductRequest;
 import com.ecommerce.selleradminservice.dto.OrderResponse;
@@ -11,6 +12,7 @@ import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -87,5 +89,42 @@ public class SellerAdminService {
     public void deleteProduct(Long productId) {
 
         catalogClient.deleteProduct(productId);
+    }
+
+    // =========================================================
+    // PRODUCT IMAGES
+    // =========================================================
+
+    public List<CatalogProductImageResponse> uploadProductImages(
+            Long productId,
+            List<MultipartFile> files) {
+
+        return catalogClient.uploadImages(
+                productId,
+                files);
+    }
+
+    public CatalogProductImageResponse updateProductImage(
+            Long productId,
+            Long imageId,
+            MultipartFile file) {
+
+        return catalogClient.updateImage(
+                productId,
+                imageId,
+                file);
+    }
+
+    public void deleteProductImage(
+            Long productId,
+            Long imageId) {
+
+        catalogClient.deleteImage(
+                productId,
+                imageId);
+    }
+
+    public CatalogProductResponse getProductById(Long productId) {
+        return catalogClient.getProductById(productId);
     }
 }

@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Create Product - Marketplace Seller Console</title>
+
+    <link rel="stylesheet" th:href="@{/admin/admin.css}" />
+  </head>
+
+  <body>
+    <div class="admin-layout">
+      <!-- ================= SIDEBAR ================= -->
+
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon">M</div>
+
+          <div>
+            <div class="brand-title">Marketplace</div>
+
+            <div class="brand-subtitle">Seller Console</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/admin" class="nav-item">
+            <span class="nav-icon">▦</span>
+
+            <span> Dashboard </span>
+          </a>
+
+          <a href="/admin/products" class="nav-item active">
+            <span class="nav-icon">□</span>
+
+            <span> Products </span>
+          </a>
+
+          <a href="/admin/orders" class="nav-item">
+            <span class="nav-icon">▤</span>
+
+            <span> Orders </span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="sidebar-user">
+            <div class="sidebar-avatar">M</div>
+
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-name">Muskan</div>
+
+              <div class="sidebar-user-role">Administrator</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ================= MAIN ================= -->
+
+      <main class="main-content">
+        <!-- HEADER -->
+
+        <header class="top-header">
+          <div class="header-search">
+            <span class="search-icon"> ⌕ </span>
+
+            <input type="text" placeholder="Search products, orders..." />
+          </div>
+
+          <div class="header-right">
+            <button class="notification-button" type="button">♢</button>
+
+            <div class="header-avatar">M</div>
+
+            <div class="header-user">Muskan</div>
+          </div>
+        </header>
+
+        <!-- PAGE CONTENT -->
+
+        <section class="page-content">
+          <div class="page-header">
+            <div>
+              <h1>Create Product</h1>
+
+              <p>Add a new product to your catalog.</p>
+            </div>
+
+            <a href="/admin/products" class="secondary-button">
+              ← Back to Products
+            </a>
+          </div>
+
+          <!-- ERROR MESSAGE -->
+
+          <div id="errorMessage" class="alert alert-error hidden"></div>
+
+          <!-- PRODUCT FORM -->
+
+          <form id="productForm" class="product-form">
+            <!-- ================= PRODUCT INFORMATION ================= -->
+
+            <div class="form-card">
+              <div class="form-card-header">
+                <div>
+                  <h2>Product Information</h2>
+
+                  <p>Enter the basic information for your product.</p>
+                </div>
+              </div>
+
+              <div class="form-card-body">
+                <!-- PRODUCT NAME -->
+
+                <div class="form-group full-width">
+                  <label for="productName">
+                    Product Name
+                    <span class="required">*</span>
+                  </label>
+
+                  <input
+                    id="productName"
+                    name="name"
+                    type="text"
+                    placeholder="Enter product name"
+                    required
+                  />
+                </div>
+
+                <!-- DESCRIPTION -->
+
+                <div class="form-group full-width">
+                  <label for="description"> Description </label>
+
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows="5"
+                    placeholder="Enter product description"
+                  ></textarea>
+                </div>
+
+                <div class="form-grid">
+                  <!-- PRICE -->
+
+                  <div class="form-group">
+                    <label for="price">
+                      Price
+                      <span class="required">*</span>
+                    </label>
+
+                    <div class="input-prefix">
+                      <span> ₹ </span>
+
+                      <input
+                        id="price"
+                        name="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <!-- MRP -->
+
+                  <div class="form-group">
+                    <label for="mrp"> MRP </label>
+
+                    <div class="input-prefix">
+                      <span> ₹ </span>
+
+                      <input
+                        id="mrp"
+                        name="mrp"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- STOCK -->
+
+                  <div class="form-group">
+                    <label for="stock">
+                      Stock
+                      <span class="required">*</span>
+                    </label>
+
+                    <input
+                      id="stock"
+                      name="stock"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+
+                  <!-- CATEGORY -->
+
+                  <div class="form-group">
+                    <label for="categoryId">
+                      Category ID
+                      <span class="required">*</span>
+                    </label>
+
+                    <input
+                      id="categoryId"
+                      name="categoryId"
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="Enter category ID"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ================= PRODUCT IMAGES ================= -->
+
+            <div class="form-card">
+              <div class="form-card-header">
+                <div>
+                  <h2>Product Images</h2>
+
+                  <p>Upload one or more images for this product.</p>
+                </div>
+              </div>
+
+              <div class="form-card-body">
+                <div class="image-upload-area">
+                  <input
+                    id="productImages"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    hidden
+                  />
+
+                  <label for="productImages" class="image-upload-box">
+                    <div class="upload-icon">↑</div>
+
+                    <div class="upload-title">Click to upload images</div>
+
+                    <div class="upload-description">PNG, JPG or WEBP</div>
+
+                    <div class="upload-limit">Maximum 10MB per image</div>
+                  </label>
+                </div>
+
+                <!-- IMAGE PREVIEW -->
+
+                <div id="imagePreview" class="image-preview-grid"></div>
+
+                <div id="imageCount" class="image-count hidden"></div>
+              </div>
+            </div>
+
+            <!-- ================= FORM ACTIONS ================= -->
+
+            <div class="form-actions">
+              <a href="/admin/products" class="secondary-button"> Cancel </a>
+
+              <button
+                id="createProductButton"
+                type="submit"
+                class="primary-button"
+              >
+                <span id="createButtonText"> Create Product </span>
+
+                <span id="createButtonLoader" class="button-loader hidden">
+                </span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const productForm = document.getElementById("productForm");
+
+      const imageInput = document.getElementById("productImages");
+
+      const imagePreview = document.getElementById("imagePreview");
+
+      const imageCount = document.getElementById("imageCount");
+
+      const errorMessage = document.getElementById("errorMessage");
+
+      const createButton = document.getElementById("createProductButton");
+
+      const createButtonText = document.getElementById("createButtonText");
+
+      const createButtonLoader = document.getElementById("createButtonLoader");
+
+      /*
+       * Keep the selected files here.
+       * We do not depend directly on input.files because
+       * the user can remove individual images.
+       */
+      const selectedImages = [];
+
+      /*
+       * ===============================
+       * IMAGE SELECTION
+       * ===============================
+       */
+
+      imageInput.addEventListener("change", function () {
+        const files = Array.from(imageInput.files);
+
+        files.forEach((file) => {
+          if (!file.type.startsWith("image/")) {
+            return;
+          }
+
+          if (file.size > 10 * 1024 * 1024) {
+            showError(`${file.name} is larger than 10MB.`);
+
+            return;
+          }
+
+          /*
+           * Prevent duplicate files.
+           */
+          const alreadySelected = selectedImages.some(
+            (existingFile) =>
+              existingFile.name === file.name &&
+              existingFile.size === file.size,
+          );
+
+          if (!alreadySelected) {
+            selectedImages.push(file);
+          }
+        });
+
+        /*
+         * Reset input so the same file can be selected
+         * again after removing it.
+         */
+        imageInput.value = "";
+
+        renderImagePreview();
+      });
+
+      /*
+       * ===============================
+       * IMAGE PREVIEW
+       * ===============================
+       */
+
+      function renderImagePreview() {
+        imagePreview.innerHTML = "";
+
+        if (selectedImages.length === 0) {
+          imageCount.classList.add("hidden");
+
+          return;
+        }
+
+        imageCount.classList.remove("hidden");
+
+        imageCount.textContent = `${selectedImages.length} image${
+          selectedImages.length === 1 ? "" : "s"
+        } selected`;
+
+        selectedImages.forEach((file, index) => {
+          const reader = new FileReader();
+
+          reader.onload = function (event) {
+            const wrapper = document.createElement("div");
+
+            wrapper.className = "image-preview-item";
+
+            wrapper.innerHTML = `
+
+                    <img
+                        src="${event.target.result}"
+                        alt="Product image">
+
+
+                    <button
+                        type="button"
+                        class="remove-image-button"
+                        onclick="removeSelectedImage(${index})"
+                        aria-label="Remove image">
+
+                        ×
+
+                    </button>
+
+
+                    <div class="image-name">
+                        ${escapeHtml(file.name)}
+                    </div>
+
+                `;
+
+            imagePreview.appendChild(wrapper);
+          };
+
+          reader.readAsDataURL(file);
+        });
+      }
+
+      /*
+       * ===============================
+       * REMOVE SELECTED IMAGE
+       * ===============================
+       */
+
+      function removeSelectedImage(index) {
+        selectedImages.splice(index, 1);
+
+        renderImagePreview();
+      }
+
+      /*
+       * ===============================
+       * FORM SUBMIT
+       * ===============================
+       */
+
+      productForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        hideError();
+
+        const name = document.getElementById("productName").value.trim();
+
+        const description = document.getElementById("description").value.trim();
+
+        const price = document.getElementById("price").value;
+
+        const mrp = document.getElementById("mrp").value;
+
+        const stock = document.getElementById("stock").value;
+
+        const categoryId = document.getElementById("categoryId").value;
+
+        if (!name) {
+          showError("Product name is required.");
+
+          return;
+        }
+
+        if (!price) {
+          showError("Product price is required.");
+
+          return;
+        }
+
+        if (!stock) {
+          showError("Stock is required.");
+
+          return;
+        }
+
+        if (!categoryId) {
+          showError("Category ID is required.");
+
+          return;
+        }
+
+        setLoading(true);
+
+        try {
+          /*
+           * STEP 1
+           *
+           * Create product first.
+           *
+           * Images are uploaded after we receive
+           * the generated product ID.
+           */
+
+          const productResponse = await fetch("/api/admin/products", {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              name: name,
+
+              description: description,
+
+              price: Number(price),
+
+              mrp: mrp ? Number(mrp) : null,
+
+              stock: Number(stock),
+
+              categoryId: Number(categoryId),
+            }),
+          });
+
+          if (!productResponse.ok) {
+            const errorText = await productResponse.text();
+
+            throw new Error(errorText || "Unable to create product.");
+          }
+
+          const product = await productResponse.json();
+
+          const productId = product.id;
+
+          if (!productId) {
+            throw new Error(
+              "Product was created but no product ID was returned.",
+            );
+          }
+
+          /*
+           * STEP 2
+           *
+           * Upload product images.
+           */
+
+          if (selectedImages.length > 0) {
+            const formData = new FormData();
+
+            selectedImages.forEach((file) => {
+              formData.append("files", file);
+            });
+
+            const imageResponse = await fetch(
+              `/api/admin/products/${productId}/images`,
+              {
+                method: "POST",
+                body: formData,
+              },
+            );
+
+            if (!imageResponse.ok) {
+              throw new Error("Product was created, but image upload failed.");
+            }
+          }
+
+          /*
+           * Everything succeeded.
+           */
+
+          window.location.href = "/admin/products";
+        } catch (error) {
+          console.error(error);
+
+          showError(
+            error.message || "Something went wrong while creating the product.",
+          );
+
+          setLoading(false);
+        }
+      });
+
+      /*
+       * ===============================
+       * LOADING STATE
+       * ===============================
+       */
+
+      function setLoading(loading) {
+        createButton.disabled = loading;
+
+        if (loading) {
+          createButtonText.textContent = "Creating...";
+
+          createButtonLoader.classList.remove("hidden");
+        } else {
+          createButtonText.textContent = "Create Product";
+
+          createButtonLoader.classList.add("hidden");
+        }
+      }
+
+      /*
+       * ===============================
+       * ERROR
+       * ===============================
+       */
+
+      function showError(message) {
+        errorMessage.textContent = message;
+
+        errorMessage.classList.remove("hidden");
+
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
+
+      function hideError() {
+        errorMessage.textContent = "";
+
+        errorMessage.classList.add("hidden");
+      }
+
+      /*
+       * ===============================
+       * HTML ESCAPE
+       * ===============================
+       */
+
+      function escapeHtml(value) {
+        return value
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+    </script>
+  </body>
+</html>
