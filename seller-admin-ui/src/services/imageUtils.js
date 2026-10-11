@@ -3,7 +3,11 @@ export function getProductImageUrl(imageUrl) {
     return null;
   }
 
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+  if (
+    imageUrl.startsWith("http://") ||
+    imageUrl.startsWith("https://") ||
+    imageUrl.startsWith("data:")
+  ) {
     return imageUrl;
   }
 
