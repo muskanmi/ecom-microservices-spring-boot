@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AdminLayout from "./layouts/AdminLayout";
+import Products from "./pages/Products";
 
 function StatCard({ label, value, description }) {
   return (
@@ -118,10 +119,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Seller Admin */}
         <Route path="/admin" element={<AdminLayout />}>
+          {/* /admin */}
           <Route index element={<Dashboard />} />
+
+          {/* /admin/products */}
+          <Route path="products" element={<Products />} />
         </Route>
 
+        {/* Unknown URL */}
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </BrowserRouter>
