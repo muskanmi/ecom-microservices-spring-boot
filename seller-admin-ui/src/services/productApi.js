@@ -21,7 +21,11 @@ export const uploadProductImages = (productId, files) => {
     formData.append("files", file);
   });
 
-  return api.post(`/api/admin/products/${productId}/images`, formData);
+  return api.post(`/api/admin/products/${productId}/images`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };
 
 export const deleteProductImage = (productId, imageId) =>

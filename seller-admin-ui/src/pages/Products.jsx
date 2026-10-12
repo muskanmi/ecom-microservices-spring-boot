@@ -10,11 +10,14 @@ import { Button, CircularProgress, IconButton, Tooltip } from "@mui/material";
 import { deleteProduct, getProducts } from "../services/productApi";
 
 import { getProductImageUrl } from "../services/imageUtils";
+import { useNavigate } from "react-router-dom";
 
 function Products() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProducts();
@@ -80,6 +83,7 @@ function Products() {
         <Button
           variant="contained"
           startIcon={<AddOutlinedIcon />}
+          onClick={() => navigate("/admin/products/new")}
           sx={{
             backgroundColor: "#2D3A3A",
             color: "#FFFCF4",
@@ -286,6 +290,9 @@ function Products() {
                                   backgroundColor: "#EDE7DB",
                                 },
                               }}
+                              onClick={() =>
+                                navigate(`/admin/products/${product.id}/edit`)
+                              }
                             >
                               <EditOutlinedIcon fontSize="small" />
                             </IconButton>
