@@ -4,6 +4,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
 import ProductEdit from "./pages/ProductEdit";
+import ProductDetails from "./pages/ProductDetails";
 
 function StatCard({ label, value, description }) {
   return (
@@ -139,6 +140,13 @@ function App() {
           ======================================== */}
 
           <Route path="products" element={<Products />} />
+
+          {/* ========================================
+              PRODUCT DETAILS
+              /admin/products/:productId
+          ======================================== */}
+
+          <Route path="products/:productId" element={<ProductDetails />} />
 
           <Route path="products/:productId/edit" element={<ProductEdit />} />
 

@@ -5,6 +5,7 @@ import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 
 import { Alert, Button, CircularProgress, TextField } from "@mui/material";
 
@@ -12,6 +13,7 @@ import {
   getProduct,
   updateProduct,
   uploadProductImages,
+  updateProductImage,
   deleteProductImage,
 } from "../services/productApi";
 
@@ -24,9 +26,9 @@ function ProductEdit() {
 
   const fileInputRef = useRef(null);
 
-  // ========================================================
+  // ============================================================
   // STATE
-  // ========================================================
+  // ============================================================
 
   const [formData, setFormData] = useState({
     name: "",
@@ -51,9 +53,11 @@ function ProductEdit() {
 
   const [uploadStatus, setUploadStatus] = useState("");
 
-  // ========================================================
+  const [replacingImageId, setReplacingImageId] = useState(null);
+
+  // ============================================================
   // LOAD PRODUCT
-  // ========================================================
+  // ============================================================
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -70,10 +74,15 @@ function ProductEdit() {
 
         setFormData({
           name: product.name || "",
+
           description: product.description || "",
+
           price: product.price ?? "",
+
           mrp: product.mrp ?? "",
+
           stock: product.stock ?? "",
+
           categoryId: product.categoryId ?? "",
         });
 
@@ -90,9 +99,9 @@ function ProductEdit() {
     loadProduct();
   }, [productId]);
 
-  // ========================================================
+  // ============================================================
   // FORM CHANGE
-  // ========================================================
+  // ============================================================
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -103,11 +112,13 @@ function ProductEdit() {
     }));
 
     setSuccess("");
+
+    setError("");
   };
 
-  // ========================================================
+  // ============================================================
   // SELECT NEW IMAGES
-  // ========================================================
+  // ============================================================
 
   const handleImageSelection = (event) => {
     const files = Array.from(event.target.files || []);
@@ -126,13 +137,12 @@ function ProductEdit() {
 
     setSelectedImages((current) => [...current, ...validFiles]);
 
-    // Allow selecting the same file again.
     event.target.value = "";
   };
 
-  // ========================================================
+  // ============================================================
   // REMOVE NEW IMAGE
-  // ========================================================
+  // ============================================================
 
   const removeSelectedImage = (indexToRemove) => {
     setSelectedImages((current) =>
@@ -140,9 +150,51 @@ function ProductEdit() {
     );
   };
 
-  // ========================================================
+  // ============================================================
+  // REPLACE EXISTING IMAGE
+  // ============================================================
+
+  const handleReplaceImage = async (imageId, file) => {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+
+      return;
+    }
+
+    try {
+      setError("");
+
+      setSuccess("");
+
+      setReplacingImageId(imageId);
+
+      const response = await updateProductImage(productId, imageId, file);
+
+      const updatedImage = response.data;
+
+      console.log("Updated image:", updatedImage);
+
+      setExistingImages((current) =>
+        current.map((image) => (image.id === imageId ? updatedImage : image)),
+      );
+
+      setSuccess("Product image replaced successfully.");
+    } catch (err) {
+      console.error("Unable to replace image:", err);
+
+      setError(err?.response?.data?.message || "Unable to replace the image.");
+    } finally {
+      setReplacingImageId(null);
+    }
+  };
+
+  // ============================================================
   // DELETE EXISTING IMAGE
-  // ========================================================
+  // ============================================================
 
   const handleDeleteExistingImage = async (imageId) => {
     const confirmed = window.confirm(
@@ -155,6 +207,8 @@ function ProductEdit() {
 
     try {
       setError("");
+
+      setSuccess("");
 
       await deleteProductImage(productId, imageId);
 
@@ -170,9 +224,9 @@ function ProductEdit() {
     }
   };
 
-  // ========================================================
+  // ============================================================
   // VALIDATION
-  // ========================================================
+  // ============================================================
 
   const validateForm = () => {
     if (!formData.name.trim()) {
@@ -202,9 +256,9 @@ function ProductEdit() {
     return null;
   };
 
-  // ========================================================
-  // SAVE PRODUCT
-  // ========================================================
+  // ============================================================
+  // SAVE PRODUCT DETAILS + NEW IMAGES
+  // ============================================================
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -241,13 +295,13 @@ function ProductEdit() {
       setSaving(true);
 
       // ==================================================
-      // STEP 1 — UPDATE PRODUCT
+      // UPDATE PRODUCT
       // ==================================================
 
       await updateProduct(productId, request);
 
       // ==================================================
-      // STEP 2 — UPLOAD NEW IMAGES
+      // UPLOAD NEW IMAGES
       // ==================================================
 
       if (selectedImages.length > 0) {
@@ -262,15 +316,10 @@ function ProductEdit() {
         setSelectedImages([]);
       }
 
-      // ==================================================
-      // STEP 3 — SUCCESS
-      // ==================================================
-
       setSuccess("Product updated successfully.");
 
       setUploadStatus("");
 
-      // Give the user a moment to see success.
       setTimeout(() => {
         navigate("/admin/products");
       }, 700);
@@ -289,9 +338,9 @@ function ProductEdit() {
     }
   };
 
-  // ========================================================
+  // ============================================================
   // LOADING
-  // ========================================================
+  // ============================================================
 
   if (loading) {
     return (
@@ -310,9 +359,9 @@ function ProductEdit() {
     );
   }
 
-  // ========================================================
+  // ============================================================
   // PAGE
-  // ========================================================
+  // ============================================================
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -404,14 +453,10 @@ function ProductEdit() {
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* ==================================================
-                    MAIN GRID
-                ================================================== */}
-
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* =================================================
+          {/* ==================================================
                         BASIC DETAILS
-                    ================================================= */}
+                    ================================================== */}
 
           <section className="border border-[#DED7C9] bg-[#F7F1E5] lg:col-span-2">
             <div className="border-b border-[#DED7C9] px-6 py-5">
@@ -425,7 +470,7 @@ function ProductEdit() {
             </div>
 
             <div className="space-y-5 px-6 py-7">
-              {/* Product name */}
+              {/* Product Name */}
 
               <TextField
                 fullWidth
@@ -487,9 +532,9 @@ function ProductEdit() {
                 }}
               />
 
-              {/* =================================================
-                                EXISTING IMAGES
-                            ================================================= */}
+              {/* ==================================================
+                                PRODUCT IMAGES
+                            ================================================== */}
 
               <div className="border-t border-[#DED7C9] pt-6">
                 <div className="mb-5">
@@ -500,34 +545,119 @@ function ProductEdit() {
                   <h3 className="mt-2 font-serif text-xl text-[#233636]">
                     Product Images
                   </h3>
+
+                  <p className="mt-2 text-xs text-[#8A8378]">
+                    Manage your existing images or add new product images.
+                  </p>
                 </div>
 
+                {/* ==================================================
+                                    EXISTING IMAGES
+                                ================================================== */}
+
                 {existingImages.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {existingImages.map((image) => (
                       <div
                         key={image.id}
-                        className="group relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
+                        className="overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
                       >
-                        <img
-                          src={getProductImageUrl(image.imageUrl)}
-                          alt="Product"
-                          className="h-40 w-full object-cover"
-                        />
+                        {/* IMAGE */}
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExistingImage(image.id)}
-                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] opacity-0 transition group-hover:opacity-100 hover:bg-[#F7EDEA]"
-                          title="Delete image"
-                        >
-                          <DeleteOutlineOutlinedIcon fontSize="small" />
-                        </button>
+                        <div className="relative">
+                          <img
+                            src={getProductImageUrl(image.imageUrl)}
+                            alt="Product"
+                            className="h-48 w-full object-cover"
+                          />
 
-                        <div className="border-t border-[#DED7C9] px-3 py-2">
-                          <p className="text-xs text-[#8A8378]">
-                            Image {image.displayOrder}
-                          </p>
+                          {/* Replacing overlay */}
+
+                          {replacingImageId === image.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#233636]/70">
+                              <div className="text-center text-[#FFFCF4]">
+                                <CircularProgress
+                                  size={26}
+                                  sx={{
+                                    color: "#FFFCF4",
+                                  }}
+                                />
+
+                                <p className="mt-2 text-xs">Replacing...</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* IMAGE FOOTER */}
+
+                        <div className="border-t border-[#DED7C9] px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
+                                Product Image
+                              </p>
+
+                              <p className="mt-1 text-xs text-[#6F766F]">
+                                Image {image.displayOrder}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* REPLACE */}
+
+                              <input
+                                id={`replace-image-${image.id}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={replacingImageId !== null}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+
+                                  if (file) {
+                                    handleReplaceImage(image.id, file);
+                                  }
+
+                                  event.target.value = "";
+                                }}
+                              />
+
+                              <label
+                                htmlFor={`replace-image-${image.id}`}
+                                className={`flex cursor-pointer items-center gap-1 border border-[#B7B0A4] px-3 py-2 text-xs font-medium text-[#4F5955] transition hover:border-[#2D3A3A] hover:bg-[#F7F1E5] ${
+                                  replacingImageId !== null
+                                    ? "pointer-events-none opacity-50"
+                                    : ""
+                                }`}
+                              >
+                                <RefreshOutlinedIcon
+                                  sx={{
+                                    fontSize: 16,
+                                  }}
+                                />
+                                Replace
+                              </label>
+
+                              {/* DELETE */}
+
+                              <button
+                                type="button"
+                                disabled={replacingImageId !== null}
+                                onClick={() =>
+                                  handleDeleteExistingImage(image.id)
+                                }
+                                className="flex items-center gap-1 border border-[#D4B5AF] px-3 py-2 text-xs font-medium text-[#7A4A42] transition hover:bg-[#F7EDEA] disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <DeleteOutlineOutlinedIcon
+                                  sx={{
+                                    fontSize: 16,
+                                  }}
+                                />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -551,9 +681,9 @@ function ProductEdit() {
                   </div>
                 )}
 
-                {/* =================================================
-                                    NEW IMAGE UPLOAD
-                                ================================================= */}
+                {/* ==================================================
+                                    NEW IMAGES
+                                ================================================== */}
 
                 <div className="mt-6">
                   <input
@@ -566,33 +696,50 @@ function ProductEdit() {
                   />
 
                   {selectedImages.length > 0 && (
-                    <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                      {selectedImages.map((file, index) => {
-                        const previewUrl = URL.createObjectURL(file);
+                    <div className="mb-5">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
+                          New Images
+                        </p>
 
-                        return (
+                        <span className="text-xs text-[#8A8378]">
+                          {selectedImages.length} selected
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {selectedImages.map((file, index) => (
                           <div
                             key={`${file.name}-${index}`}
-                            className="group relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
+                            className="relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
                           >
                             <img
-                              src={previewUrl}
-                              alt={`New image ${index + 1}`}
-                              className="h-40 w-full object-cover"
+                              src={URL.createObjectURL(file)}
+                              alt={`New product ${index + 1}`}
+                              className="h-48 w-full object-cover"
                             />
 
                             <button
                               type="button"
                               onClick={() => removeSelectedImage(index)}
-                              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] opacity-0 transition group-hover:opacity-100 hover:bg-[#F7EDEA]"
+                              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] hover:bg-[#F7EDEA]"
+                              title="Remove image"
                             >
                               <DeleteOutlineOutlinedIcon fontSize="small" />
                             </button>
+
+                            <div className="border-t border-[#DED7C9] px-3 py-2">
+                              <p className="truncate text-xs text-[#6F766F]">
+                                {file.name}
+                              </p>
+                            </div>
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {/* ADD IMAGE */}
 
                   <button
                     type="button"
@@ -619,9 +766,9 @@ function ProductEdit() {
             </div>
           </section>
 
-          {/* =================================================
-                        PRICING & INVENTORY
-                    ================================================= */}
+          {/* ==================================================
+                        PRICING
+                    ================================================== */}
 
           <section className="border border-[#DED7C9] bg-[#F7F1E5]">
             <div className="border-b border-[#DED7C9] px-6 py-5">
@@ -635,7 +782,7 @@ function ProductEdit() {
             </div>
 
             <div className="space-y-5 px-6 py-7">
-              {/* Price */}
+              {/* PRICE */}
 
               <TextField
                 fullWidth
@@ -699,7 +846,7 @@ function ProductEdit() {
                 }}
               />
 
-              {/* Stock */}
+              {/* STOCK */}
 
               <TextField
                 fullWidth
@@ -731,7 +878,7 @@ function ProductEdit() {
                 }}
               />
 
-              {/* Category */}
+              {/* CATEGORY */}
 
               <TextField
                 fullWidth
