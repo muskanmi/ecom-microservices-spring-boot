@@ -385,32 +385,6 @@ function ProductDetails() {
           </p>
         </div>
       </section>
-
-      {/* ==================================================
-          BOTTOM ACTION
-      ================================================== */}
-
-      <div className="mt-6 flex justify-end border-t border-[#DED7C9] pt-6">
-        <Button
-          variant="outlined"
-          startIcon={<EditOutlinedIcon />}
-          onClick={() => navigate(`/admin/products/${product.id}/edit`)}
-          sx={{
-            borderRadius: 0,
-            borderColor: "#B7B0A4",
-            color: "#4F5955",
-            textTransform: "none",
-            padding: "10px 20px",
-            boxShadow: "none",
-            "&:hover": {
-              borderColor: "#2D3A3A",
-              backgroundColor: "#F7F1E5",
-            },
-          }}
-        >
-          Edit Product
-        </Button>
-      </div>
     </div>
   );
 }
