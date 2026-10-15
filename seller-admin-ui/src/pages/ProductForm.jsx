@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
@@ -10,11 +10,8 @@ import { Alert, Button, CircularProgress, TextField } from "@mui/material";
 
 import { createProduct, uploadProductImages } from "../services/productApi";
 
-import { getProductImageUrl } from "../services/imageUtils";
-
 function ProductForm() {
   const navigate = useNavigate();
-
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -27,12 +24,15 @@ function ProductForm() {
   });
 
   const [selectedImages, setSelectedImages] = useState([]);
-
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState("");
-
   const [uploadStatus, setUploadStatus] = useState("");
+
+  /*
+   * ---------------------------------------------------------
+   * FORM CHANGE
+   * ---------------------------------------------------------
+   */
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -43,6 +43,12 @@ function ProductForm() {
     }));
   };
 
+  /*
+   * ---------------------------------------------------------
+   * IMAGE SELECTION
+   * ---------------------------------------------------------
+   */
+
   const handleImageSelection = (event) => {
     const files = Array.from(event.target.files || []);
 
@@ -50,31 +56,56 @@ function ProductForm() {
       return;
     }
 
-    const validFiles = files.filter((file) => {
+    setError("");
+
+    const validFiles = [];
+    const invalidFiles = [];
+
+    files.forEach((file) => {
+      // Check file type
       if (!file.type.startsWith("image/")) {
-        return false;
+        invalidFiles.push(`${file.name} is not an image.`);
+        return;
       }
 
-      return true;
+      // Backend currently allows max 10 MB per image
+      if (file.size > 10 * 1024 * 1024) {
+        invalidFiles.push(`${file.name} is larger than 10 MB.`);
+        return;
+      }
+
+      validFiles.push(file);
     });
 
-    if (validFiles.length !== files.length) {
-      setError("Only image files can be selected.");
-    } else {
-      setError("");
+    if (invalidFiles.length > 0) {
+      setError(invalidFiles.join(" "));
     }
 
-    setSelectedImages((current) => [...current, ...validFiles]);
+    if (validFiles.length > 0) {
+      setSelectedImages((current) => [...current, ...validFiles]);
+    }
 
-    // Allow selecting the same file again later.
+    // Allow selecting the same file again
     event.target.value = "";
   };
+
+  /*
+   * ---------------------------------------------------------
+   * REMOVE SELECTED IMAGE
+   * ---------------------------------------------------------
+   */
 
   const removeSelectedImage = (indexToRemove) => {
     setSelectedImages((current) =>
       current.filter((_, index) => index !== indexToRemove),
     );
   };
+
+  /*
+   * ---------------------------------------------------------
+   * VALIDATION
+   * ---------------------------------------------------------
+   */
 
   const validateForm = () => {
     if (!formData.name.trim()) {
@@ -86,77 +117,96 @@ function ProductForm() {
     }
 
     if (!formData.price || Number(formData.price) <= 0) {
-      return "Please enter a valid product price.";
+      return "Please enter a valid selling price.";
     }
 
     if (!formData.mrp || Number(formData.mrp) <= 0) {
       return "Please enter a valid MRP.";
     }
 
-    if (formData.stock === "" || Number(formData.stock) < 0) {
+    if (Number(formData.mrp) < Number(formData.price)) {
+      return "MRP cannot be lower than the selling price.";
+    }
+
+    if (
+      formData.stock === "" ||
+      Number(formData.stock) < 0 ||
+      !Number.isInteger(Number(formData.stock))
+    ) {
       return "Please enter a valid stock quantity.";
     }
 
-    if (!formData.categoryId) {
-      return "Please enter a category ID.";
+    if (!formData.categoryId || Number(formData.categoryId) <= 0) {
+      return "Please enter a valid category ID.";
     }
 
     return null;
   };
 
+  /*
+   * ---------------------------------------------------------
+   * CREATE PRODUCT
+   * ---------------------------------------------------------
+   */
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    setError("");
+    if (loading) {
+      return;
+    }
 
+    setError("");
     setUploadStatus("");
 
     const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
-
       return;
     }
 
     const request = {
       name: formData.name.trim(),
-
       description: formData.description.trim(),
-
       price: Number(formData.price),
-
       mrp: Number(formData.mrp),
-
       stock: Number(formData.stock),
-
       categoryId: Number(formData.categoryId),
     };
 
     try {
       setLoading(true);
 
-      // =====================================================
-      // STEP 1 — CREATE PRODUCT
-      // =====================================================
+      /*
+       * =====================================================
+       * STEP 1 — CREATE PRODUCT
+       * =====================================================
+       */
+
+      setUploadStatus("Creating product...");
 
       const productResponse = await createProduct(request);
 
-      const createdProduct = productResponse.data;
+      const createdProduct = productResponse?.data;
 
       console.log("Product created:", createdProduct);
 
       const productId = createdProduct?.id;
 
       if (!productId) {
-        throw new Error("Product was created but no product ID was returned.");
+        throw new Error(
+          "Product was created, but the server did not return a product ID.",
+        );
       }
 
-      console.log("Product ID for image upload:", productId);
+      console.log("Created product ID:", productId);
 
-      // =====================================================
-      // STEP 2 — UPLOAD IMAGES
-      // =====================================================
+      /*
+       * =====================================================
+       * STEP 2 — UPLOAD IMAGES
+       * =====================================================
+       */
 
       if (selectedImages.length > 0) {
         setUploadStatus(
@@ -170,15 +220,18 @@ function ProductForm() {
         console.log("Product images uploaded successfully.");
       }
 
-      // =====================================================
-      // STEP 3 — RETURN TO PRODUCTS
-      // =====================================================
+      /*
+       * =====================================================
+       * STEP 3 — SUCCESS
+       * =====================================================
+       */
 
-      navigate("/admin/products");
+      navigate(`/admin/products/${productId}`);
     } catch (err) {
       console.error("Product creation failed:", err);
 
-      const backendMessage = err?.response?.data?.message;
+      const backendMessage =
+        err?.response?.data?.message || err?.response?.data?.error;
 
       setError(
         backendMessage ||
@@ -187,10 +240,45 @@ function ProductForm() {
       );
     } finally {
       setLoading(false);
-
       setUploadStatus("");
     }
   };
+
+  /*
+   * ---------------------------------------------------------
+   * CLEAN UP IMAGE PREVIEW URLS
+   * ---------------------------------------------------------
+   */
+
+  useEffect(() => {
+    return () => {
+      selectedImages.forEach((file) => {
+        if (file.__previewUrl) {
+          URL.revokeObjectURL(file.__previewUrl);
+        }
+      });
+    };
+  }, [selectedImages]);
+
+  /*
+   * ---------------------------------------------------------
+   * CREATE PREVIEW URL
+   * ---------------------------------------------------------
+   */
+
+  const getPreviewUrl = (file) => {
+    if (!file.__previewUrl) {
+      file.__previewUrl = URL.createObjectURL(file);
+    }
+
+    return file.__previewUrl;
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * UI
+   * ---------------------------------------------------------
+   */
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -202,7 +290,8 @@ function ProductForm() {
         <button
           type="button"
           onClick={() => navigate("/admin/products")}
-          className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#6F766F] transition hover:text-[#233636]"
+          disabled={loading}
+          className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#6F766F] transition hover:text-[#233636] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ArrowBackOutlinedIcon fontSize="small" />
           Back to Products
@@ -282,7 +371,7 @@ function ProductForm() {
             </div>
 
             <div className="space-y-5 px-6 py-7">
-              {/* Product Name */}
+              {/* PRODUCT NAME */}
 
               <TextField
                 fullWidth
@@ -293,6 +382,7 @@ function ProductForm() {
                 onChange={handleChange}
                 placeholder="e.g. Wireless Headphones"
                 variant="outlined"
+                disabled={loading}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,
@@ -313,7 +403,7 @@ function ProductForm() {
                 }}
               />
 
-              {/* Description */}
+              {/* DESCRIPTION */}
 
               <TextField
                 fullWidth
@@ -326,6 +416,7 @@ function ProductForm() {
                 onChange={handleChange}
                 placeholder="Describe the product..."
                 variant="outlined"
+                disabled={loading}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,
@@ -361,11 +452,12 @@ function ProductForm() {
                   </h3>
 
                   <p className="mt-2 text-xs leading-5 text-[#8A8378]">
-                    Add one or more images for this product.
+                    Add one or more images for this product. Each image must be
+                    10 MB or smaller.
                   </p>
                 </div>
 
-                {/* Hidden file input */}
+                {/* HIDDEN FILE INPUT */}
 
                 <input
                   ref={fileInputRef}
@@ -374,52 +466,55 @@ function ProductForm() {
                   multiple
                   onChange={handleImageSelection}
                   className="hidden"
+                  disabled={loading}
                 />
 
-                {/* Image previews */}
+                {/* IMAGE PREVIEWS */}
 
                 {selectedImages.length > 0 && (
                   <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                    {selectedImages.map((file, index) => {
-                      const previewUrl = URL.createObjectURL(file);
+                    {selectedImages.map((file, index) => (
+                      <div
+                        key={`${file.name}-${file.lastModified}-${index}`}
+                        className="group relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
+                      >
+                        <img
+                          src={getPreviewUrl(file)}
+                          alt={`Product preview ${index + 1}`}
+                          className="h-40 w-full object-cover"
+                        />
 
-                      return (
-                        <div
-                          key={`${file.name}-${index}`}
-                          className="group relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
+                        {/* REMOVE BUTTON */}
+
+                        <button
+                          type="button"
+                          onClick={() => removeSelectedImage(index)}
+                          disabled={loading}
+                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] opacity-0 transition group-hover:opacity-100 hover:bg-[#F7EDEA] disabled:cursor-not-allowed"
+                          aria-label={`Remove image ${index + 1}`}
                         >
-                          <img
-                            src={previewUrl}
-                            alt={`Product preview ${index + 1}`}
-                            className="h-40 w-full object-cover"
-                          />
+                          <DeleteOutlineOutlinedIcon fontSize="small" />
+                        </button>
 
-                          <button
-                            type="button"
-                            onClick={() => removeSelectedImage(index)}
-                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] opacity-0 transition group-hover:opacity-100 hover:bg-[#F7EDEA]"
-                            aria-label={`Remove image ${index + 1}`}
-                          >
-                            <DeleteOutlineOutlinedIcon fontSize="small" />
-                          </button>
+                        {/* FILE NAME */}
 
-                          <div className="border-t border-[#DED7C9] px-3 py-2">
-                            <p className="truncate text-xs text-[#6F766F]">
-                              {file.name}
-                            </p>
-                          </div>
+                        <div className="border-t border-[#DED7C9] px-3 py-2">
+                          <p className="truncate text-xs text-[#6F766F]">
+                            {file.name}
+                          </p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* Upload area */}
+                {/* UPLOAD AREA */}
 
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center border border-dashed border-[#B7B0A4] bg-[#FFFCF4] px-6 py-8 text-center transition hover:border-[#2D3A3A] hover:bg-[#F9F4EA]"
+                  disabled={loading}
+                  className="flex w-full flex-col items-center justify-center border border-dashed border-[#B7B0A4] bg-[#FFFCF4] px-6 py-8 text-center transition hover:border-[#2D3A3A] hover:bg-[#F9F4EA] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ImageOutlinedIcon
                     sx={{
@@ -459,7 +554,7 @@ function ProductForm() {
             </div>
 
             <div className="space-y-5 px-6 py-7">
-              {/* Price */}
+              {/* SELLING PRICE */}
 
               <TextField
                 fullWidth
@@ -479,6 +574,7 @@ function ProductForm() {
                   ),
                 }}
                 variant="outlined"
+                disabled={loading}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,
@@ -516,6 +612,7 @@ function ProductForm() {
                   ),
                 }}
                 variant="outlined"
+                disabled={loading}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,
@@ -533,7 +630,7 @@ function ProductForm() {
                 }}
               />
 
-              {/* Stock */}
+              {/* STOCK */}
 
               <TextField
                 fullWidth
@@ -548,6 +645,7 @@ function ProductForm() {
                   step: 1,
                 }}
                 variant="outlined"
+                disabled={loading}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,
@@ -565,7 +663,7 @@ function ProductForm() {
                 }}
               />
 
-              {/* Category */}
+              {/* CATEGORY */}
 
               <TextField
                 fullWidth
@@ -581,6 +679,7 @@ function ProductForm() {
                 }}
                 helperText="Use the category ID from your catalogue."
                 variant="outlined"
+                disabled={loading}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,

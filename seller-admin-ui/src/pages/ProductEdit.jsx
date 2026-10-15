@@ -21,7 +21,6 @@ import { getProductImageUrl } from "../services/imageUtils";
 
 function ProductEdit() {
   const { productId } = useParams();
-
   const navigate = useNavigate();
 
   const fileInputRef = useRef(null);
@@ -41,19 +40,54 @@ function ProductEdit() {
 
   const [existingImages, setExistingImages] = useState([]);
 
+  /*
+   * Each selected image is stored as:
+   *
+   * {
+   *   file: File,
+   *   previewUrl: string
+   * }
+   */
   const [selectedImages, setSelectedImages] = useState([]);
 
   const [loading, setLoading] = useState(true);
-
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
-
   const [success, setSuccess] = useState("");
-
   const [uploadStatus, setUploadStatus] = useState("");
 
   const [replacingImageId, setReplacingImageId] = useState(null);
+  const [deletingImageId, setDeletingImageId] = useState(null);
+
+  const textFieldSx = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 0,
+      backgroundColor: "#FFFCF4",
+
+      "& fieldset": {
+        borderColor: "#DED7C9",
+      },
+
+      "&:hover fieldset": {
+        borderColor: "#A9A195",
+      },
+
+      "&.Mui-focused fieldset": {
+        borderColor: "#2D3A3A",
+      },
+    },
+
+    "& .MuiInputLabel-root": {
+      backgroundColor: "#FFFCF4",
+      paddingLeft: "4px",
+      paddingRight: "4px",
+    },
+
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: "#2D3A3A",
+    },
+  };
 
   // ============================================================
   // LOAD PRODUCT
@@ -63,26 +97,20 @@ function ProductEdit() {
     const loadProduct = async () => {
       try {
         setLoading(true);
-
         setError("");
+        setSuccess("");
 
         const response = await getProduct(productId);
-
         const product = response.data;
 
         console.log("Loaded product:", product);
 
         setFormData({
           name: product.name || "",
-
           description: product.description || "",
-
           price: product.price ?? "",
-
           mrp: product.mrp ?? "",
-
           stock: product.stock ?? "",
-
           categoryId: product.categoryId ?? "",
         });
 
@@ -100,6 +128,20 @@ function ProductEdit() {
   }, [productId]);
 
   // ============================================================
+  // CLEANUP SELECTED IMAGE PREVIEWS
+  // ============================================================
+
+  useEffect(() => {
+    return () => {
+      selectedImages.forEach((image) => {
+        if (image.previewUrl) {
+          URL.revokeObjectURL(image.previewUrl);
+        }
+      });
+    };
+  }, [selectedImages]);
+
+  // ============================================================
   // FORM CHANGE
   // ============================================================
 
@@ -112,7 +154,6 @@ function ProductEdit() {
     }));
 
     setSuccess("");
-
     setError("");
   };
 
@@ -127,16 +168,41 @@ function ProductEdit() {
       return;
     }
 
-    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+    setError("");
+    setSuccess("");
 
-    if (validFiles.length !== files.length) {
-      setError("Only image files can be selected.");
-    } else {
-      setError("");
+    const validFiles = [];
+    const invalidFiles = [];
+
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        invalidFiles.push(`${file.name} is not an image.`);
+        return;
+      }
+
+      // Backend currently allows 10 MB per image.
+      if (file.size > 10 * 1024 * 1024) {
+        invalidFiles.push(`${file.name} exceeds the 10 MB limit.`);
+        return;
+      }
+
+      validFiles.push(file);
+    });
+
+    if (invalidFiles.length > 0) {
+      setError(invalidFiles.join(" "));
     }
 
-    setSelectedImages((current) => [...current, ...validFiles]);
+    if (validFiles.length > 0) {
+      const newImages = validFiles.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
 
+      setSelectedImages((current) => [...current, ...newImages]);
+    }
+
+    // Allows selecting the same file again.
     event.target.value = "";
   };
 
@@ -145,9 +211,15 @@ function ProductEdit() {
   // ============================================================
 
   const removeSelectedImage = (indexToRemove) => {
-    setSelectedImages((current) =>
-      current.filter((_, index) => index !== indexToRemove),
-    );
+    setSelectedImages((current) => {
+      const imageToRemove = current[indexToRemove];
+
+      if (imageToRemove?.previewUrl) {
+        URL.revokeObjectURL(imageToRemove.previewUrl);
+      }
+
+      return current.filter((_, index) => index !== indexToRemove);
+    });
   };
 
   // ============================================================
@@ -161,13 +233,16 @@ function ProductEdit() {
 
     if (!file.type.startsWith("image/")) {
       setError("Please select a valid image file.");
+      return;
+    }
 
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image size must not exceed 10 MB.");
       return;
     }
 
     try {
       setError("");
-
       setSuccess("");
 
       setReplacingImageId(imageId);
@@ -207,8 +282,9 @@ function ProductEdit() {
 
     try {
       setError("");
-
       setSuccess("");
+
+      setDeletingImageId(imageId);
 
       await deleteProductImage(productId, imageId);
 
@@ -221,6 +297,8 @@ function ProductEdit() {
       console.error("Unable to delete image:", err);
 
       setError(err?.response?.data?.message || "Unable to delete the image.");
+    } finally {
+      setDeletingImageId(null);
     }
   };
 
@@ -237,11 +315,11 @@ function ProductEdit() {
       return "Product description is required.";
     }
 
-    if (!formData.price || Number(formData.price) <= 0) {
+    if (formData.price === "" || Number(formData.price) <= 0) {
       return "Please enter a valid product price.";
     }
 
-    if (!formData.mrp || Number(formData.mrp) <= 0) {
+    if (formData.mrp === "" || Number(formData.mrp) <= 0) {
       return "Please enter a valid MRP.";
     }
 
@@ -249,8 +327,12 @@ function ProductEdit() {
       return "Please enter a valid stock quantity.";
     }
 
-    if (!formData.categoryId) {
-      return "Please enter a category ID.";
+    if (formData.categoryId === "" || Number(formData.categoryId) <= 0) {
+      return "Please enter a valid category ID.";
+    }
+
+    if (Number(formData.mrp) < Number(formData.price)) {
+      return "MRP should not be lower than the selling price.";
     }
 
     return null;
@@ -264,45 +346,37 @@ function ProductEdit() {
     event.preventDefault();
 
     setError("");
-
     setSuccess("");
-
     setUploadStatus("");
 
     const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
-
       return;
     }
 
     const request = {
       name: formData.name.trim(),
-
       description: formData.description.trim(),
-
       price: Number(formData.price),
-
       mrp: Number(formData.mrp),
-
       stock: Number(formData.stock),
-
       categoryId: Number(formData.categoryId),
     };
 
     try {
       setSaving(true);
 
-      // ==================================================
-      // UPDATE PRODUCT
-      // ==================================================
+      // ========================================================
+      // 1. UPDATE PRODUCT DETAILS
+      // ========================================================
 
       await updateProduct(productId, request);
 
-      // ==================================================
-      // UPLOAD NEW IMAGES
-      // ==================================================
+      // ========================================================
+      // 2. UPLOAD NEW IMAGES
+      // ========================================================
 
       if (selectedImages.length > 0) {
         setUploadStatus(
@@ -311,15 +385,37 @@ function ProductEdit() {
           }...`,
         );
 
-        await uploadProductImages(productId, selectedImages);
+        const files = selectedImages.map((image) => image.file);
+
+        const response = await uploadProductImages(productId, files);
+
+        /*
+         * The backend returns the newly uploaded
+         * image records.
+         *
+         * Add them to the current UI state.
+         */
+        if (Array.isArray(response.data)) {
+          setExistingImages((current) => [...current, ...response.data]);
+        }
+
+        // Release preview URLs.
+        selectedImages.forEach((image) => {
+          if (image.previewUrl) {
+            URL.revokeObjectURL(image.previewUrl);
+          }
+        });
 
         setSelectedImages([]);
       }
 
+      setUploadStatus("");
       setSuccess("Product updated successfully.");
 
-      setUploadStatus("");
-
+      /*
+       * Give the user a short confirmation,
+       * then return to product details.
+       */
       setTimeout(() => {
         navigate(`/admin/products/${productId}`);
       }, 700);
@@ -333,9 +429,16 @@ function ProductEdit() {
       );
     } finally {
       setSaving(false);
-
       setUploadStatus("");
     }
+  };
+
+  // ============================================================
+  // IMAGE ERROR HANDLER
+  // ============================================================
+
+  const handleImageError = (event) => {
+    event.currentTarget.style.display = "none";
   };
 
   // ============================================================
@@ -365,9 +468,9 @@ function ProductEdit() {
 
   return (
     <div className="mx-auto max-w-[1200px]">
-      {/* ==================================================
-                HEADER
-            ================================================== */}
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
       <div className="mb-8">
         <button
@@ -390,9 +493,9 @@ function ProductEdit() {
         </p>
       </div>
 
-      {/* ==================================================
-                ERROR
-            ================================================== */}
+      {/* ======================================================
+          ERROR
+      ====================================================== */}
 
       {error && (
         <Alert
@@ -413,9 +516,9 @@ function ProductEdit() {
         </Alert>
       )}
 
-      {/* ==================================================
-                SUCCESS
-            ================================================== */}
+      {/* ======================================================
+          SUCCESS
+      ====================================================== */}
 
       {success && (
         <Alert
@@ -433,9 +536,9 @@ function ProductEdit() {
         </Alert>
       )}
 
-      {/* ==================================================
-                UPLOAD STATUS
-            ================================================== */}
+      {/* ======================================================
+          UPLOAD STATUS
+      ====================================================== */}
 
       {uploadStatus && (
         <Alert
@@ -455,8 +558,8 @@ function ProductEdit() {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* ==================================================
-                        BASIC DETAILS
-                    ================================================== */}
+              BASIC DETAILS
+          ================================================== */}
 
           <section className="border border-[#DED7C9] bg-[#F7F1E5] lg:col-span-2">
             <div className="border-b border-[#DED7C9] px-6 py-5">
@@ -470,7 +573,7 @@ function ProductEdit() {
             </div>
 
             <div className="space-y-5 px-6 py-7">
-              {/* Product Name */}
+              {/* PRODUCT NAME */}
 
               <TextField
                 fullWidth
@@ -480,27 +583,10 @@ function ProductEdit() {
                 value={formData.name}
                 onChange={handleChange}
                 variant="outlined"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#A9A195",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
+                sx={textFieldSx}
               />
 
-              {/* Description */}
+              {/* DESCRIPTION */}
 
               <TextField
                 fullWidth
@@ -512,29 +598,12 @@ function ProductEdit() {
                 value={formData.description}
                 onChange={handleChange}
                 variant="outlined"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#A9A195",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
+                sx={textFieldSx}
               />
 
               {/* ==================================================
-                                PRODUCT IMAGES
-                            ================================================== */}
+                  PRODUCT IMAGES
+              ================================================== */}
 
               <div className="border-t border-[#DED7C9] pt-6">
                 <div className="mb-5">
@@ -552,8 +621,8 @@ function ProductEdit() {
                 </div>
 
                 {/* ==================================================
-                                    EXISTING IMAGES
-                                ================================================== */}
+                    EXISTING IMAGES
+                ================================================== */}
 
                 {existingImages.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -564,14 +633,15 @@ function ProductEdit() {
                       >
                         {/* IMAGE */}
 
-                        <div className="relative">
+                        <div className="relative flex h-48 items-center justify-center bg-white">
                           <img
                             src={getProductImageUrl(image.imageUrl)}
                             alt="Product"
-                            className="h-48 w-full object-cover"
+                            onError={handleImageError}
+                            className="h-full w-full object-contain p-2"
                           />
 
-                          {/* Replacing overlay */}
+                          {/* REPLACING OVERLAY */}
 
                           {replacingImageId === image.id && (
                             <div className="absolute inset-0 flex items-center justify-center bg-[#233636]/70">
@@ -587,31 +657,52 @@ function ProductEdit() {
                               </div>
                             </div>
                           )}
+
+                          {/* DELETING OVERLAY */}
+
+                          {deletingImageId === image.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#233636]/70">
+                              <div className="text-center text-[#FFFCF4]">
+                                <CircularProgress
+                                  size={26}
+                                  sx={{
+                                    color: "#FFFCF4",
+                                  }}
+                                />
+
+                                <p className="mt-2 text-xs">Deleting...</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* IMAGE FOOTER */}
 
                         <div className="border-t border-[#DED7C9] px-4 py-3">
-                          <div className="flex items-center justify-between">
-                            <div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
                               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
                                 Product Image
                               </p>
 
                               <p className="mt-1 text-xs text-[#6F766F]">
-                                Image {image.displayOrder}
+                                Image {image.displayOrder ?? ""}
                               </p>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {/* REPLACE */}
+                              {/* REPLACE INPUT */}
 
                               <input
                                 id={`replace-image-${image.id}`}
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
-                                disabled={replacingImageId !== null}
+                                disabled={
+                                  replacingImageId !== null ||
+                                  deletingImageId !== null ||
+                                  saving
+                                }
                                 onChange={(event) => {
                                   const file = event.target.files?.[0];
 
@@ -623,10 +714,14 @@ function ProductEdit() {
                                 }}
                               />
 
+                              {/* REPLACE BUTTON */}
+
                               <label
                                 htmlFor={`replace-image-${image.id}`}
                                 className={`flex cursor-pointer items-center gap-1 border border-[#B7B0A4] px-3 py-2 text-xs font-medium text-[#4F5955] transition hover:border-[#2D3A3A] hover:bg-[#F7F1E5] ${
-                                  replacingImageId !== null
+                                  replacingImageId !== null ||
+                                  deletingImageId !== null ||
+                                  saving
                                     ? "pointer-events-none opacity-50"
                                     : ""
                                 }`}
@@ -643,7 +738,11 @@ function ProductEdit() {
 
                               <button
                                 type="button"
-                                disabled={replacingImageId !== null}
+                                disabled={
+                                  replacingImageId !== null ||
+                                  deletingImageId !== null ||
+                                  saving
+                                }
                                 onClick={() =>
                                   handleDeleteExistingImage(image.id)
                                 }
@@ -682,8 +781,8 @@ function ProductEdit() {
                 )}
 
                 {/* ==================================================
-                                    NEW IMAGES
-                                ================================================== */}
+                    NEW IMAGES
+                ================================================== */}
 
                 <div className="mt-6">
                   <input
@@ -694,6 +793,8 @@ function ProductEdit() {
                     onChange={handleImageSelection}
                     className="hidden"
                   />
+
+                  {/* SELECTED NEW IMAGES */}
 
                   {selectedImages.length > 0 && (
                     <div className="mb-5">
@@ -708,21 +809,24 @@ function ProductEdit() {
                       </div>
 
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {selectedImages.map((file, index) => (
+                        {selectedImages.map((image, index) => (
                           <div
-                            key={`${file.name}-${index}`}
+                            key={`${image.file.name}-${index}`}
                             className="relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
                           >
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`New product ${index + 1}`}
-                              className="h-48 w-full object-cover"
-                            />
+                            <div className="flex h-48 items-center justify-center bg-white">
+                              <img
+                                src={image.previewUrl}
+                                alt={`New product ${index + 1}`}
+                                className="h-full w-full object-contain p-2"
+                              />
+                            </div>
 
                             <button
                               type="button"
                               onClick={() => removeSelectedImage(index)}
-                              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] hover:bg-[#F7EDEA]"
+                              disabled={saving}
+                              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] hover:bg-[#F7EDEA] disabled:cursor-not-allowed disabled:opacity-50"
                               title="Remove image"
                             >
                               <DeleteOutlineOutlinedIcon fontSize="small" />
@@ -730,7 +834,7 @@ function ProductEdit() {
 
                             <div className="border-t border-[#DED7C9] px-3 py-2">
                               <p className="truncate text-xs text-[#6F766F]">
-                                {file.name}
+                                {image.file.name}
                               </p>
                             </div>
                           </div>
@@ -743,8 +847,9 @@ function ProductEdit() {
 
                   <button
                     type="button"
+                    disabled={saving}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full flex-col items-center justify-center border border-dashed border-[#B7B0A4] bg-[#FFFCF4] px-6 py-8 text-center transition hover:border-[#2D3A3A] hover:bg-[#F9F4EA]"
+                    className="flex w-full flex-col items-center justify-center border border-dashed border-[#B7B0A4] bg-[#FFFCF4] px-6 py-8 text-center transition hover:border-[#2D3A3A] hover:bg-[#F9F4EA] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <ImageOutlinedIcon
                       sx={{
@@ -760,6 +865,10 @@ function ProductEdit() {
                     <span className="mt-2 text-xs text-[#8A8378]">
                       Select one or more product images
                     </span>
+
+                    <span className="mt-1 text-[10px] text-[#A39B90]">
+                      Maximum 10 MB per image
+                    </span>
                   </button>
                 </div>
               </div>
@@ -767,8 +876,8 @@ function ProductEdit() {
           </section>
 
           {/* ==================================================
-                        PRICING
-                    ================================================== */}
+              PRICING & INVENTORY
+          ================================================== */}
 
           <section className="border border-[#DED7C9] bg-[#F7F1E5]">
             <div className="border-b border-[#DED7C9] px-6 py-5">
@@ -797,21 +906,7 @@ function ProductEdit() {
                   step: "0.01",
                 }}
                 variant="outlined"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
+                sx={textFieldSx}
               />
 
               {/* MRP */}
@@ -829,21 +924,7 @@ function ProductEdit() {
                   step: "0.01",
                 }}
                 variant="outlined"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
+                sx={textFieldSx}
               />
 
               {/* STOCK */}
@@ -861,21 +942,7 @@ function ProductEdit() {
                   step: 1,
                 }}
                 variant="outlined"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
+                sx={textFieldSx}
               />
 
               {/* CATEGORY */}
@@ -895,19 +962,8 @@ function ProductEdit() {
                 helperText="Use the category ID from your catalogue."
                 variant="outlined"
                 sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
+                  ...textFieldSx,
+
                   "& .MuiFormHelperText-root": {
                     marginLeft: 0,
                     color: "#8A8378",
@@ -918,9 +974,9 @@ function ProductEdit() {
           </section>
         </div>
 
-        {/* ==================================================
-                    ACTIONS
-                ================================================== */}
+        {/* ======================================================
+            ACTIONS
+        ====================================================== */}
 
         <div className="mt-6 flex justify-end gap-3 border-t border-[#DED7C9] pt-6">
           <Button
@@ -935,6 +991,7 @@ function ProductEdit() {
               textTransform: "none",
               padding: "10px 20px",
               boxShadow: "none",
+
               "&:hover": {
                 borderColor: "#2D3A3A",
                 backgroundColor: "#F7F1E5",
@@ -947,7 +1004,9 @@ function ProductEdit() {
           <Button
             type="submit"
             variant="contained"
-            disabled={saving}
+            disabled={
+              saving || replacingImageId !== null || deletingImageId !== null
+            }
             startIcon={
               saving ? (
                 <CircularProgress
@@ -967,9 +1026,15 @@ function ProductEdit() {
               textTransform: "none",
               padding: "10px 22px",
               boxShadow: "none",
+
               "&:hover": {
                 backgroundColor: "#233636",
                 boxShadow: "none",
+              },
+
+              "&.Mui-disabled": {
+                backgroundColor: "#9AA19D",
+                color: "#F7F1E5",
               },
             }}
           >

@@ -84,7 +84,51 @@ function getItemPrice(item) {
 }
 
 function getOrderStatus(order) {
-  return order?.status || "PENDING";
+  return order?.status || "PENDING_PAYMENT";
+}
+
+function getNextStatus(currentStatus) {
+  switch (currentStatus) {
+    case "CONFIRMED":
+      return "SHIPPED";
+
+    case "SHIPPED":
+      return "OUT_FOR_DELIVERY";
+
+    case "OUT_FOR_DELIVERY":
+      return "DELIVERED";
+
+    default:
+      return null;
+  }
+}
+
+function getStatusLabel(status) {
+  switch (status) {
+    case "PENDING_PAYMENT":
+      return "Pending Payment";
+
+    case "CONFIRMED":
+      return "Confirmed";
+
+    case "SHIPPED":
+      return "Shipped";
+
+    case "OUT_FOR_DELIVERY":
+      return "Out for Delivery";
+
+    case "DELIVERED":
+      return "Delivered";
+
+    case "CANCELLED":
+      return "Cancelled";
+
+    default:
+      return String(status || "Unknown")
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
 }
 
 function StatusBadge({ status }) {
@@ -124,7 +168,7 @@ function OrderDetails() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [status, setStatus] = useState("PENDING");
+  const [status, setStatus] = useState("PENDING_PAYMENT");
 
   const [shipping, setShipping] = useState({
     name: "",
@@ -158,7 +202,7 @@ function OrderDetails() {
 
         setOrder(data);
 
-        setStatus(data?.status || "PENDING");
+        setStatus(data?.status || "PENDING_PAYMENT");
 
         const address = data?.shippingAddress || {};
 
@@ -250,23 +294,44 @@ function OrderDetails() {
   }
 
   async function handleStatusUpdate() {
+    const currentStatus = getOrderStatus(order);
+    const nextStatus = getNextStatus(currentStatus);
+
+    if (!nextStatus) {
+      setError(
+        `No further status update is available for ${getStatusLabel(
+          currentStatus,
+        )}.`,
+      );
+
+      return;
+    }
+
     try {
       setSavingStatus(true);
       setError("");
       setSuccess("");
 
-      const response = await updateOrderStatus(orderId, status);
+      const response = await updateOrderStatus(orderId, nextStatus);
 
-      setOrder(response.data);
+      const updatedOrder = response.data;
 
-      setStatus(response?.data?.status || status);
+      setOrder(updatedOrder);
 
-      setSuccess("Order status updated successfully.");
+      setStatus(updatedOrder?.status || nextStatus);
+
+      setSuccess(
+        `Order status updated to ${getStatusLabel(
+          updatedOrder?.status || nextStatus,
+        )}.`,
+      );
     } catch (err) {
       console.error("Failed to update order status:", err);
 
       setError(
-        err?.response?.data?.message || "Unable to update order status.",
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Unable to update order status.",
       );
     } finally {
       setSavingStatus(false);
@@ -700,30 +765,96 @@ function OrderDetails() {
             </div>
 
             <div className="p-6">
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-                className="w-full border border-[#DED7C9] bg-[#FBF8F0] px-4 py-4 text-sm text-[#344444] outline-none focus:border-[#9A968D]"
-              >
-                <option value="PENDING">Pending</option>
+              {(() => {
+                const nextStatus = getNextStatus(currentStatus);
 
-                <option value="CONFIRMED">Confirmed</option>
+                return (
+                  <>
+                    {/* Current status */}
+                    <div className="border border-[#DED7C9] bg-[#FBF8F0] px-4 py-4">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
+                        Current Status
+                      </p>
 
-                <option value="SHIPPED">Shipped</option>
+                      <p className="mt-2 text-sm font-medium text-[#344444]">
+                        {getStatusLabel(currentStatus)}
+                      </p>
+                    </div>
 
-                <option value="DELIVERED">Delivered</option>
+                    {/* Next status */}
+                    {nextStatus && (
+                      <>
+                        <div className="my-4 flex items-center justify-center text-[#9A968D]">
+                          ↓
+                        </div>
 
-                <option value="CANCELLED">Cancelled</option>
-              </select>
+                        <div className="border border-[#C9DCCB] bg-[#EEF5EE] px-4 py-4">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#55745A]">
+                            Next Status
+                          </p>
 
-              <button
-                type="button"
-                onClick={handleStatusUpdate}
-                disabled={savingStatus}
-                className="mt-4 w-full bg-[#2D3A3A] px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-[#233030] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {savingStatus ? "Updating..." : "Update Order Status"}
-              </button>
+                          <p className="mt-2 text-sm font-medium text-[#344444]">
+                            {getStatusLabel(nextStatus)}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleStatusUpdate}
+                          disabled={savingStatus}
+                          className="mt-4 w-full bg-[#2D3A3A] px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-[#233030] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {savingStatus
+                            ? "Updating..."
+                            : `Mark as ${getStatusLabel(nextStatus)}`}
+                        </button>
+                      </>
+                    )}
+
+                    {/* No further transition */}
+                    {!nextStatus && currentStatus === "DELIVERED" && (
+                      <div className="border border-[#C9DCCB] bg-[#EEF5EE] px-4 py-5">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#55745A]">
+                          Completed
+                        </p>
+
+                        <p className="mt-2 text-sm leading-6 text-[#596361]">
+                          This order has been delivered successfully. No further
+                          status updates are available.
+                        </p>
+                      </div>
+                    )}
+
+                    {!nextStatus && currentStatus === "CANCELLED" && (
+                      <div className="border border-[#E5C6C0] bg-[#FBF0EE] px-4 py-5">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#985F55]">
+                          Cancelled
+                        </p>
+
+                        <p className="mt-2 text-sm leading-6 text-[#596361]">
+                          This order has been cancelled. No further status
+                          updates are available.
+                        </p>
+                      </div>
+                    )}
+
+                    {!nextStatus &&
+                      currentStatus !== "DELIVERED" &&
+                      currentStatus !== "CANCELLED" && (
+                        <div className="border border-[#E6D7B8] bg-[#F9F3E5] px-4 py-5">
+                          <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#8A744B]">
+                            Waiting
+                          </p>
+
+                          <p className="mt-2 text-sm leading-6 text-[#596361]">
+                            This order cannot be advanced yet. Complete the
+                            required payment or fulfilment step first.
+                          </p>
+                        </div>
+                      )}
+                  </>
+                );
+              })()}
             </div>
           </section>
 
