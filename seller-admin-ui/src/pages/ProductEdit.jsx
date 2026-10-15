@@ -321,7 +321,7 @@ function ProductEdit() {
       setUploadStatus("");
 
       setTimeout(() => {
-        navigate("/admin/products");
+        navigate(`/admin/products/${productId}`);
       }, 700);
     } catch (err) {
       console.error("Unable to update product:", err);

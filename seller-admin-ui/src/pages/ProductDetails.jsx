@@ -1,148 +1,133 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-
-import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-
-import { Alert, Button, CircularProgress } from "@mui/material";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { getProduct } from "../services/productApi";
-
 import { getProductImageUrl } from "../services/imageUtils";
+import Loading from "../components/Loading";
 
 function ProductDetails() {
   const { productId } = useParams();
-
   const navigate = useNavigate();
 
   const [product, setProduct] = useState(null);
-
-  const [loading, setLoading] = useState(true);
-
-  const [error, setError] = useState("");
-
   const [selectedImage, setSelectedImage] = useState(null);
 
-  // ============================================================
-  // LOAD PRODUCT
-  // ============================================================
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     const loadProduct = async () => {
       try {
         setLoading(true);
-
         setError("");
 
         const response = await getProduct(productId);
+
+        if (!mounted) {
+          return;
+        }
 
         const productData = response.data;
 
         setProduct(productData);
 
+        /*
+         * Select the first product image automatically.
+         */
         if (productData.images && productData.images.length > 0) {
           setSelectedImage(productData.images[0]);
+        } else {
+          setSelectedImage(null);
         }
       } catch (err) {
-        console.error("Unable to load product:", err);
+        console.error("Failed to load product:", err);
 
-        setError(
-          err?.response?.data?.message || "Unable to load product details.",
-        );
+        if (mounted) {
+          setError(
+            "Unable to load product details. Please make sure the Seller Admin service is running.",
+          );
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadProduct();
-  }, [productId]);
 
-  // ============================================================
-  // LOADING
-  // ============================================================
+    return () => {
+      mounted = false;
+    };
+  }, [productId]);
 
   if (loading) {
     return (
-      <div className="flex min-h-[500px] items-center justify-center">
-        <div className="text-center">
-          <CircularProgress
-            size={28}
-            sx={{
-              color: "#2D3A3A",
-            }}
-          />
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loading />
+      </div>
+    );
+  }
 
-          <p className="mt-4 text-sm text-[#8A8378]">Loading product...</p>
+  if (error) {
+    return (
+      <div className="mx-auto max-w-[1500px]">
+        <div className="border border-[#D8B5AC] bg-[#F8ECE8] p-6">
+          <p className="font-serif text-xl text-[#713F36]">
+            Something went wrong
+          </p>
+
+          <p className="mt-2 text-sm text-[#8A625A]">{error}</p>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/products")}
+            className="mt-5 border border-[#713F36] bg-[#713F36] px-5 py-3 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-[#5E342D]"
+          >
+            Back to Products
+          </button>
         </div>
       </div>
     );
   }
 
-  // ============================================================
-  // ERROR
-  // ============================================================
-
-  if (error) {
+  if (!product) {
     return (
-      <div className="mx-auto max-w-[1200px]">
-        <Alert
-          severity="error"
-          sx={{
-            borderRadius: 0,
-            border: "1px solid #D4B5AF",
-            backgroundColor: "#F7EDEA",
-            color: "#5A302A",
-          }}
-        >
-          {error}
-        </Alert>
+      <div className="mx-auto max-w-[1500px]">
+        <div className="border border-[#DED7C9] bg-[#F7F1E5] p-10 text-center">
+          <p className="font-serif text-2xl text-[#233636]">
+            Product not found
+          </p>
 
-        <button
-          type="button"
-          onClick={() => navigate("/admin/products")}
-          className="mt-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#6F766F] hover:text-[#233636]"
-        >
-          <ArrowBackOutlinedIcon fontSize="small" />
-          Back to Products
-        </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/products")}
+            className="mt-5 border border-[#2D3A3A] bg-[#2D3A3A] px-5 py-3 text-xs font-semibold uppercase tracking-[0.15em] text-white"
+          >
+            Back to Products
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!product) {
-    return null;
-  }
-
   const images = product.images || [];
 
-  const isInStock = Number(product.stock) > 0;
-
-  // ============================================================
-  // PAGE
-  // ============================================================
-
   return (
-    <div className="mx-auto max-w-[1200px]">
-      {/* ==================================================
-          BACK
-      ================================================== */}
-
-      <button
-        type="button"
-        onClick={() => navigate("/admin/products")}
-        className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-[#6F766F] transition hover:text-[#233636]"
+    <div className="mx-auto max-w-[1500px]">
+      {/* Back to products */}
+      <Link
+        to="/admin/products"
+        className="mb-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6F766F] transition hover:text-[#233636]"
       >
-        <ArrowBackOutlinedIcon fontSize="small" />
+        <span className="text-lg">←</span>
         Back to Products
-      </button>
+      </Link>
 
-      {/* ==================================================
-          HEADER
-      ================================================== */}
-
-      <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+      {/* Page Header */}
+      <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8A8378]">
             Seller Console / Catalogue / Product
@@ -150,42 +135,26 @@ function ProductDetails() {
 
           <h1 className="font-serif text-4xl text-[#233636]">{product.name}</h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6F766F]">
-            {product.description}
+          <p className="mt-3 text-sm text-[#6F766F]">
+            {product.description || "Product details"}
           </p>
         </div>
 
-        <Button
-          variant="contained"
-          startIcon={<EditOutlinedIcon />}
-          onClick={() => navigate(`/admin/products/${product.id}/edit`)}
-          sx={{
-            borderRadius: 0,
-            backgroundColor: "#2D3A3A",
-            color: "#FFFCF4",
-            textTransform: "none",
-            padding: "10px 20px",
-            boxShadow: "none",
-            "&:hover": {
-              backgroundColor: "#233636",
-              boxShadow: "none",
-            },
-          }}
+        <Link
+          to={`/admin/products/${product.id}/edit`}
+          className="inline-flex items-center justify-center border border-[#2D3A3A] bg-[#2D3A3A] px-6 py-3 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-[#233030]"
         >
-          Edit Product
-        </Button>
+          ✎ &nbsp; Edit Product
+        </Link>
       </div>
 
-      {/* ==================================================
-          PRODUCT OVERVIEW
-      ================================================== */}
+      {/* Main Content */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
+        {/* =========================
+            PRODUCT GALLERY
+        ========================== */}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* ==================================================
-            IMAGE
-        ================================================== */}
-
-        <section className="border border-[#DED7C9] bg-[#F7F1E5] lg:col-span-2">
+        <section className="border border-[#DED7C9] bg-[#F7F1E5]">
           <div className="border-b border-[#DED7C9] px-6 py-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
               Product Gallery
@@ -197,65 +166,64 @@ function ProductDetails() {
           </div>
 
           <div className="p-6">
-            {/* MAIN IMAGE */}
-
-            <div className="flex h-[420px] items-center justify-center border border-[#DED7C9] bg-[#FFFCF4]">
-              {selectedImage ? (
-                <img
-                  src={getProductImageUrl(selectedImage.imageUrl)}
-                  alt={product.name}
-                  className="h-full w-full object-contain p-6"
-                />
-              ) : (
+            {images.length === 0 ? (
+              <div className="flex min-h-[400px] items-center justify-center border border-dashed border-[#CFC6B5]">
                 <div className="text-center">
-                  <ImageOutlinedIcon
-                    sx={{
-                      fontSize: 48,
-                      color: "#A9A195",
-                    }}
-                  />
-
-                  <p className="mt-3 font-serif text-lg text-[#233636]">
-                    No product image
+                  <p className="font-serif text-lg text-[#233636]">
+                    No product images
                   </p>
 
                   <p className="mt-2 text-sm text-[#8A8378]">
-                    Add images from Edit Product.
+                    Add images from the edit product page.
                   </p>
                 </div>
-              )}
-            </div>
-
-            {/* THUMBNAILS */}
-
-            {images.length > 0 && (
-              <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
-                {images.map((image) => (
-                  <button
-                    key={image.id}
-                    type="button"
-                    onClick={() => setSelectedImage(image)}
-                    className={`overflow-hidden border bg-[#FFFCF4] ${
-                      selectedImage?.id === image.id
-                        ? "border-[#2D3A3A]"
-                        : "border-[#DED7C9]"
-                    }`}
-                  >
-                    <img
-                      src={getProductImageUrl(image.imageUrl)}
-                      alt=""
-                      className="h-20 w-full object-cover"
-                    />
-                  </button>
-                ))}
               </div>
+            ) : (
+              <>
+                {/* Main Image */}
+                <div className="flex h-[500px] items-center justify-center border border-[#DED7C9] bg-[#FFFDF8] p-8">
+                  {selectedImage && (
+                    <img
+                      src={getProductImageUrl(selectedImage.imageUrl)}
+                      alt={product.name}
+                      className="h-full w-full object-contain"
+                    />
+                  )}
+                </div>
+
+                {/* Thumbnails */}
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {images.map((image) => {
+                    const isSelected = selectedImage?.id === image.id;
+
+                    return (
+                      <button
+                        key={image.id}
+                        type="button"
+                        onClick={() => setSelectedImage(image)}
+                        className={`flex h-20 w-20 items-center justify-center overflow-hidden border bg-[#FFFDF8] p-1 transition ${
+                          isSelected
+                            ? "border-[#2D3A3A] ring-1 ring-[#2D3A3A]"
+                            : "border-[#DED7C9] hover:border-[#8A8378]"
+                        }`}
+                      >
+                        <img
+                          src={getProductImageUrl(image.imageUrl)}
+                          alt={`${product.name} ${image.displayOrder || ""}`}
+                          className="h-full w-full object-contain"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         </section>
 
-        {/* ==================================================
+        {/* =========================
             PRODUCT INFORMATION
-        ================================================== */}
+        ========================== */}
 
         <section className="border border-[#DED7C9] bg-[#F7F1E5]">
           <div className="border-b border-[#DED7C9] px-6 py-5">
@@ -269,104 +237,48 @@ function ProductDetails() {
           </div>
 
           <div className="divide-y divide-[#DED7C9]">
-            {/* PRICE */}
+            <DetailRow
+              label="Selling Price"
+              value={`₹${Number(product.price || 0).toLocaleString("en-IN")}`}
+            />
 
-            <div className="px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                Selling Price
-              </p>
+            <DetailRow
+              label="MRP"
+              value={`₹${Number(product.mrp || 0).toLocaleString("en-IN")}`}
+            />
 
-              <p className="mt-2 font-serif text-2xl text-[#233636]">
-                ₹{Number(product.price).toLocaleString("en-IN")}
-              </p>
-            </div>
+            <DetailRow
+              label="Stock"
+              value={product.stock ?? 0}
+              status
+              inStock={Number(product.stock || 0) > 0}
+              statusValue={
+                Number(product.stock || 0) > 0 ? "IN STOCK" : "OUT OF STOCK"
+              }
+            />
 
-            {/* MRP */}
+            <DetailRow
+              label="Category"
+              value={
+                product.categoryName || product.categoryId || "Not specified"
+              }
+            />
 
-            <div className="px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                MRP
-              </p>
+            <DetailRow label="Product ID" value={`#${product.id}`} />
 
-              <p className="mt-2 text-sm text-[#4F5955]">
-                ₹{Number(product.mrp).toLocaleString("en-IN")}
-              </p>
-            </div>
-
-            {/* STOCK */}
-
-            <div className="px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                Stock
-              </p>
-
-              <div className="mt-2 flex items-center gap-3">
-                <p className="font-serif text-xl text-[#233636]">
-                  {product.stock}
-                </p>
-
-                <span
-                  className={`border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                    isInStock
-                      ? "border-[#C7D6C7] bg-[#EEF5EE] text-[#49664D]"
-                      : "border-[#D4B5AF] bg-[#F7EDEA] text-[#7A4A42]"
-                  }`}
-                >
-                  {isInStock ? "In Stock" : "Out of Stock"}
-                </span>
-              </div>
-            </div>
-
-            {/* CATEGORY */}
-
-            <div className="px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                Category
-              </p>
-
-              <p className="mt-2 text-sm text-[#4F5955]">
-                {product.categoryName || `Category ${product.categoryId}`}
-              </p>
-            </div>
-
-            {/* PRODUCT ID */}
-
-            <div className="px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                Product ID
-              </p>
-
-              <p className="mt-2 text-sm text-[#4F5955]">#{product.id}</p>
-            </div>
-
-            {/* IMAGE COUNT */}
-
-            <div className="px-6 py-5">
-              <div className="flex items-center gap-3">
-                <Inventory2OutlinedIcon
-                  sx={{
-                    color: "#8A8378",
-                  }}
-                />
-
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                    Images
-                  </p>
-
-                  <p className="mt-1 text-sm text-[#4F5955]">
-                    {images.length} {images.length === 1 ? "image" : "images"}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <DetailRow
+              label="Images"
+              value={`${images.length} ${
+                images.length === 1 ? "image" : "images"
+              }`}
+            />
           </div>
         </section>
       </div>
 
-      {/* ==================================================
+      {/* =========================
           DESCRIPTION
-      ================================================== */}
+      ========================== */}
 
       <section className="mt-6 border border-[#DED7C9] bg-[#F7F1E5]">
         <div className="border-b border-[#DED7C9] px-6 py-5">
@@ -380,11 +292,45 @@ function ProductDetails() {
         </div>
 
         <div className="px-6 py-6">
-          <p className="max-w-4xl text-sm leading-7 text-[#4F5955]">
+          <p className="max-w-4xl text-sm leading-7 text-[#6F766F]">
             {product.description || "No description available."}
           </p>
         </div>
       </section>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  status = false,
+  inStock = false,
+  statusValue,
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 px-6 py-5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A8378]">
+        {label}
+      </span>
+
+      {status ? (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[#2D3A3A]">{value}</span>
+
+          <span
+            className={`border px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] ${
+              inStock
+                ? "border-[#BFD2BF] bg-[#EDF4EC] text-[#4D684D]"
+                : "border-[#DABDB6] bg-[#F8ECE8] text-[#87584F]"
+            }`}
+          >
+            {statusValue}
+          </span>
+        </div>
+      ) : (
+        <span className="text-right text-sm text-[#2D3A3A]">{value}</span>
+      )}
     </div>
   );
 }
