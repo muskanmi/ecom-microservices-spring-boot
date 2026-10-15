@@ -12,10 +12,18 @@ import { deleteProduct, getProducts } from "../services/productApi";
 import { getProductImageUrl } from "../services/imageUtils";
 import { useNavigate } from "react-router-dom";
 
+import ConfirmDialog from "../components/ConfirmDialog";
+
 function Products() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Product selected for deletion
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Loading state while deleting
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -42,31 +50,63 @@ function Products() {
     }
   };
 
-  const handleDelete = async (productId, productName) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${productName}"?`,
-    );
+  /**
+   * Open delete confirmation dialog
+   */
+  const handleDeleteClick = (product) => {
+    setDeleteTarget(product);
+  };
 
-    if (!confirmed) {
+  /**
+   * Delete product after confirmation
+   */
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) {
       return;
     }
 
     try {
-      await deleteProduct(productId);
+      setDeleteLoading(true);
+      setError("");
 
+      await deleteProduct(deleteTarget.id);
+
+      // Remove deleted product from current UI
       setProducts((currentProducts) =>
-        currentProducts.filter((product) => product.id !== productId),
+        currentProducts.filter((product) => product.id !== deleteTarget.id),
       );
+
+      // Close confirmation dialog
+      setDeleteTarget(null);
     } catch (err) {
       console.error("Failed to delete product:", err);
 
-      window.alert("Unable to delete the product. Please try again.");
+      setError(
+        err?.response?.data?.message ||
+          "Unable to delete the product. Please try again.",
+      );
+    } finally {
+      setDeleteLoading(false);
     }
+  };
+
+  /**
+   * Close delete dialog
+   */
+  const handleCancelDelete = () => {
+    if (deleteLoading) {
+      return;
+    }
+
+    setDeleteTarget(null);
   };
 
   return (
     <div className="mx-auto max-w-[1500px]">
-      {/* Page Header */}
+      {/* ========================================
+          PAGE HEADER
+      ======================================== */}
+
       <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8A8378]">
@@ -102,7 +142,10 @@ function Products() {
         </Button>
       </div>
 
-      {/* Summary */}
+      {/* ========================================
+          SUMMARY
+      ======================================== */}
+
       <div className="mb-6 flex items-center justify-between border-y border-[#DED7C9] bg-[#F7F1E5] px-5 py-4">
         <div className="flex items-center gap-3">
           <Inventory2OutlinedIcon fontSize="small" className="text-[#8A8378]" />
@@ -117,7 +160,10 @@ function Products() {
         </span>
       </div>
 
-      {/* Loading */}
+      {/* ========================================
+          LOADING
+      ======================================== */}
+
       {loading && (
         <div className="flex min-h-[300px] items-center justify-center border border-[#DED7C9] bg-[#F7F1E5]">
           <div className="flex flex-col items-center gap-4">
@@ -133,7 +179,10 @@ function Products() {
         </div>
       )}
 
-      {/* Error */}
+      {/* ========================================
+          ERROR
+      ======================================== */}
+
       {!loading && error && (
         <div className="border border-[#C9A7A0] bg-[#F7EDEA] px-6 py-8">
           <p className="font-serif text-lg text-[#5A302A]">
@@ -152,7 +201,10 @@ function Products() {
         </div>
       )}
 
-      {/* Empty State */}
+      {/* ========================================
+          EMPTY STATE
+      ======================================== */}
+
       {!loading && !error && products.length === 0 && (
         <div className="border border-[#DED7C9] bg-[#F7F1E5] px-6 py-16 text-center">
           <Inventory2OutlinedIcon
@@ -169,10 +221,21 @@ function Products() {
           <p className="mt-2 text-sm text-[#8A8378]">
             Your catalogue is currently empty.
           </p>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/products/new")}
+            className="mt-6 bg-[#2D3A3A] px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#FFFCF4] transition hover:bg-[#233636]"
+          >
+            Add Your First Product
+          </button>
         </div>
       )}
 
-      {/* Products Table */}
+      {/* ========================================
+          PRODUCTS TABLE
+      ======================================== */}
+
       {!loading && !error && products.length > 0 && (
         <div className="overflow-hidden border border-[#DED7C9] bg-[#F7F1E5]">
           <div className="overflow-x-auto">
@@ -215,7 +278,10 @@ function Products() {
                       key={product.id}
                       className="border-b border-[#DED7C9] last:border-b-0 transition hover:bg-[#FFFCF4]"
                     >
-                      {/* Product */}
+                      {/* ========================================
+                          PRODUCT
+                      ======================================== */}
+
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-4">
                           <div className="h-16 w-16 shrink-0 overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]">
@@ -251,21 +317,30 @@ function Products() {
                         </div>
                       </td>
 
-                      {/* Price */}
+                      {/* ========================================
+                          PRICE
+                      ======================================== */}
+
                       <td className="px-6 py-5">
                         <span className="font-serif text-base text-[#233636]">
                           ₹{Number(product.price || 0).toLocaleString("en-IN")}
                         </span>
                       </td>
 
-                      {/* Stock */}
+                      {/* ========================================
+                          STOCK
+                      ======================================== */}
+
                       <td className="px-6 py-5">
                         <span className="text-sm text-[#4F5955]">
                           {product.stock ?? "—"}
                         </span>
                       </td>
 
-                      {/* Status */}
+                      {/* ========================================
+                          STATUS
+                      ======================================== */}
+
                       <td className="px-6 py-5">
                         {product.stock > 0 ? (
                           <span className="inline-flex border border-[#B7C8B5] bg-[#EDF4EA] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#466044]">
@@ -278,9 +353,33 @@ function Products() {
                         )}
                       </td>
 
-                      {/* Actions */}
+                      {/* ========================================
+                          ACTIONS
+                      ======================================== */}
+
                       <td className="px-6 py-5">
                         <div className="flex justify-end gap-1">
+                          {/* VIEW */}
+
+                          <Tooltip title="View product">
+                            <IconButton
+                              size="small"
+                              sx={{
+                                color: "#4F5955",
+                                "&:hover": {
+                                  backgroundColor: "#EDE7DB",
+                                },
+                              }}
+                              onClick={() =>
+                                navigate(`/admin/products/${product.id}`)
+                              }
+                            >
+                              <Inventory2OutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          {/* EDIT */}
+
                           <Tooltip title="Edit product">
                             <IconButton
                               size="small"
@@ -298,12 +397,12 @@ function Products() {
                             </IconButton>
                           </Tooltip>
 
+                          {/* DELETE */}
+
                           <Tooltip title="Delete product">
                             <IconButton
                               size="small"
-                              onClick={() =>
-                                handleDelete(product.id, product.name)
-                              }
+                              onClick={() => handleDeleteClick(product)}
                               sx={{
                                 color: "#7A4A42",
                                 "&:hover": {
@@ -324,6 +423,25 @@ function Products() {
           </div>
         </div>
       )}
+
+      {/* ========================================
+          DELETE CONFIRMATION DIALOG
+      ======================================== */}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete Product"
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.`
+            : ""
+        }
+        confirmText="Delete Product"
+        cancelText="Cancel"
+        loading={deleteLoading}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
