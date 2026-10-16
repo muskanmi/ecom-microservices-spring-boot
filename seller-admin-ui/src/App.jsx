@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AdminLayout from "./layouts/AdminLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
@@ -18,80 +19,66 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* ========================================
-            SELLER ADMIN
+            PROTECTED SELLER ADMIN
         ======================================== */}
 
-        <Route path="/admin" element={<AdminLayout />}>
-          {/* ========================================
-              DASHBOARD
-              URL: /admin
-          ======================================== */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            {/* DASHBOARD */}
+            <Route index element={<Dashboard />} />
 
-          <Route index element={<Dashboard />} />
+            {/* PRODUCTS */}
+            <Route path="products" element={<Products />} />
 
-          {/* ========================================
-              PRODUCTS
-              URL: /admin/products
-          ======================================== */}
+            {/* PRODUCT DETAILS */}
+            <Route path="products/:productId" element={<ProductDetails />} />
 
-          <Route path="products" element={<Products />} />
+            {/* EDIT PRODUCT */}
+            <Route path="products/:productId/edit" element={<ProductEdit />} />
 
-          {/* ========================================
-              PRODUCT DETAILS
-              URL: /admin/products/:productId
-          ======================================== */}
+            {/* CREATE PRODUCT */}
+            <Route path="products/new" element={<ProductForm />} />
 
-          <Route path="products/:productId" element={<ProductDetails />} />
+            {/* ORDERS */}
+            <Route path="orders" element={<Orders />} />
 
-          {/* ========================================
-              EDIT PRODUCT
-              URL: /admin/products/:productId/edit
-          ======================================== */}
+            {/* ORDER DETAILS */}
+            <Route path="orders/:orderId" element={<OrderDetails />} />
 
-          <Route path="products/:productId/edit" element={<ProductEdit />} />
-
-          {/* ========================================
-              CREATE PRODUCT
-              URL: /admin/products/new
-          ======================================== */}
-
-          <Route path="products/new" element={<ProductForm />} />
-
-          {/* ========================================
-              ORDERS
-              URL: /admin/orders
-          ======================================== */}
-
-          <Route path="orders" element={<Orders />} />
-
-          {/* ========================================
-              ORDER DETAILS
-              URL: /admin/orders/:orderId
-          ======================================== */}
-
-          <Route path="orders/:orderId" element={<OrderDetails />} />
-
-          {/* ========================================
-              SELLER ADMIN 404
-              Example:
-              /admin/something-that-does-not-exist
-          ======================================== */}
-
-          <Route path="*" element={<NotFound />} />
+            {/* SELLER ADMIN 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Route>
 
         {/* ========================================
+            UNAUTHORIZED
+        ======================================== */}
+
+        <Route
+          path="/unauthorized"
+          element={
+            <div className="min-h-screen bg-[#FFFCF4] flex items-center justify-center">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-[#263331]">
+                  Access Denied
+                </h1>
+
+                <p className="mt-3 text-[#7A817B]">
+                  Seller access is required to use this area.
+                </p>
+              </div>
+            </div>
+          }
+        />
+
+        {/* ========================================
             ROOT
-            URL: /
         ======================================== */}
 
         <Route path="/" element={<Navigate to="/admin" replace />} />
 
         {/* ========================================
             UNKNOWN URL
-            Example:
-            /abc
-            /random-page
         ======================================== */}
 
         <Route path="*" element={<NotFound />} />
