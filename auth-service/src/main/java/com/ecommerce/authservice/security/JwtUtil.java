@@ -25,12 +25,17 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String email) {
+    public String generateToken(String email, String role) {
+
         return Jwts.builder()
                 .subject(email)
+                .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .expiration(
+                        new Date(System.currentTimeMillis() + expiration))
+                .signWith(
+                        getSigningKey(),
+                        SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -38,7 +43,12 @@ public class JwtUtil {
         return getClaims(token).getSubject();
     }
 
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
+    }
+
     private Claims getClaims(String token) {
+
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
@@ -47,12 +57,16 @@ public class JwtUtil {
     }
 
     public boolean isTokenValid(String token) {
+
         try {
             Claims claims = getClaims(token);
-            return !claims.getExpiration().before(new Date());
+
+            return !claims
+                    .getExpiration()
+                    .before(new Date());
+
         } catch (Exception e) {
             return false;
         }
     }
-    
 }

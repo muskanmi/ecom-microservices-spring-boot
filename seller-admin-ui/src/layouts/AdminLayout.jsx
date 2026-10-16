@@ -5,15 +5,17 @@ import Topbar from "../components/Topbar";
 
 function AdminLayout() {
   return (
-    <div className="flex min-h-screen bg-[#FFFCF4] text-[#2D3A3A]">
-      <Sidebar />
+    <div className="min-h-screen bg-[#FFFCF4] text-[#263331]">
+      <div className="flex min-h-screen">
+        <Sidebar />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <div className="flex min-w-0 flex-1 flex-col bg-[#FFFCF4]">
+          <Topbar />
 
-        <main className="flex-1 px-8 py-10">
-          <Outlet />
-        </main>
+          <main className="flex-1 bg-[#FFFCF4] px-6 py-8 lg:px-8 lg:py-10">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

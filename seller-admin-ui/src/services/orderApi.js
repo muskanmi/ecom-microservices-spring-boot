@@ -17,3 +17,8 @@ export const updateOrderStatus = (orderId, status) => {
     status,
   });
 };
+
+export const updatePaymentStatus = (orderId, paymentStatus) =>
+  api.put(`/api/admin/orders/${orderId}/payment-status`, {
+    paymentStatus,
+  });

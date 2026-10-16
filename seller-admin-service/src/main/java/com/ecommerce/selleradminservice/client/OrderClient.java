@@ -2,6 +2,7 @@ package com.ecommerce.selleradminservice.client;
 
 import com.ecommerce.selleradminservice.dto.OrderResponse;
 import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
+import com.ecommerce.selleradminservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
@@ -31,4 +32,10 @@ public interface OrderClient {
             @PathVariable Long orderId,
             @RequestBody UpdateOrderStatusRequest request,
             @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
+
+    @PutMapping("api/orders/internal/{orderId}/payment-status")
+    OrderResponse updatePaymentStatus(
+            @PathVariable Long orderId,
+            @RequestBody UpdatePaymentStatusRequest request,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey);
 }

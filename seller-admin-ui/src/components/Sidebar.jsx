@@ -1,59 +1,69 @@
+import {
+  DashboardOutlined,
+  Inventory2Outlined,
+  ShoppingBagOutlined,
+  LogoutOutlined,
+  StorefrontOutlined,
+} from "@mui/icons-material";
 import { NavLink } from "react-router-dom";
 
-import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-
-const navigation = [
-  {
-    label: "Dashboard",
-    path: "/admin",
-    icon: DashboardOutlinedIcon,
-    end: true,
-  },
-  {
-    label: "Products",
-    path: "/admin/products",
-    icon: Inventory2OutlinedIcon,
-  },
-  {
-    label: "Orders",
-    path: "/admin/orders",
-    icon: ShoppingBagOutlinedIcon,
-  },
-];
-
 function Sidebar() {
+  const navItems = [
+    {
+      label: "Dashboard",
+      path: "/admin",
+      icon: DashboardOutlined,
+      end: true,
+    },
+    {
+      label: "Products",
+      path: "/admin/products",
+      icon: Inventory2Outlined,
+    },
+    {
+      label: "Orders",
+      path: "/admin/orders",
+      icon: ShoppingBagOutlined,
+    },
+  ];
+
   return (
-    <aside className="flex min-h-screen w-64 shrink-0 flex-col border-r border-[#DED7C9] bg-[#F7F1E5] px-6 py-7">
-      {/* Brand */}
-      <div className="mb-12 border-b border-[#DED7C9] pb-7">
-        <div className="flex items-start gap-3">
-          <div className="mt-1 flex h-9 w-9 items-center justify-center border border-[#2D3A3A] text-[#2D3A3A]">
-            <StorefrontOutlinedIcon fontSize="small" />
+    <aside className="sticky top-0 flex h-screen w-[258px] shrink-0 flex-col border-r border-[#E4DDCF] bg-[#FFFCF4]">
+      {/* =====================================================
+          BRAND
+      ====================================================== */}
+      <div className="px-6 pt-7">
+        <div className="flex items-center gap-3">
+          {/* Marketplace logo mark */}
+          <div className="flex h-[36px] w-[36px] shrink-0 items-center justify-center border border-[#164E4A] text-[#164E4A]">
+            <StorefrontOutlined sx={{ fontSize: 21 }} />
           </div>
 
+          {/* Brand */}
           <div>
-            <p className="font-serif text-xl font-semibold tracking-tight text-[#233636]">
+            <h1 className="font-serif text-[21px] font-bold tracking-[-0.02em] text-[#263331]">
               MARKETPLACE
-            </p>
+            </h1>
 
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.22em] text-[#8A8378]">
-              Seller Console
+            <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.24em] text-[#8A8F89]">
+              SELLER CONSOLE
             </p>
           </div>
         </div>
+
+        <div className="mt-8 h-px bg-[#E4DDCF]" />
       </div>
 
-      {/* Navigation */}
-      <div>
-        <p className="mb-4 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8A8378]">
+      {/* =====================================================
+          MAIN MENU
+      ====================================================== */}
+      <nav className="mt-12 px-6">
+        <p className="mb-4 px-2 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8A8F89]">
           Main Menu
         </p>
 
-        <nav className="space-y-2">
-          {navigation.map((item) => {
+        <div className="space-y-1">
+          {navItems.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -63,31 +73,56 @@ function Sidebar() {
                 end={item.end}
                 className={({ isActive }) =>
                   [
-                    "group flex items-center gap-3 border px-3 py-3 text-sm transition-all duration-200",
+                    "group flex items-center gap-4 rounded-[5px] px-4 py-3.5 transition-all duration-200",
                     isActive
-                      ? "border-[#2D3A3A] bg-[#2D3A3A] text-[#FFFCF4]"
-                      : "border-transparent text-[#6F766F] hover:border-[#DED7C9] hover:bg-[#FFFCF4] hover:text-[#233636]",
+                      ? "bg-[#164E4A] text-white"
+                      : "text-[#455451] hover:bg-[#F3EEE4] hover:text-[#164E4A]",
                   ].join(" ")
                 }
               >
-                <Icon fontSize="small" className="shrink-0" />
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      sx={{
+                        fontSize: 20,
+                        color: isActive ? "#FFFFFF" : "#164E4A",
+                      }}
+                    />
 
-                <span className="font-medium">{item.label}</span>
+                    <span className="text-[15px] font-medium">
+                      {item.label}
+                    </span>
+                  </>
+                )}
               </NavLink>
             );
           })}
-        </nav>
-      </div>
+        </div>
+      </nav>
 
-      {/* Bottom */}
-      <div className="mt-auto border-t border-[#DED7C9] pt-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
-          Seller Workspace
-        </p>
+      {/* =====================================================
+          WORKSPACE MESSAGE
+      ====================================================== */}
+      <div className="mt-auto px-6">
+        <div className="border-t border-[#E4DDCF] pt-7">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8A8F89]">
+            Seller Workspace
+          </p>
 
-        <p className="mt-3 font-serif text-sm leading-6 text-[#2D3A3A]">
-          Manage your products and orders from one place.
-        </p>
+          <p className="mt-4 max-w-[190px] font-serif text-[14px] leading-6 text-[#455451]">
+            Manage your products and orders from one place.
+          </p>
+        </div>
+
+        {/* Logout */}
+        <button
+          type="button"
+          className="mb-7 mt-8 flex w-full items-center gap-4 border-t border-[#E4DDCF] pt-7 text-left text-[#455451] transition hover:text-[#164E4A]"
+        >
+          <LogoutOutlined sx={{ fontSize: 20 }} />
+
+          <span className="text-[15px] font-medium">Log out</span>
+        </button>
       </div>
     </aside>
   );

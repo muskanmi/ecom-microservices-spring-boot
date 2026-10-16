@@ -5,6 +5,7 @@ import com.ecommerce.selleradminservice.dto.CatalogProductResponse;
 import com.ecommerce.selleradminservice.dto.CreateProductRequest;
 import com.ecommerce.selleradminservice.dto.OrderResponse;
 import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
+import com.ecommerce.selleradminservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.selleradminservice.dto.UpdateProductRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
 import com.ecommerce.selleradminservice.service.SellerAdminService;
@@ -66,6 +67,17 @@ public class SellerAdminController {
 
         return ResponseEntity.ok(
                 sellerAdminService.updateOrderStatus(
+                        orderId,
+                        request));
+    }
+
+    @PutMapping("/orders/{orderId}/payment-status")
+    public ResponseEntity<OrderResponse> updatePaymentStatus(
+            @PathVariable Long orderId,
+            @Valid @RequestBody UpdatePaymentStatusRequest request) {
+
+        return ResponseEntity.ok(
+                sellerAdminService.updatePaymentStatus(
                         orderId,
                         request));
     }

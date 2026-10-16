@@ -7,6 +7,7 @@ import com.ecommerce.selleradminservice.dto.CatalogProductResponse;
 import com.ecommerce.selleradminservice.dto.CreateProductRequest;
 import com.ecommerce.selleradminservice.dto.OrderResponse;
 import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
+import com.ecommerce.selleradminservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.selleradminservice.dto.UpdateProductRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,16 @@ public class SellerAdminService {
             UpdateOrderStatusRequest request) {
 
         return orderClient.updateOrderStatus(
+                orderId,
+                request,
+                internalServiceKey);
+    }
+
+    public OrderResponse updatePaymentStatus(
+            Long orderId,
+            UpdatePaymentStatusRequest request) {
+
+        return orderClient.updatePaymentStatus(
                 orderId,
                 request,
                 internalServiceKey);

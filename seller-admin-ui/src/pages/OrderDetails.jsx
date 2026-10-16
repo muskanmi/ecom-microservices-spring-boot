@@ -7,6 +7,7 @@ import {
   getOrder,
   updateOrderStatus,
   updateShippingInfo,
+  updatePaymentStatus,
 } from "../services/orderApi";
 
 function formatCurrency(value) {
@@ -164,11 +165,13 @@ function OrderDetails() {
   const [loading, setLoading] = useState(true);
   const [savingShipping, setSavingShipping] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [status, setStatus] = useState("PENDING_PAYMENT");
+  const [paymentStatus, setPaymentStatus] = useState("PENDING");
 
   const [shipping, setShipping] = useState({
     name: "",
@@ -203,6 +206,8 @@ function OrderDetails() {
         setOrder(data);
 
         setStatus(data?.status || "PENDING_PAYMENT");
+
+        setPaymentStatus(data?.paymentStatus || "PENDING");
 
         const address = data?.shippingAddress || {};
 
@@ -335,6 +340,43 @@ function OrderDetails() {
       );
     } finally {
       setSavingStatus(false);
+    }
+  }
+
+  async function handlePaymentStatusUpdate() {
+    if (!paymentStatus) {
+      setError("Please select a payment status.");
+      return;
+    }
+
+    try {
+      setSavingPayment(true);
+      setError("");
+      setSuccess("");
+
+      const response = await updatePaymentStatus(orderId, paymentStatus);
+
+      const updatedOrder = response.data;
+
+      setOrder(updatedOrder);
+
+      setPaymentStatus(updatedOrder?.paymentStatus || paymentStatus);
+
+      setSuccess(
+        `Payment status updated to ${
+          updatedOrder?.paymentStatus || paymentStatus
+        }.`,
+      );
+    } catch (err) {
+      console.error("Failed to update payment status:", err);
+
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Unable to update payment status.",
+      );
+    } finally {
+      setSavingPayment(false);
     }
   }
 
@@ -679,12 +721,36 @@ function OrderDetails() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between border-b border-[#DED7C9] px-6 py-5">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
-                  Payment Status
-                </span>
+              <div className="border-b border-[#DED7C9] px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#8A8378]">
+                    Payment Status
+                  </span>
 
-                <StatusBadge status={order.paymentStatus || "PENDING"} />
+                  <StatusBadge status={paymentStatus} />
+                </div>
+
+                <div className="mt-4">
+                  <select
+                    value={paymentStatus}
+                    onChange={(event) => setPaymentStatus(event.target.value)}
+                    className="w-full border border-[#DED7C9] bg-[#FBF8F0] px-4 py-3 text-sm text-[#344444] outline-none focus:border-[#2D3A3A]"
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
+                    <option value="FAILED">Failed</option>
+                    <option value="REFUNDED">Refunded</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handlePaymentStatusUpdate}
+                    disabled={savingPayment}
+                    className="mt-3 w-full bg-[#2D3A3A] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-[#233030] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {savingPayment ? "Updating..." : "Update Payment Status"}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between px-6 py-5">

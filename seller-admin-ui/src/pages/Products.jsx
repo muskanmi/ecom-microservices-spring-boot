@@ -1,418 +1,655 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-
-import { Button, CircularProgress, IconButton, Tooltip } from "@mui/material";
-
-import { deleteProduct, getProducts } from "../services/productApi";
-
+import { getProducts, deleteProduct } from "../services/productApi";
 import { getProductImageUrl } from "../services/imageUtils";
-import { useNavigate } from "react-router-dom";
 
-import ConfirmDialog from "../components/ConfirmDialog";
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
+function getProductId(product) {
+  return product?.id ?? product?.productId;
+}
+
+function getProductName(product) {
+  return product?.name || "Unnamed Product";
+}
+
+function getProductDescription(product) {
+  return product?.description || "No description available";
+}
+
+function getProductPrice(product) {
+  return product?.price ?? product?.sellingPrice ?? 0;
+}
+
+function getProductMrp(product) {
+  return product?.mrp ?? product?.maximumRetailPrice ?? 0;
+}
+
+function getProductStock(product) {
+  return Number(product?.stock ?? product?.stockQuantity ?? 0);
+}
+
+function getProductCategory(product) {
+  return (
+    product?.categoryName ||
+    product?.category ||
+    product?.categoryId ||
+    "Uncategorized"
+  );
+}
+
+function getProductImages(product) {
+  if (!Array.isArray(product?.images)) {
+    return [];
+  }
+
+  return product.images;
+}
+
+function StockBadge({ stock }) {
+  if (stock <= 0) {
+    return (
+      <span className="inline-flex whitespace-nowrap border border-[#E5C6C0] bg-[#FBF0EE] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#985F55]">
+        Out of Stock
+      </span>
+    );
+  }
+
+  if (stock <= 10) {
+    return (
+      <span className="inline-flex whitespace-nowrap border border-[#E6D7B8] bg-[#F9F3E5] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#8A744B]">
+        Low Stock
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex whitespace-nowrap border border-[#C9DCCB] bg-[#EEF5EE] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#55745A]">
+      In Stock
+    </span>
+  );
+}
+
+function DeleteModal({ product, deleting, onCancel, onConfirm }) {
+  if (!product) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#233636]/40 px-4">
+      <div className="w-full max-w-md border border-[#DED7C9] bg-[#FFFCF4] shadow-2xl">
+        {/* Header */}
+        <div className="border-b border-[#DED7C9] px-7 py-6">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#985F55]">
+            Catalogue / Delete Product
+          </p>
+
+          <h2 className="mt-3 font-serif text-2xl text-[#233636]">
+            Delete Product
+          </h2>
+        </div>
+
+        {/* Content */}
+        <div className="px-7 py-7">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center border border-[#E5C6C0] bg-[#FBF0EE] text-xl text-[#985F55]">
+            !
+          </div>
+
+          <p className="text-sm leading-6 text-[#596361]">
+            Are you sure you want to delete this product?
+          </p>
+
+          <div className="mt-5 border border-[#DED7C9] bg-[#F7F1E5] px-5 py-4">
+            <p className="font-serif text-lg text-[#233636]">
+              {getProductName(product)}
+            </p>
+
+            <p className="mt-1 text-xs text-[#8A8378]">
+              Product ID #{getProductId(product)}
+            </p>
+          </div>
+
+          <p className="mt-5 text-xs leading-5 text-[#8A8378]">
+            This action cannot be undone. The product will be removed from the
+            seller catalogue.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 border-t border-[#DED7C9] px-7 py-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="border border-[#DED7C9] bg-[#FFFCF4] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#596361] transition hover:border-[#2D3A3A] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="border border-[#985F55] bg-[#985F55] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-[#824E46] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {deleting ? "Deleting..." : "Delete Product"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Products() {
   const [products, setProducts] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  // Product selected for deletion
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
 
-  // Loading state while deleting
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const navigate = useNavigate();
+  async function loadProducts() {
+    try {
+      setLoading(true);
+      setError("");
+      setSuccess("");
+
+      const response = await getProducts();
+
+      setProducts(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error("Failed to load products:", err);
+
+      setError(err?.response?.data?.message || "Unable to load products.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadProducts();
   }, []);
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const categories = useMemo(() => {
+    const values = products
+      .map((product) => String(getProductCategory(product)))
+      .filter(Boolean);
 
-      const response = await getProducts();
+    return [...new Set(values)];
+  }, [products]);
 
-      setProducts(response.data || []);
-    } catch (err) {
-      console.error("Failed to load products:", err);
+  const filteredProducts = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
 
-      setError(
-        "Unable to load products. Please make sure the Seller Admin service is running.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    return products.filter((product) => {
+      const name = getProductName(product).toLowerCase();
 
-  /**
-   * Open delete confirmation dialog
-   */
-  const handleDeleteClick = (product) => {
-    setDeleteTarget(product);
-  };
+      const description = getProductDescription(product).toLowerCase();
 
-  /**
-   * Delete product after confirmation
-   */
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) {
+      const category = String(getProductCategory(product)).toLowerCase();
+
+      const matchesSearch =
+        !searchValue ||
+        name.includes(searchValue) ||
+        description.includes(searchValue) ||
+        category.includes(searchValue);
+
+      const matchesCategory =
+        categoryFilter === "ALL" ||
+        String(getProductCategory(product)) === categoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, search, categoryFilter]);
+
+  const totalStock = useMemo(() => {
+    return products.reduce(
+      (total, product) => total + getProductStock(product),
+      0,
+    );
+  }, [products]);
+
+  const outOfStock = useMemo(() => {
+    return products.filter((product) => getProductStock(product) <= 0).length;
+  }, [products]);
+
+  const lowStock = useMemo(() => {
+    return products.filter((product) => {
+      const stock = getProductStock(product);
+
+      return stock > 0 && stock <= 10;
+    }).length;
+  }, [products]);
+
+  function openDeleteModal(product) {
+    setSuccess("");
+    setError("");
+    setProductToDelete(product);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) {
       return;
     }
 
+    setProductToDelete(null);
+  }
+
+  async function confirmDelete() {
+    if (!productToDelete) {
+      return;
+    }
+
+    const productId = getProductId(productToDelete);
+    const productName = getProductName(productToDelete);
+
     try {
-      setDeleteLoading(true);
+      setDeleting(true);
       setError("");
+      setSuccess("");
 
-      await deleteProduct(deleteTarget.id);
+      await deleteProduct(productId);
 
-      // Remove deleted product from current UI
       setProducts((currentProducts) =>
-        currentProducts.filter((product) => product.id !== deleteTarget.id),
+        currentProducts.filter((item) => getProductId(item) !== productId),
       );
 
-      // Close confirmation dialog
-      setDeleteTarget(null);
+      setProductToDelete(null);
+
+      setSuccess(`"${productName}" was deleted successfully.`);
+
+      window.setTimeout(() => {
+        setSuccess("");
+      }, 4000);
     } catch (err) {
       console.error("Failed to delete product:", err);
 
       setError(
         err?.response?.data?.message ||
-          "Unable to delete the product. Please try again.",
+          "Unable to delete product. Please try again.",
       );
+
+      setProductToDelete(null);
     } finally {
-      setDeleteLoading(false);
+      setDeleting(false);
     }
-  };
-
-  /**
-   * Close delete dialog
-   */
-  const handleCancelDelete = () => {
-    if (deleteLoading) {
-      return;
-    }
-
-    setDeleteTarget(null);
-  };
+  }
 
   return (
-    <div className="mx-auto max-w-[1500px]">
-      {/* ========================================
-          PAGE HEADER
-      ======================================== */}
+    <>
+      <div className="mx-auto max-w-[1500px]">
+        {/* HEADER */}
+        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8A8378]">
+              Seller Console / Catalogue
+            </p>
 
-      <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8A8378]">
-            Seller Console / Catalogue
-          </p>
+            <h1 className="font-serif text-4xl text-[#233636]">Products</h1>
 
-          <h1 className="font-serif text-4xl text-[#233636]">Products</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6F766F]">
+              Manage your product catalogue, pricing, inventory and product
+              images.
+            </p>
+          </div>
 
-          <p className="mt-3 text-sm leading-6 text-[#6F766F]">
-            Manage the products available in your marketplace catalogue.
-          </p>
-        </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={loadProducts}
+              disabled={loading}
+              className="border border-[#2D3A3A] bg-[#2D3A3A] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#233030] disabled:opacity-60"
+            >
+              {loading ? "Refreshing..." : "↻ Refresh"}
+            </button>
 
-        <Button
-          variant="contained"
-          startIcon={<AddOutlinedIcon />}
-          onClick={() => navigate("/admin/products/new")}
-          sx={{
-            backgroundColor: "#2D3A3A",
-            color: "#FFFCF4",
-            borderRadius: 0,
-            textTransform: "none",
-            padding: "10px 18px",
-            fontFamily: "inherit",
-            boxShadow: "none",
-            "&:hover": {
-              backgroundColor: "#233636",
-              boxShadow: "none",
-            },
-          }}
-        >
-          Add Product
-        </Button>
-      </div>
-
-      {/* ========================================
-          SUMMARY
-      ======================================== */}
-
-      <div className="mb-6 flex items-center justify-between border-y border-[#DED7C9] bg-[#F7F1E5] px-5 py-4">
-        <div className="flex items-center gap-3">
-          <Inventory2OutlinedIcon fontSize="small" className="text-[#8A8378]" />
-
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-[#6F766F]">
-            Catalogue
-          </span>
-        </div>
-
-        <span className="font-serif text-sm text-[#233636]">
-          {products.length} {products.length === 1 ? "product" : "products"}
-        </span>
-      </div>
-
-      {/* ========================================
-          LOADING
-      ======================================== */}
-
-      {loading && (
-        <div className="flex min-h-[300px] items-center justify-center border border-[#DED7C9] bg-[#F7F1E5]">
-          <div className="flex flex-col items-center gap-4">
-            <CircularProgress
-              size={28}
-              sx={{
-                color: "#2D3A3A",
-              }}
-            />
-
-            <p className="text-sm text-[#8A8378]">Loading products...</p>
+            <Link
+              to="/admin/products/new"
+              className="border border-[#2D3A3A] bg-[#2D3A3A] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#233030]"
+            >
+              + Add Product
+            </Link>
           </div>
         </div>
-      )}
 
-      {/* ========================================
-          ERROR
-      ======================================== */}
+        {/* SUCCESS */}
+        {success && (
+          <div className="mb-6 flex items-center justify-between border border-[#C9DCCB] bg-[#EEF5EE] px-5 py-4 text-sm text-[#55745A]">
+            <span>{success}</span>
 
-      {!loading && error && (
-        <div className="border border-[#C9A7A0] bg-[#F7EDEA] px-6 py-8">
-          <p className="font-serif text-lg text-[#5A302A]">
-            Something went wrong
-          </p>
+            <button
+              type="button"
+              onClick={() => setSuccess("")}
+              className="text-[10px] font-semibold uppercase tracking-[0.15em] underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
-          <p className="mt-2 text-sm text-[#7A514A]">{error}</p>
+        {/* SUMMARY */}
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="border border-[#DED7C9] bg-[#F7F1E5] p-6">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A8378]">
+              Total Products
+            </p>
 
-          <button
-            type="button"
-            onClick={loadProducts}
-            className="mt-5 border border-[#5A302A] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#5A302A] transition hover:bg-[#5A302A] hover:text-white"
-          >
-            Try Again
-          </button>
+            <p className="mt-4 font-serif text-3xl text-[#233636]">
+              {products.length}
+            </p>
+
+            <p className="mt-2 text-xs text-[#8A8378]">Products in catalogue</p>
+          </div>
+
+          <div className="border border-[#DED7C9] bg-[#F7F1E5] p-6">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A8378]">
+              Total Inventory
+            </p>
+
+            <p className="mt-4 font-serif text-3xl text-[#233636]">
+              {totalStock}
+            </p>
+
+            <p className="mt-2 text-xs text-[#8A8378]">
+              Units currently available
+            </p>
+          </div>
+
+          <div className="border border-[#DED7C9] bg-[#F7F1E5] p-6">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8A8378]">
+              Inventory Alerts
+            </p>
+
+            <div className="mt-4 flex items-end gap-5">
+              <div>
+                <p className="font-serif text-2xl text-[#8A744B]">{lowStock}</p>
+
+                <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#8A8378]">
+                  Low
+                </p>
+              </div>
+
+              <div>
+                <p className="font-serif text-2xl text-[#985F55]">
+                  {outOfStock}
+                </p>
+
+                <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#8A8378]">
+                  Out
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* ========================================
-          EMPTY STATE
-      ======================================== */}
+        {/* FILTERS */}
+        <div className="mb-6 border border-[#DED7C9] bg-[#F7F1E5] p-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_240px]">
+            <div>
+              <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                Search Products
+              </label>
 
-      {!loading && !error && products.length === 0 && (
-        <div className="border border-[#DED7C9] bg-[#F7F1E5] px-6 py-16 text-center">
-          <Inventory2OutlinedIcon
-            sx={{
-              fontSize: 40,
-              color: "#8A8378",
-            }}
-          />
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8A8378]">
+                  ⌕
+                </span>
 
-          <h2 className="mt-4 font-serif text-2xl text-[#233636]">
-            No products yet
-          </h2>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search product name, description or category..."
+                  className="h-12 w-full border border-[#DED7C9] bg-[#FFFCF4] pl-10 pr-4 text-sm text-[#344444] outline-none placeholder:text-[#A19A90] focus:border-[#2D3A3A]"
+                />
+              </div>
+            </div>
 
-          <p className="mt-2 text-sm text-[#8A8378]">
-            Your catalogue is currently empty.
-          </p>
+            <div>
+              <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                Category
+              </label>
 
-          <button
-            type="button"
-            onClick={() => navigate("/admin/products/new")}
-            className="mt-6 bg-[#2D3A3A] px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#FFFCF4] transition hover:bg-[#233636]"
-          >
-            Add Your First Product
-          </button>
+              <select
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value)}
+                className="h-12 w-full border border-[#DED7C9] bg-[#FFFCF4] px-4 text-sm text-[#344444] outline-none focus:border-[#2D3A3A]"
+              >
+                <option value="ALL">All categories</option>
+
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* ========================================
-          PRODUCTS TABLE
-      ======================================== */}
+        {/* ERROR */}
+        {error && (
+          <div className="mb-6 flex items-center justify-between border border-[#E5C6C0] bg-[#FBF0EE] px-5 py-4 text-sm text-[#985F55]">
+            <span>{error}</span>
 
-      {!loading && !error && products.length > 0 && (
-        <div className="overflow-hidden border border-[#DED7C9] bg-[#F7F1E5]">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <button
+              type="button"
+              onClick={loadProducts}
+              className="text-[10px] font-semibold uppercase tracking-[0.15em] underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* RESULT COUNT */}
+        {!loading && !error && (
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+              {filteredProducts.length}{" "}
+              {filteredProducts.length === 1 ? "product" : "products"} shown
+            </p>
+
+            {(search || categoryFilter !== "ALL") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setCategoryFilter("ALL");
+                }}
+                className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#526766] underline"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* LOADING */}
+        {loading ? (
+          <div className="border border-[#DED7C9] bg-[#F7F1E5]">
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div
+                key={item}
+                className="h-[120px] animate-pulse border-b border-[#DED7C9] last:border-b-0"
+              />
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="border border-[#DED7C9] bg-[#F7F1E5] px-6 py-20 text-center">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-xl text-[#8A8378]">
+              ▣
+            </div>
+
+            <p className="font-serif text-2xl text-[#233636]">
+              No products found
+            </p>
+
+            <p className="mt-2 text-sm text-[#8A8378]">
+              Try changing your search or category filter.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-[#DED7C9] bg-[#F7F1E5]">
+            <table className="w-full min-w-[1150px] border-collapse">
               <thead>
                 <tr className="border-b border-[#DED7C9]">
-                  <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  <th className="px-6 py-5 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
                     Product
                   </th>
 
-                  <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  <th className="px-6 py-5 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                    Category
+                  </th>
+
+                  <th className="px-6 py-5 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
                     Price
                   </th>
 
-                  <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  <th className="px-6 py-5 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                    MRP
+                  </th>
+
+                  <th className="px-6 py-5 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
                     Stock
                   </th>
 
-                  <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  <th className="px-6 py-5 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
                     Status
                   </th>
 
-                  <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  <th className="px-6 py-5 text-right text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
                     Actions
                   </th>
                 </tr>
               </thead>
 
               <tbody>
-                {products.map((product) => {
+                {filteredProducts.map((product) => {
+                  const productId = getProductId(product);
+
+                  const images = getProductImages(product);
+
                   const firstImage =
-                    product.images && product.images.length > 0
-                      ? product.images[0].imageUrl
+                    images.length > 0
+                      ? getProductImageUrl(images[0]?.imageUrl)
                       : null;
 
-                  const imageUrl = getProductImageUrl(firstImage);
+                  const stock = getProductStock(product);
+
+                  const isBeingDeleted =
+                    deleting && getProductId(productToDelete) === productId;
 
                   return (
                     <tr
-                      key={product.id}
-                      className="border-b border-[#DED7C9] last:border-b-0 transition hover:bg-[#FFFCF4]"
+                      key={productId}
+                      className="border-b border-[#DED7C9] transition last:border-b-0 hover:bg-[#F3ECDF]"
                     >
-                      {/* ========================================
-                          PRODUCT
-                      ======================================== */}
-
+                      {/* PRODUCT */}
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-4">
                           <div className="h-16 w-16 shrink-0 overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]">
-                            {imageUrl ? (
+                            {firstImage ? (
                               <img
-                                src={imageUrl}
-                                alt={product.name}
+                                src={firstImage}
+                                alt={getProductName(product)}
                                 className="h-full w-full object-cover"
                                 onError={(event) => {
                                   event.currentTarget.style.display = "none";
                                 }}
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Inventory2OutlinedIcon
-                                  sx={{
-                                    color: "#B1AA9E",
-                                  }}
-                                />
+                              <div className="flex h-full w-full items-center justify-center text-xl text-[#A19A90]">
+                                □
                               </div>
                             )}
                           </div>
 
-                          <div>
-                            <p className="font-serif text-base text-[#233636]">
-                              {product.name}
+                          <div className="min-w-0">
+                            <Link
+                              to={`/admin/products/${productId}`}
+                              className="font-serif text-lg text-[#233636] hover:text-[#526766]"
+                            >
+                              {getProductName(product)}
+                            </Link>
+
+                            <p className="mt-1 max-w-[320px] truncate text-xs text-[#8A8378]">
+                              {getProductDescription(product)}
                             </p>
 
-                            <p className="mt-1 text-xs text-[#8A8378]">
-                              ID #{product.id}
+                            <p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-[#A19A90]">
+                              ID #{productId}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      {/* ========================================
-                          PRICE
-                      ======================================== */}
-
-                      <td className="px-6 py-5">
-                        <span className="font-serif text-base text-[#233636]">
-                          ₹{Number(product.price || 0).toLocaleString("en-IN")}
-                        </span>
+                      {/* CATEGORY */}
+                      <td className="px-6 py-5 text-sm text-[#596361]">
+                        {getProductCategory(product)}
                       </td>
 
-                      {/* ========================================
-                          STOCK
-                      ======================================== */}
-
-                      <td className="px-6 py-5">
-                        <span className="text-sm text-[#4F5955]">
-                          {product.stock ?? "—"}
-                        </span>
+                      {/* PRICE */}
+                      <td className="whitespace-nowrap px-6 py-5 font-serif text-base text-[#233636]">
+                        {formatCurrency(getProductPrice(product))}
                       </td>
 
-                      {/* ========================================
-                          STATUS
-                      ======================================== */}
-
-                      <td className="px-6 py-5">
-                        {product.stock > 0 ? (
-                          <span className="inline-flex border border-[#B7C8B5] bg-[#EDF4EA] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#466044]">
-                            In Stock
-                          </span>
-                        ) : (
-                          <span className="inline-flex border border-[#D4B5AF] bg-[#F7EDEA] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#7A4A42]">
-                            Out of Stock
-                          </span>
-                        )}
+                      {/* MRP */}
+                      <td className="whitespace-nowrap px-6 py-5 text-sm text-[#8A8378]">
+                        {formatCurrency(getProductMrp(product))}
                       </td>
 
-                      {/* ========================================
-                          ACTIONS
-                      ======================================== */}
-
+                      {/* STOCK */}
                       <td className="px-6 py-5">
-                        <div className="flex justify-end gap-1">
-                          {/* VIEW */}
+                        <p className="text-sm font-medium text-[#344444]">
+                          {stock}
+                        </p>
 
-                          <Tooltip title="View product">
-                            <IconButton
-                              size="small"
-                              sx={{
-                                color: "#4F5955",
-                                "&:hover": {
-                                  backgroundColor: "#EDE7DB",
-                                },
-                              }}
-                              onClick={() =>
-                                navigate(`/admin/products/${product.id}`)
-                              }
-                            >
-                              <Inventory2OutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                        <p className="mt-1 text-xs text-[#8A8378]">units</p>
+                      </td>
 
-                          {/* EDIT */}
+                      {/* STATUS */}
+                      <td className="px-6 py-5">
+                        <StockBadge stock={stock} />
+                      </td>
 
-                          <Tooltip title="Edit product">
-                            <IconButton
-                              size="small"
-                              sx={{
-                                color: "#4F5955",
-                                "&:hover": {
-                                  backgroundColor: "#EDE7DB",
-                                },
-                              }}
-                              onClick={() =>
-                                navigate(`/admin/products/${product.id}/edit`)
-                              }
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                      {/* ACTIONS */}
+                      <td className="px-6 py-5">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            to={`/admin/products/${productId}`}
+                            className="border border-[#DED7C9] bg-[#FFFCF4] px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#344444] transition hover:border-[#2D3A3A]"
+                          >
+                            View
+                          </Link>
 
-                          {/* DELETE */}
+                          <Link
+                            to={`/admin/products/${productId}/edit`}
+                            className="bg-[#2D3A3A] px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#233030]"
+                          >
+                            Edit
+                          </Link>
 
-                          <Tooltip title="Delete product">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteClick(product)}
-                              sx={{
-                                color: "#7A4A42",
-                                "&:hover": {
-                                  backgroundColor: "#F7EDEA",
-                                },
-                              }}
-                            >
-                              <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(product)}
+                            disabled={deleting}
+                            className="border border-[#E5C6C0] bg-[#FBF0EE] px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#985F55] transition hover:bg-[#F6E4E0] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isBeingDeleted ? "Deleting..." : "Delete"}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -421,28 +658,17 @@ function Products() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* ========================================
-          DELETE CONFIRMATION DIALOG
-      ======================================== */}
-
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Delete Product"
-        message={
-          deleteTarget
-            ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.`
-            : ""
-        }
-        confirmText="Delete Product"
-        cancelText="Cancel"
-        loading={deleteLoading}
-        onCancel={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
+      {/* DELETE CONFIRMATION */}
+      <DeleteModal
+        product={productToDelete}
+        deleting={deleting}
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDelete}
       />
-    </div>
+    </>
   );
 }
 

@@ -11,6 +11,8 @@ import ProductDetails from "./pages/ProductDetails";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
 
+import NotFound from "./pages/NotFound";
+
 function App() {
   return (
     <BrowserRouter>
@@ -68,13 +70,31 @@ function App() {
           ======================================== */}
 
           <Route path="orders/:orderId" element={<OrderDetails />} />
+
+          {/* ========================================
+              SELLER ADMIN 404
+              Example:
+              /admin/something-that-does-not-exist
+          ======================================== */}
+
+          <Route path="*" element={<NotFound />} />
         </Route>
 
         {/* ========================================
-            UNKNOWN URL
+            ROOT
+            URL: /
         ======================================== */}
 
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        <Route path="/" element={<Navigate to="/admin" replace />} />
+
+        {/* ========================================
+            UNKNOWN URL
+            Example:
+            /abc
+            /random-page
+        ======================================== */}
+
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

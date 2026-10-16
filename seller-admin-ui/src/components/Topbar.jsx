@@ -5,38 +5,47 @@ import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNone
 
 function Topbar() {
   return (
-    <header className="sticky top-0 z-10 flex h-[78px] items-center justify-between border-b border-[#DED7C9] bg-[#FFFCF4] px-8">
+    <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-[#E4DDCF] bg-[#FFFCF4] px-6 lg:px-8">
       {/* Search */}
-      <div className="flex w-full max-w-md items-center gap-3 border border-[#DED7C9] bg-[#F7F1E5] px-4 py-2.5 transition focus-within:border-[#2D3A3A]">
-        <SearchOutlinedIcon fontSize="small" className="text-[#8A8378]" />
+      <div className="flex w-full max-w-[560px] items-center gap-3 rounded-[6px] bg-[#F3EEE4] px-4 py-2.5">
+        <SearchOutlinedIcon fontSize="small" className="text-[#6F766F]" />
 
         <InputBase
           placeholder="Search products, orders..."
           className="flex-1 text-sm"
           sx={{
+            "& input": {
+              color: "#263331",
+              fontSize: "14px",
+            },
             "& input::placeholder": {
-              color: "#8A8378",
+              color: "#8A8F89",
               opacity: 1,
             },
           }}
         />
       </div>
 
-      {/* Right */}
+      {/* Right side */}
       <div className="ml-6 flex shrink-0 items-center gap-5">
         <Tooltip title="Notifications">
           <IconButton
             aria-label="Notifications"
             size="small"
             sx={{
-              color: "#2D3A3A",
+              color: "#164E4A",
             }}
           >
             <Badge
               variant="dot"
               sx={{
                 "& .MuiBadge-badge": {
-                  backgroundColor: "#E9B44C",
+                  backgroundColor: "#E9B12C",
+                  minWidth: 7,
+                  height: 7,
+                  padding: 0,
+                  top: 3,
+                  right: 3,
                 },
               }}
             >
@@ -45,15 +54,15 @@ function Topbar() {
           </IconButton>
         </Tooltip>
 
-        <div className="h-8 w-px bg-[#DED7C9]" />
+        <div className="h-8 w-px bg-[#E4DDCF]" />
 
         <div className="flex items-center gap-3">
           <Avatar
             sx={{
               width: 38,
               height: 38,
-              bgcolor: "#E9B44C",
-              color: "#233636",
+              bgcolor: "#E9B12C",
+              color: "#164E4A",
               fontFamily: "Georgia, serif",
               fontWeight: 700,
             }}
@@ -62,11 +71,11 @@ function Topbar() {
           </Avatar>
 
           <div>
-            <p className="font-serif text-sm font-semibold text-[#233636]">
+            <p className="font-serif text-sm font-semibold text-[#263331]">
               Seller
             </p>
 
-            <p className="mt-0.5 text-[11px] uppercase tracking-wider text-[#8A8378]">
+            <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-[#8A8F89]">
               Administrator
             </p>
           </div>
