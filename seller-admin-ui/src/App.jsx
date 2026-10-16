@@ -3,6 +3,9 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
@@ -14,10 +17,43 @@ import OrderDetails from "./pages/OrderDetails";
 
 import NotFound from "./pages/NotFound";
 
+function Unauthorized() {
+  return (
+    <div className="min-h-screen bg-[#FFFCF4] flex items-center justify-center px-6">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-[#263331]">Access Denied</h1>
+
+        <p className="mt-3 text-[#7A817B]">
+          Seller access is required to use this area.
+        </p>
+
+        <a
+          href="/login"
+          className="inline-block mt-6 px-5 py-3 bg-[#164E4A] text-white rounded"
+        >
+          Go to Login
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ========================================
+            PUBLIC AUTH ROUTES
+        ======================================== */}
+
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/register" element={<RegisterPage />} />
+
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
         {/* ========================================
             PROTECTED SELLER ADMIN
         ======================================== */}
@@ -45,37 +81,10 @@ function App() {
             {/* ORDER DETAILS */}
             <Route path="orders/:orderId" element={<OrderDetails />} />
 
-            {/* SELLER ADMIN 404 */}
+            {/* ADMIN 404 */}
             <Route path="*" element={<NotFound />} />
           </Route>
         </Route>
-
-        {/* ========================================
-            UNAUTHORIZED
-        ======================================== */}
-
-        <Route
-          path="/unauthorized"
-          element={
-            <div className="min-h-screen bg-[#FFFCF4] flex items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-[#263331]">
-                  Access Denied
-                </h1>
-
-                <p className="mt-3 text-[#7A817B]">
-                  Seller access is required to use this area.
-                </p>
-              </div>
-            </div>
-          }
-        />
-
-        {/* ========================================
-            ROOT
-        ======================================== */}
-
-        <Route path="/" element={<Navigate to="/admin" replace />} />
 
         {/* ========================================
             UNKNOWN URL

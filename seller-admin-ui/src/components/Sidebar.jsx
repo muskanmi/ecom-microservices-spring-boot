@@ -5,9 +5,11 @@ import {
   LogoutOutlined,
   StorefrontOutlined,
 } from "@mui/icons-material";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 function Sidebar() {
+  const navigate = useNavigate();
+
   const navItems = [
     {
       label: "Dashboard",
@@ -27,6 +29,12 @@ function Sidebar() {
     },
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+
+    navigate("/login", { replace: true });
+  };
+
   return (
     <aside className="sticky top-0 flex h-screen w-[258px] shrink-0 flex-col border-r border-[#E4DDCF] bg-[#FFFCF4]">
       {/* =====================================================
@@ -34,12 +42,10 @@ function Sidebar() {
       ====================================================== */}
       <div className="px-6 pt-7">
         <div className="flex items-center gap-3">
-          {/* Marketplace logo mark */}
           <div className="flex h-[36px] w-[36px] shrink-0 items-center justify-center border border-[#164E4A] text-[#164E4A]">
             <StorefrontOutlined sx={{ fontSize: 21 }} />
           </div>
 
-          {/* Brand */}
           <div>
             <h1 className="font-serif text-[21px] font-bold tracking-[-0.02em] text-[#263331]">
               MARKETPLACE
@@ -117,6 +123,7 @@ function Sidebar() {
         {/* Logout */}
         <button
           type="button"
+          onClick={handleLogout}
           className="mb-7 mt-8 flex w-full items-center gap-4 border-t border-[#E4DDCF] pt-7 text-left text-[#455451] transition hover:text-[#164E4A]"
         >
           <LogoutOutlined sx={{ fontSize: 20 }} />
