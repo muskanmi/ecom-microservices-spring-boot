@@ -7,6 +7,8 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
 import Dashboard from "./pages/Dashboard";
+import Account from "./pages/Account";
+
 import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
 import ProductEdit from "./pages/ProductEdit";
@@ -62,6 +64,9 @@ function App() {
           <Route path="/admin" element={<AdminLayout />}>
             {/* DASHBOARD */}
             <Route index element={<Dashboard />} />
+
+            {/* SELLER ACCOUNT */}
+            <Route path="account" element={<Account />} />
 
             {/* PRODUCTS */}
             <Route path="products" element={<Products />} />

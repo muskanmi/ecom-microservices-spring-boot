@@ -1,9 +1,50 @@
-import { Avatar, Badge, IconButton, InputBase, Tooltip } from "@mui/material";
+import { useState } from "react";
+import {
+  Avatar,
+  Badge,
+  Divider,
+  IconButton,
+  InputBase,
+  Menu,
+  MenuItem,
+  Tooltip,
+} from "@mui/material";
 
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+
+import { useNavigate } from "react-router-dom";
 
 function Topbar() {
+  const navigate = useNavigate();
+
+  const [accountAnchorEl, setAccountAnchorEl] = useState(null);
+
+  const accountMenuOpen = Boolean(accountAnchorEl);
+
+  const handleAccountClick = (event) => {
+    setAccountAnchorEl(event.currentTarget);
+  };
+
+  const handleAccountClose = () => {
+    setAccountAnchorEl(null);
+  };
+
+  const handleAccountNavigation = (path) => {
+    handleAccountClose();
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    handleAccountClose();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-[#E4DDCF] bg-[#FFFCF4] px-6 lg:px-8">
       {/* Search */}
@@ -28,6 +69,7 @@ function Topbar() {
 
       {/* Right side */}
       <div className="ml-6 flex shrink-0 items-center gap-5">
+        {/* Notifications */}
         <Tooltip title="Notifications">
           <IconButton
             aria-label="Notifications"
@@ -56,7 +98,13 @@ function Topbar() {
 
         <div className="h-8 w-px bg-[#E4DDCF]" />
 
-        <div className="flex items-center gap-3">
+        {/* Seller Account */}
+        <button
+          type="button"
+          onClick={handleAccountClick}
+          className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-[#F3EEE4]"
+          aria-label="Seller account menu"
+        >
           <Avatar
             sx={{
               width: 38,
@@ -70,7 +118,7 @@ function Topbar() {
             S
           </Avatar>
 
-          <div>
+          <div className="text-left">
             <p className="font-serif text-sm font-semibold text-[#263331]">
               Seller
             </p>
@@ -79,7 +127,139 @@ function Topbar() {
               Administrator
             </p>
           </div>
-        </div>
+        </button>
+
+        {/* Account Menu */}
+        <Menu
+          anchorEl={accountAnchorEl}
+          open={accountMenuOpen}
+          onClose={handleAccountClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "right",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
+          PaperProps={{
+            sx: {
+              mt: 1.5,
+              width: 240,
+              backgroundColor: "#FFFCF4",
+              border: "1px solid #E4DDCF",
+              borderRadius: "6px",
+              boxShadow: "0 10px 30px rgba(38, 51, 49, 0.10)",
+              overflow: "hidden",
+            },
+          }}
+        >
+          {/* Account header */}
+          <div className="px-4 py-3">
+            <p className="font-serif text-sm font-semibold text-[#263331]">
+              Seller Account
+            </p>
+
+            <p className="mt-1 text-xs text-[#7A817B]">
+              Manage your seller account
+            </p>
+          </div>
+
+          <Divider sx={{ borderColor: "#E4DDCF" }} />
+
+          {/* My Profile */}
+          <MenuItem
+            onClick={() => handleAccountNavigation("/admin/account")}
+            sx={{
+              py: 1.4,
+              px: 2,
+              color: "#263331",
+              "&:hover": {
+                backgroundColor: "#F3EEE4",
+              },
+            }}
+          >
+            <PersonOutlineOutlinedIcon
+              sx={{
+                fontSize: 20,
+                mr: 1.5,
+                color: "#164E4A",
+              }}
+            />
+
+            <span className="text-sm">My Profile</span>
+          </MenuItem>
+
+          {/* Seller Account */}
+          <MenuItem
+            onClick={() => handleAccountNavigation("/admin/account")}
+            sx={{
+              py: 1.4,
+              px: 2,
+              color: "#263331",
+              "&:hover": {
+                backgroundColor: "#F3EEE4",
+              },
+            }}
+          >
+            <StorefrontOutlinedIcon
+              sx={{
+                fontSize: 20,
+                mr: 1.5,
+                color: "#164E4A",
+              }}
+            />
+
+            <span className="text-sm">Seller Account</span>
+          </MenuItem>
+
+          {/* Settings */}
+          <MenuItem
+            onClick={() => handleAccountNavigation("/admin/account")}
+            sx={{
+              py: 1.4,
+              px: 2,
+              color: "#263331",
+              "&:hover": {
+                backgroundColor: "#F3EEE4",
+              },
+            }}
+          >
+            <SettingsOutlinedIcon
+              sx={{
+                fontSize: 20,
+                mr: 1.5,
+                color: "#164E4A",
+              }}
+            />
+
+            <span className="text-sm">Settings</span>
+          </MenuItem>
+
+          <Divider sx={{ borderColor: "#E4DDCF" }} />
+
+          {/* Logout */}
+          <MenuItem
+            onClick={handleLogout}
+            sx={{
+              py: 1.4,
+              px: 2,
+              color: "#8B3A3A",
+              "&:hover": {
+                backgroundColor: "#F7ECE7",
+              },
+            }}
+          >
+            <LogoutOutlinedIcon
+              sx={{
+                fontSize: 20,
+                mr: 1.5,
+              }}
+            />
+
+            <span className="text-sm">Log out</span>
+          </MenuItem>
+        </Menu>
       </div>
     </header>
   );

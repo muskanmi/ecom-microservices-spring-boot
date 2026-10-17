@@ -26,4 +26,72 @@ export const currentUser = (token) => {
   });
 };
 
+/* ========================================
+   PROFILE
+======================================== */
+
+export const updateProfile = (token, data) => {
+  return authApi.put("/me", data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+/* ========================================
+   SELLER PROFILE
+======================================== */
+
+export const getSellerProfile = (token) => {
+  return authApi.get("/seller-profile", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const createSellerProfile = (token, data) => {
+  return authApi.post("/seller-profile", data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const updateSellerProfile = (token, data) => {
+  return authApi.put("/seller-profile", data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+/* ========================================
+   PASSWORD
+======================================== */
+
+export const changePassword = (token, data) => {
+  return authApi.put("/me/password", data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+/* ========================================
+   AVATAR
+======================================== */
+
+export const uploadAvatar = (token, file) => {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  return authApi.post("/me/avatar", formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
 export default authApi;

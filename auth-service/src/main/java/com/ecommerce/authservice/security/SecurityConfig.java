@@ -57,6 +57,8 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/uploads/**")
                         .permitAll()
+                        .requestMatchers("/api/auth/seller-profile")
+                        .authenticated()
                         .anyRequest()
                         .authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

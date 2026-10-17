@@ -93,6 +93,24 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/seller-profile")
+    public ResponseEntity<SellerProfileResponse> getSellerProfile() {
+
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+
+        SellerProfile sellerProfile = authService.getSellerProfile(email);
+
+        SellerProfileResponse response = new SellerProfileResponse(
+                sellerProfile.getId(),
+                sellerProfile.getUserId(),
+                sellerProfile.getShopName(),
+                sellerProfile.getApprovalStatus());
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/seller-profile")
     public ResponseEntity<SellerProfileResponse> createSellerProfile(
             @Valid @RequestBody CreateSellerProfileRequest request) {

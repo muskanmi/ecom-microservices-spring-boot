@@ -97,6 +97,26 @@ public class AuthService {
     }
 
     @Transactional
+    public SellerProfile getSellerProfile(String email) {
+
+        User user = getUserByEmail(email);
+
+        if (!user.getRole().equals("SELLER")) {
+            throw new RuntimeException(
+                    "Only Seller can access seller profile");
+        }
+
+        SellerProfile sellerProfile = sellerProfileRepository.findByUserId(user.getId());
+
+        if (sellerProfile == null) {
+            throw new RuntimeException(
+                    "Seller Profile does not exist");
+        }
+
+        return sellerProfile;
+    }
+
+    @Transactional
     public SellerProfile createSellerProfile(String email, CreateSellerProfileRequest request) {
         User user = getUserByEmail(email);
 
