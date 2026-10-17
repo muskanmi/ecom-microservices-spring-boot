@@ -13,6 +13,7 @@ import {
   updateProfile,
   updateSellerProfile,
   changePassword,
+  uploadAvatar,
 } from "../services/authApi";
 
 function Account() {
@@ -61,6 +62,13 @@ function Account() {
   });
 
   const [passwordSaving, setPasswordSaving] = useState(false);
+
+  /* ========================================
+     AVATAR
+  ======================================== */
+
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarVersion, setAvatarVersion] = useState(Date.now());
 
   /* ========================================
      LOAD ACCOUNT
@@ -351,6 +359,63 @@ function Account() {
   };
 
   /* ========================================
+     AVATAR HANDLER
+  ======================================== */
+
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setErrorMessage("Your session has expired. Please log in again.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.type !== "image/jpeg") {
+      setErrorMessage("Only JPG images are allowed.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage("Image size must not exceed 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setAvatarUploading(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const response = await uploadAvatar(token, file);
+
+      setUser(response.data);
+
+      // Prevent browser cache from showing the previous avatar.
+      setAvatarVersion(Date.now());
+
+      setSuccessMessage("Profile picture updated successfully.");
+    } catch (error) {
+      console.error("Failed to upload avatar:", error);
+
+      setErrorMessage(
+        error.response?.data?.message ||
+          "Unable to update your profile picture.",
+      );
+    } finally {
+      setAvatarUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  /* ========================================
      LOADING
   ======================================== */
 
@@ -433,24 +498,45 @@ function Account() {
           <div className="p-6">
             {/* Profile header */}
             <div className="flex items-center gap-5">
-              <Avatar
-                src={
-                  user.avatarUrl
-                    ? `http://localhost:8081${user.avatarUrl}`
-                    : undefined
-                }
-                sx={{
-                  width: 72,
-                  height: 72,
-                  bgcolor: "#E9B12C",
-                  color: "#164E4A",
-                  fontFamily: "Georgia, serif",
-                  fontSize: "28px",
-                  fontWeight: 700,
-                }}
-              >
-                {user.name?.charAt(0)?.toUpperCase() || "S"}
-              </Avatar>
+              <div className="relative">
+                <Avatar
+                  src={
+                    user.avatarUrl
+                      ? `http://localhost:8081${user.avatarUrl}?v=${avatarVersion}`
+                      : undefined
+                  }
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    bgcolor: "#E9B12C",
+                    color: "#164E4A",
+                    fontFamily: "Georgia, serif",
+                    fontSize: "28px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {user.name?.charAt(0)?.toUpperCase() || "S"}
+                </Avatar>
+
+                <label
+                  htmlFor="seller-avatar-upload"
+                  className={`absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-[#F7F1E5] bg-[#164E4A] text-sm text-white transition hover:bg-[#123F3B] ${
+                    avatarUploading ? "pointer-events-none opacity-50" : ""
+                  }`}
+                  title="Change profile picture"
+                >
+                  ✎
+                </label>
+
+                <input
+                  id="seller-avatar-upload"
+                  type="file"
+                  accept="image/jpeg"
+                  onChange={handleAvatarChange}
+                  disabled={avatarUploading}
+                  className="hidden"
+                />
+              </div>
 
               <div>
                 <h3 className="font-serif text-xl font-semibold text-[#263331]">
@@ -462,6 +548,12 @@ function Account() {
                 <span className="mt-2 inline-block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#164E4A]">
                   {user.role}
                 </span>
+
+                {avatarUploading && (
+                  <p className="mt-2 text-xs text-[#7A817B]">
+                    Uploading profile picture...
+                  </p>
+                )}
               </div>
             </div>
 
@@ -496,8 +588,8 @@ function Account() {
                   </p>
 
                   <div className="mt-2 text-sm text-[#263331]">
-                    {user.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString("en-IN", {
+                    {user.memberSince
+                      ? new Date(user.memberSince).toLocaleDateString("en-IN", {
                           day: "2-digit",
                           month: "long",
                           year: "numeric",

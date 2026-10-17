@@ -90,6 +90,7 @@ export const uploadAvatar = (token, file) => {
   return authApi.post("/me/avatar", formData, {
     headers: {
       Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
     },
   });
 };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Avatar,
   Badge,
@@ -19,12 +19,34 @@ import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 
 import { useNavigate } from "react-router-dom";
 
+import { currentUser } from "../services/authApi";
+
 function Topbar() {
   const navigate = useNavigate();
 
   const [accountAnchorEl, setAccountAnchorEl] = useState(null);
+  const [user, setUser] = useState(null);
 
   const accountMenuOpen = Boolean(accountAnchorEl);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await currentUser(token);
+        setUser(response.data);
+      } catch (error) {
+        console.error("Failed to load seller information:", error);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const handleAccountClick = (event) => {
     setAccountAnchorEl(event.currentTarget);
@@ -45,9 +67,21 @@ function Topbar() {
     navigate("/login", { replace: true });
   };
 
+  const displayName = user?.name || "Seller";
+  const role = user?.role || "SELLER";
+
+  const avatarLetter = user?.name?.trim()?.charAt(0)?.toUpperCase() || "S";
+
+  const avatarUrl = user?.avatarUrl
+    ? `http://localhost:8081${user.avatarUrl}`
+    : undefined;
+
   return (
     <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-[#E4DDCF] bg-[#FFFCF4] px-6 lg:px-8">
-      {/* Search */}
+      {/* =====================================================
+          SEARCH
+      ===================================================== */}
+
       <div className="flex w-full max-w-[560px] items-center gap-3 rounded-[6px] bg-[#F3EEE4] px-4 py-2.5">
         <SearchOutlinedIcon fontSize="small" className="text-[#6F766F]" />
 
@@ -67,9 +101,15 @@ function Topbar() {
         />
       </div>
 
-      {/* Right side */}
+      {/* =====================================================
+          RIGHT SIDE
+      ===================================================== */}
+
       <div className="ml-6 flex shrink-0 items-center gap-5">
-        {/* Notifications */}
+        {/* =================================================
+            NOTIFICATIONS
+        ================================================= */}
+
         <Tooltip title="Notifications">
           <IconButton
             aria-label="Notifications"
@@ -98,7 +138,10 @@ function Topbar() {
 
         <div className="h-8 w-px bg-[#E4DDCF]" />
 
-        {/* Seller Account */}
+        {/* =================================================
+            SELLER ACCOUNT BUTTON
+        ================================================= */}
+
         <button
           type="button"
           onClick={handleAccountClick}
@@ -106,6 +149,7 @@ function Topbar() {
           aria-label="Seller account menu"
         >
           <Avatar
+            src={avatarUrl}
             sx={{
               width: 38,
               height: 38,
@@ -115,21 +159,24 @@ function Topbar() {
               fontWeight: 700,
             }}
           >
-            S
+            {avatarLetter}
           </Avatar>
 
           <div className="text-left">
-            <p className="font-serif text-sm font-semibold text-[#263331]">
-              Seller
+            <p className="max-w-[180px] truncate font-serif text-sm font-semibold text-[#263331]">
+              {displayName}
             </p>
 
             <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-[#8A8F89]">
-              Administrator
+              {role}
             </p>
           </div>
         </button>
 
-        {/* Account Menu */}
+        {/* =================================================
+            ACCOUNT MENU
+        ================================================= */}
+
         <Menu
           anchorEl={accountAnchorEl}
           open={accountMenuOpen}
@@ -154,20 +201,26 @@ function Topbar() {
             },
           }}
         >
-          {/* Account header */}
+          {/* =================================================
+              ACCOUNT HEADER
+          ================================================= */}
+
           <div className="px-4 py-3">
             <p className="font-serif text-sm font-semibold text-[#263331]">
               Seller Account
             </p>
 
             <p className="mt-1 text-xs text-[#7A817B]">
-              Manage your seller account
+              {user?.email || "Manage your seller account"}
             </p>
           </div>
 
           <Divider sx={{ borderColor: "#E4DDCF" }} />
 
-          {/* My Profile */}
+          {/* =================================================
+              MY PROFILE
+          ================================================= */}
+
           <MenuItem
             onClick={() => handleAccountNavigation("/admin/account")}
             sx={{
@@ -190,7 +243,10 @@ function Topbar() {
             <span className="text-sm">My Profile</span>
           </MenuItem>
 
-          {/* Seller Account */}
+          {/* =================================================
+              SELLER ACCOUNT
+          ================================================= */}
+
           <MenuItem
             onClick={() => handleAccountNavigation("/admin/account")}
             sx={{
@@ -213,9 +269,12 @@ function Topbar() {
             <span className="text-sm">Seller Account</span>
           </MenuItem>
 
-          {/* Settings */}
+          {/* =================================================
+              SETTINGS
+          ================================================= */}
+
           <MenuItem
-            onClick={() => handleAccountNavigation("/admin/account")}
+            onClick={() => handleAccountNavigation("/admin/settings")}
             sx={{
               py: 1.4,
               px: 2,
@@ -238,7 +297,10 @@ function Topbar() {
 
           <Divider sx={{ borderColor: "#E4DDCF" }} />
 
-          {/* Logout */}
+          {/* =================================================
+              LOG OUT
+          ================================================= */}
+
           <MenuItem
             onClick={handleLogout}
             sx={{

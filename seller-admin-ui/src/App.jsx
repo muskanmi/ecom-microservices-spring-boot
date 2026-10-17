@@ -8,6 +8,7 @@ import RegisterPage from "./pages/RegisterPage";
 
 import Dashboard from "./pages/Dashboard";
 import Account from "./pages/Account";
+import Settings from "./pages/Settings";
 
 import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
@@ -67,6 +68,9 @@ function App() {
 
             {/* SELLER ACCOUNT */}
             <Route path="account" element={<Account />} />
+
+            {/* SETTINGS */}
+            <Route path="settings" element={<Settings />} />
 
             {/* PRODUCTS */}
             <Route path="products" element={<Products />} />
