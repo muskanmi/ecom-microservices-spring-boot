@@ -1,7 +1,9 @@
+
 package com.ecommerce.catalogservice.repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -11,6 +13,10 @@ import org.springframework.data.repository.query.Param;
 import com.ecommerce.catalogservice.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+        // =========================================================
+        // PUBLIC PRODUCT SEARCH
+        // =========================================================
 
         @Query("""
                         SELECT p FROM Product p
@@ -24,12 +30,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                         @Param("minPrice") BigDecimal minPrice,
                         @Param("maxPrice") BigDecimal maxPrice);
 
+        // =========================================================
+        // SELLER PRODUCT OWNERSHIP
+        // =========================================================
+
+        List<Product> findBySellerId(Long sellerId);
+
+        Optional<Product> findByIdAndSellerId(Long id, Long sellerId);
+
+        // =========================================================
+        // STOCK MANAGEMENT
+        // =========================================================
+
         @Modifying
         @Query("""
-                            UPDATE Product p
-                            SET p.stock = p.stock - :quantity
-                            WHERE p.id = :productId
-                              AND p.stock >= :quantity
+                        UPDATE Product p
+                        SET p.stock = p.stock - :quantity
+                        WHERE p.id = :productId
+                          AND p.stock >= :quantity
                         """)
         int deductStockIfAvailable(
                         @Param("productId") Long productId,
@@ -37,9 +55,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
         @Modifying
         @Query("""
-                         UPDATE Product p
-                         SET p.stock = p.stock + :quantity
-                         WHERE p.id = :productId
+                        UPDATE Product p
+                        SET p.stock = p.stock + :quantity
+                        WHERE p.id = :productId
                         """)
         int restoreStock(
                         @Param("productId") Long productId,

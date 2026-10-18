@@ -1,3 +1,4 @@
+
 package com.ecommerce.selleradminservice.security;
 
 import java.io.IOException;
@@ -30,8 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null
-                && authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
 
             String token = authHeader.substring(7);
 
@@ -39,19 +39,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 String email = jwtUtil.extractEmail(token);
                 String role = jwtUtil.extractRole(token);
+                Long userId = jwtUtil.extractUserId(token);
 
-                if (role != null) {
+                if (role != null && userId != null) {
 
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
-                            "ROLE_" + role);
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
 
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             email,
                             null,
                             List.of(authority));
 
-                    SecurityContextHolder
-                            .getContext()
+                    authentication.setDetails(userId);
+
+                    SecurityContextHolder.getContext()
                             .setAuthentication(authentication);
                 }
             }

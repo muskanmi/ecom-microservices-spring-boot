@@ -1,3 +1,4 @@
+
 package com.ecommerce.selleradminservice.client;
 
 import com.ecommerce.selleradminservice.dto.CatalogProductImageResponse;
@@ -17,49 +18,65 @@ import java.util.List;
 public interface CatalogClient {
 
     // =========================================================
-    // PRODUCTS
+    // SELLER PRODUCTS
     // =========================================================
 
-    @GetMapping("/api/products")
+    @GetMapping("/api/products/internal/seller")
     List<CatalogProductResponse> getAllProducts(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice);
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @RequestParam("sellerId") Long sellerId,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "minPrice", required = false) BigDecimal minPrice,
+            @RequestParam(value = "maxPrice", required = false) BigDecimal maxPrice);
 
-    @PostMapping("/api/products")
+    @GetMapping("/api/products/internal/seller/{productId}")
+    CatalogProductResponse getProductById(
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @PathVariable("productId") Long productId,
+            @RequestParam("sellerId") Long sellerId);
+
+    @PostMapping("/api/products/internal/seller")
     CatalogProductResponse createProduct(
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @RequestParam("sellerId") Long sellerId,
             @RequestBody CreateProductRequest request);
 
-    @PutMapping("/api/products/{id}")
+    @PutMapping("/api/products/internal/seller/{productId}")
     CatalogProductResponse updateProduct(
-            @PathVariable Long id,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @PathVariable("productId") Long productId,
+            @RequestParam("sellerId") Long sellerId,
             @RequestBody UpdateProductRequest request);
 
-    @DeleteMapping("/api/products/{id}")
+    @DeleteMapping("/api/products/internal/seller/{productId}")
     void deleteProduct(
-            @PathVariable Long id);
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @PathVariable("productId") Long productId,
+            @RequestParam("sellerId") Long sellerId);
 
     // =========================================================
-    // PRODUCT IMAGES
+    // SELLER PRODUCT IMAGES
     // =========================================================
 
-    @PostMapping(value = "/api/products/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/api/products/internal/seller/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     List<CatalogProductImageResponse> uploadImages(
-            @PathVariable Long id,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @PathVariable("productId") Long productId,
+            @RequestParam("sellerId") Long sellerId,
             @RequestPart("files") List<MultipartFile> files);
 
-    @PutMapping(value = "/api/products/{id}/images/{imageId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/api/products/internal/seller/{productId}/images/{imageId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     CatalogProductImageResponse updateImage(
-            @PathVariable Long id,
-            @PathVariable Long imageId,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @PathVariable("productId") Long productId,
+            @PathVariable("imageId") Long imageId,
+            @RequestParam("sellerId") Long sellerId,
             @RequestPart("file") MultipartFile file);
 
-    @DeleteMapping("/api/products/{id}/images/{imageId}")
+    @DeleteMapping("/api/products/internal/seller/{productId}/images/{imageId}")
     void deleteImage(
-            @PathVariable Long id,
-            @PathVariable Long imageId);
-
-    @GetMapping("/api/products/{id}")
-    CatalogProductResponse getProductById(
-            @PathVariable Long id);
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey,
+            @PathVariable("productId") Long productId,
+            @PathVariable("imageId") Long imageId,
+            @RequestParam("sellerId") Long sellerId);
 }

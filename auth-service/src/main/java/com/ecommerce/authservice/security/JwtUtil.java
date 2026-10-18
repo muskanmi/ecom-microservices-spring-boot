@@ -1,3 +1,4 @@
+
 package com.ecommerce.authservice.security;
 
 import java.util.Date;
@@ -25,11 +26,12 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String email, String role) {
+    public String generateToken(String email, String role, Long userId) {
 
         return Jwts.builder()
                 .subject(email)
                 .claim("role", role)
+                .claim("userId", userId)
                 .issuedAt(new Date())
                 .expiration(
                         new Date(System.currentTimeMillis() + expiration))
@@ -45,6 +47,11 @@ public class JwtUtil {
 
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
+    }
+
+    public Long extractUserId(String token) {
+        Number userId = getClaims(token).get("userId", Number.class);
+        return userId != null ? userId.longValue() : null;
     }
 
     private Claims getClaims(String token) {

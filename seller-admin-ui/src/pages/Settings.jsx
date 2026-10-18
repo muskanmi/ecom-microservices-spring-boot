@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Alert, Button, TextField } from "@mui/material";
+import { Alert, Button, Switch, TextField } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 import { changePassword } from "../services/authApi";
 
 function Settings() {
+  const navigate = useNavigate();
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -14,6 +17,38 @@ function Settings() {
 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  /* =====================================================
+     NOTIFICATION PREFERENCES
+  ===================================================== */
+
+  const getNotificationPreferences = () => {
+    const savedPreferences = localStorage.getItem(
+      "sellerNotificationPreferences",
+    );
+
+    if (savedPreferences) {
+      try {
+        return JSON.parse(savedPreferences);
+      } catch {
+        // Ignore invalid local storage data
+      }
+    }
+
+    return {
+      orderUpdates: true,
+      inventoryAlerts: true,
+      accountNotifications: true,
+    };
+  };
+
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    getNotificationPreferences,
+  );
+
+  /* =====================================================
+     PASSWORD
+  ===================================================== */
 
   const handlePasswordChange = (event) => {
     setPasswordData({
@@ -85,6 +120,27 @@ function Settings() {
 
     setErrorMessage("");
     setPasswordEditing(false);
+  };
+
+  /* =====================================================
+     NOTIFICATION PREFERENCES
+  ===================================================== */
+
+  const handleNotificationChange = (name) => {
+    const updatedPreferences = {
+      ...notificationPreferences,
+      [name]: !notificationPreferences[name],
+    };
+
+    setNotificationPreferences(updatedPreferences);
+
+    localStorage.setItem(
+      "sellerNotificationPreferences",
+      JSON.stringify(updatedPreferences),
+    );
+
+    setSuccessMessage("Notification preferences updated.");
+    setErrorMessage("");
   };
 
   return (
@@ -159,7 +215,7 @@ function Settings() {
 
               <button
                 type="button"
-                onClick={() => (window.location.href = "/admin/account")}
+                onClick={() => navigate("/admin/account")}
                 className="shrink-0 border border-[#164E4A] px-4 py-2 text-sm font-medium text-[#164E4A] transition hover:bg-[#164E4A] hover:text-white"
               >
                 Manage
@@ -181,7 +237,7 @@ function Settings() {
 
               <button
                 type="button"
-                onClick={() => (window.location.href = "/admin/account")}
+                onClick={() => navigate("/admin/account")}
                 className="shrink-0 border border-[#164E4A] px-4 py-2 text-sm font-medium text-[#164E4A] transition hover:bg-[#164E4A] hover:text-white"
               >
                 Manage
@@ -314,15 +370,88 @@ function Settings() {
             </h2>
           </div>
 
-          <div className="px-6 py-5">
-            <div>
-              <h3 className="text-sm font-semibold text-[#263331]">
-                Notifications
-              </h3>
+          <div className="divide-y divide-[#E4DDCF]">
+            {/* Order Updates */}
 
-              <p className="mt-1 text-sm text-[#7A817B]">
-                Notification preferences will be available here.
-              </p>
+            <div className="flex items-center justify-between gap-6 px-6 py-5">
+              <div>
+                <h3 className="text-sm font-semibold text-[#263331]">
+                  Order updates
+                </h3>
+
+                <p className="mt-1 text-sm text-[#7A817B]">
+                  Receive notifications when an order is placed or updated.
+                </p>
+              </div>
+
+              <Switch
+                checked={notificationPreferences.orderUpdates}
+                onChange={() => handleNotificationChange("orderUpdates")}
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": {
+                    color: "#164E4A",
+                  },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                    backgroundColor: "#164E4A",
+                  },
+                }}
+              />
+            </div>
+
+            {/* Inventory Alerts */}
+
+            <div className="flex items-center justify-between gap-6 px-6 py-5">
+              <div>
+                <h3 className="text-sm font-semibold text-[#263331]">
+                  Inventory alerts
+                </h3>
+
+                <p className="mt-1 text-sm text-[#7A817B]">
+                  Get notified when products have low or limited stock.
+                </p>
+              </div>
+
+              <Switch
+                checked={notificationPreferences.inventoryAlerts}
+                onChange={() => handleNotificationChange("inventoryAlerts")}
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": {
+                    color: "#164E4A",
+                  },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                    backgroundColor: "#164E4A",
+                  },
+                }}
+              />
+            </div>
+
+            {/* Account Notifications */}
+
+            <div className="flex items-center justify-between gap-6 px-6 py-5">
+              <div>
+                <h3 className="text-sm font-semibold text-[#263331]">
+                  Account notifications
+                </h3>
+
+                <p className="mt-1 text-sm text-[#7A817B]">
+                  Receive important notifications about your seller account.
+                </p>
+              </div>
+
+              <Switch
+                checked={notificationPreferences.accountNotifications}
+                onChange={() =>
+                  handleNotificationChange("accountNotifications")
+                }
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": {
+                    color: "#164E4A",
+                  },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                    backgroundColor: "#164E4A",
+                  },
+                }}
+              />
             </div>
           </div>
         </section>

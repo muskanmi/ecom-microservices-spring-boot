@@ -1,3 +1,4 @@
+
 package com.ecommerce.selleradminservice.service;
 
 import com.ecommerce.selleradminservice.client.CatalogClient;
@@ -10,7 +11,9 @@ import com.ecommerce.selleradminservice.dto.UpdateOrderStatusRequest;
 import com.ecommerce.selleradminservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.selleradminservice.dto.UpdateProductRequest;
 import com.ecommerce.selleradminservice.dto.UpdateShippingInfoRequest;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,17 +31,16 @@ public class SellerAdminService {
     @Value("${internal.service.key}")
     private String internalServiceKey;
 
-    public List<OrderResponse> getAllOrders() {
+    // =========================================================
+    // ORDERS
+    // =========================================================
 
-        return orderClient.getAllOrders(
-                internalServiceKey);
+    public List<OrderResponse> getAllOrders() {
+        return orderClient.getAllOrders(internalServiceKey);
     }
 
     public OrderResponse getOrderById(Long orderId) {
-
-        return orderClient.getOrderById(
-                orderId,
-                internalServiceKey);
+        return orderClient.getOrderById(orderId, internalServiceKey);
     }
 
     public OrderResponse updateShippingInfo(
@@ -46,9 +48,7 @@ public class SellerAdminService {
             UpdateShippingInfoRequest request) {
 
         return orderClient.updateShippingInfo(
-                orderId,
-                request,
-                internalServiceKey);
+                orderId, request, internalServiceKey);
     }
 
     public OrderResponse updateOrderStatus(
@@ -56,9 +56,7 @@ public class SellerAdminService {
             UpdateOrderStatusRequest request) {
 
         return orderClient.updateOrderStatus(
-                orderId,
-                request,
-                internalServiceKey);
+                orderId, request, internalServiceKey);
     }
 
     public OrderResponse updatePaymentStatus(
@@ -66,76 +64,105 @@ public class SellerAdminService {
             UpdatePaymentStatusRequest request) {
 
         return orderClient.updatePaymentStatus(
-                orderId,
-                request,
-                internalServiceKey);
+                orderId, request, internalServiceKey);
     }
 
+    // =========================================================
+    // SELLER PRODUCTS
+    // =========================================================
+
     public List<CatalogProductResponse> getAllProducts(
+            Long sellerId,
             String category,
             BigDecimal minPrice,
             BigDecimal maxPrice) {
 
         return catalogClient.getAllProducts(
+                internalServiceKey,
+                sellerId,
                 category,
                 minPrice,
                 maxPrice);
     }
 
+    public CatalogProductResponse getProductById(
+            Long sellerId,
+            Long productId) {
+
+        return catalogClient.getProductById(
+                internalServiceKey,
+                productId,
+                sellerId);
+    }
+
     public CatalogProductResponse createProduct(
+            Long sellerId,
             CreateProductRequest request) {
 
-        return catalogClient.createProduct(request);
+        return catalogClient.createProduct(
+                internalServiceKey,
+                sellerId,
+                request);
     }
 
     public CatalogProductResponse updateProduct(
+            Long sellerId,
             Long productId,
             UpdateProductRequest request) {
 
         return catalogClient.updateProduct(
+                internalServiceKey,
                 productId,
+                sellerId,
                 request);
     }
 
-    public void deleteProduct(Long productId) {
-
-        catalogClient.deleteProduct(productId);
+    public void deleteProduct(Long sellerId, Long productId) {
+        catalogClient.deleteProduct(
+                internalServiceKey,
+                productId,
+                sellerId);
     }
 
     // =========================================================
-    // PRODUCT IMAGES
+    // SELLER PRODUCT IMAGES
     // =========================================================
 
     public List<CatalogProductImageResponse> uploadProductImages(
+            Long sellerId,
             Long productId,
             List<MultipartFile> files) {
 
         return catalogClient.uploadImages(
+                internalServiceKey,
                 productId,
+                sellerId,
                 files);
     }
 
     public CatalogProductImageResponse updateProductImage(
+            Long sellerId,
             Long productId,
             Long imageId,
             MultipartFile file) {
 
         return catalogClient.updateImage(
+                internalServiceKey,
                 productId,
                 imageId,
+                sellerId,
                 file);
     }
 
     public void deleteProductImage(
+            Long sellerId,
             Long productId,
             Long imageId) {
 
         catalogClient.deleteImage(
+                internalServiceKey,
                 productId,
-                imageId);
-    }
-
-    public CatalogProductResponse getProductById(Long productId) {
-        return catalogClient.getProductById(productId);
+                imageId,
+                sellerId);
     }
 }

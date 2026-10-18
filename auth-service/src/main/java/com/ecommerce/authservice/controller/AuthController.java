@@ -45,7 +45,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
         User user = authService.registerUser(request);
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
 
         AuthResponse response = new AuthResponse(token, user.getId(), user.getRole());
 
@@ -55,7 +55,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> loginUser(@Valid @RequestBody LoginRequest request) {
         User user = authService.loginUser(request);
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
         AuthResponse response = new AuthResponse(token, user.getId(), user.getRole());
 
         return new ResponseEntity<>(response, HttpStatus.OK);

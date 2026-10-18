@@ -53,7 +53,16 @@ public class AuthService {
         user.setEmail(request.getEmail());
 
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        String requestedRole = request.getRole();
+
+        if (requestedRole == null
+                || (!requestedRole.equalsIgnoreCase("CUSTOMER")
+                        && !requestedRole.equalsIgnoreCase("SELLER"))) {
+            throw new IllegalArgumentException(
+                    "Public registration only supports CUSTOMER or SELLER");
+        }
+
+        user.setRole(requestedRole.toUpperCase(java.util.Locale.ROOT));
         user.setCreatedAt(LocalDateTime.now());
 
         return userRepository.save(user);

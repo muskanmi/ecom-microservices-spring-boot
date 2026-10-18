@@ -1,3 +1,4 @@
+
 package com.ecommerce.selleradminservice.security;
 
 import java.util.Date;
@@ -37,13 +38,17 @@ public class JwtUtil {
         return getClaims(token).get("role", String.class);
     }
 
+    public Long extractUserId(String token) {
+        Number userId = getClaims(token).get("userId", Number.class);
+        return userId != null ? userId.longValue() : null;
+    }
+
     public boolean isTokenValid(String token) {
         try {
             Claims claims = getClaims(token);
 
-            return !claims
-                    .getExpiration()
-                    .before(new Date());
+            return claims.getExpiration() != null
+                    && !claims.getExpiration().before(new Date());
 
         } catch (Exception e) {
             return false;
