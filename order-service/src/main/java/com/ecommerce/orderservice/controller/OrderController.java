@@ -141,4 +141,31 @@ public class OrderController {
         return ResponseEntity.ok(
                 orderService.getOrderForAdmin(orderId));
     }
+
+    @GetMapping("/internal/seller")
+    public ResponseEntity<List<OrderResponse>> getOrdersForSeller(
+            @RequestParam Long sellerId,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.getOrdersForSeller(sellerId));
+    }
+
+    @GetMapping("/internal/seller/{orderId}")
+    public ResponseEntity<OrderResponse> getOrderForSeller(
+            @PathVariable Long orderId,
+            @RequestParam Long sellerId,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.getOrderForSeller(orderId, sellerId));
+    }
 }

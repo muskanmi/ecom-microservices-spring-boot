@@ -43,8 +43,8 @@ public class SellerAdminService {
     // ORDERS
     // =========================================================
 
-    public List<OrderResponse> getAllOrders() {
-        return orderClient.getAllOrders(internalServiceKey);
+    public List<OrderResponse> getAllOrders(Long sellerId) {
+        return orderClient.getOrdersForSeller(sellerId, internalServiceKey);
     }
 
     public OrderResponse getOrderById(Long orderId) {
@@ -218,5 +218,12 @@ public class SellerAdminService {
             throw new AccessDeniedException(
                     "Your seller account is not approved to manage products.");
         }
+    }
+
+    public OrderResponse getOrderForSeller(Long sellerId, Long orderId) {
+        return orderClient.getOrderForSeller(
+                orderId,
+                sellerId,
+                internalServiceKey);
     }
 }

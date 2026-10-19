@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { getProducts, deleteProduct } from "../services/productApi";
 import { getProductImageUrl } from "../services/imageUtils";
+import { getSellerProfile } from "../services/authApi";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("en-IN", {
@@ -184,6 +185,10 @@ function Products() {
   const [productToDelete, setProductToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [approvalStatus, setApprovalStatus] = useState("");
+  const [approvalLoading, setApprovalLoading] = useState(true);
+  const [approvalError, setApprovalError] = useState("");
+
   async function loadProducts() {
     try {
       setLoading(true);
@@ -213,6 +218,51 @@ function Products() {
 
     return [...new Set(values)];
   }, [products]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadApprovalStatus() {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setApprovalError("Your session has expired. Please log in again.");
+        setApprovalLoading(false);
+        return;
+      }
+
+      try {
+        const response = await getSellerProfile(token);
+        const status = response?.data?.approvalStatus;
+
+        if (!status) {
+          throw new Error("Seller approval status is unavailable.");
+        }
+
+        if (!cancelled) {
+          setApprovalStatus(String(status).trim().toUpperCase());
+          setApprovalError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load seller approval status:", error);
+          setApprovalError(
+            "Unable to verify your seller approval status. Please refresh and try again.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setApprovalLoading(false);
+        }
+      }
+    }
+
+    loadApprovalStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredProducts = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
@@ -276,8 +326,23 @@ function Products() {
       return;
     }
 
+    // Verify that the seller is approved before deleting.
+    if (approvalLoading || approvalError || approvalStatus !== "APPROVED") {
+      setError(
+        "You can delete products only after your seller account is approved.",
+      );
+      setProductToDelete(null);
+      return;
+    }
+
     const productId = getProductId(productToDelete);
     const productName = getProductName(productToDelete);
+
+    if (productId == null) {
+      setError("Unable to delete product: product ID is missing.");
+      setProductToDelete(null);
+      return;
+    }
 
     try {
       setDeleting(true);
@@ -339,14 +404,56 @@ function Products() {
               {loading ? "Refreshing..." : "↻ Refresh"}
             </button>
 
-            <Link
-              to="/admin/products/new"
-              className="border border-[#2D3A3A] bg-[#2D3A3A] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#233030]"
-            >
-              + Add Product
-            </Link>
+            {approvalStatus === "APPROVED" &&
+            !approvalLoading &&
+            !approvalError ? (
+              <Link
+                to="/admin/products/new"
+                className="border border-[#2D3A3A] bg-[#2D3A3A] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#233030]"
+              >
+                + Add Product
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Product management requires an approved seller account."
+                className="cursor-not-allowed border border-[#DED7C9] bg-[#EAE5DA] px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A8378]"
+              >
+                + Add Product
+              </button>
+            )}
           </div>
         </div>
+
+        {approvalLoading ? (
+          <div className="mb-6 border border-[#DED7C9] bg-[#F7F1E5] px-5 py-4 text-sm text-[#596361]">
+            Verifying seller approval...
+          </div>
+        ) : approvalError ? (
+          <div className="mb-6 border border-[#E5C6C0] bg-[#FBF0EE] px-5 py-4 text-sm text-[#985F55]">
+            {approvalError}
+          </div>
+        ) : approvalStatus === "REJECTED" ? (
+          <div className="mb-6 border border-[#E5C6C0] bg-[#FBF0EE] px-5 py-4 text-sm text-[#985F55]">
+            <p className="font-semibold">Seller application rejected</p>
+            <p className="mt-1">
+              You cannot add, edit, or delete products because your seller
+              application has been rejected. Please contact marketplace support
+              if you need assistance.
+            </p>
+          </div>
+        ) : approvalStatus === "PENDING" ? (
+          <div className="mb-6 border border-[#E6D7B8] bg-[#F9F3E5] px-5 py-4 text-sm text-[#8A744B]">
+            Your seller application is awaiting approval. Product management
+            will be available once your account is approved.
+          </div>
+        ) : approvalStatus !== "APPROVED" ? (
+          <div className="mb-6 border border-[#E5C6C0] bg-[#FBF0EE] px-5 py-4 text-sm text-[#985F55]">
+            Your seller status could not be verified. Product management is
+            unavailable until your approval status is confirmed.
+          </div>
+        ) : null}
 
         {/* SUCCESS */}
         {success && (
@@ -661,7 +768,27 @@ function Products() {
 
                           <Link
                             to={`/admin/products/${productId}/edit`}
-                            className="bg-[#2D3A3A] px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#233030]"
+                            aria-disabled={
+                              approvalStatus !== "APPROVED" ||
+                              approvalLoading ||
+                              !!approvalError
+                            }
+                            onClick={(event) => {
+                              if (
+                                approvalStatus !== "APPROVED" ||
+                                approvalLoading ||
+                                approvalError
+                              ) {
+                                event.preventDefault();
+                              }
+                            }}
+                            className={`border px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] ${
+                              approvalStatus === "APPROVED" &&
+                              !approvalLoading &&
+                              !approvalError
+                                ? "bg-[#2D3A3A] text-white hover:bg-[#233030]"
+                                : "cursor-not-allowed border-[#DED7C9] bg-[#EAE5DA] text-[#8A8378]"
+                            }`}
                           >
                             Edit
                           </Link>
@@ -669,7 +796,12 @@ function Products() {
                           <button
                             type="button"
                             onClick={() => openDeleteModal(product)}
-                            disabled={deleting}
+                            disabled={
+                              deleting ||
+                              approvalLoading ||
+                              !!approvalError ||
+                              approvalStatus !== "APPROVED"
+                            }
                             className="border border-[#E5C6C0] bg-[#FBF0EE] px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#985F55] transition hover:bg-[#F6E4E0] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {isBeingDeleted ? "Deleting..." : "Delete"}

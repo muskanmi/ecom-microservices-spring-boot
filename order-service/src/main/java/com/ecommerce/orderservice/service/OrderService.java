@@ -123,6 +123,7 @@ public class OrderService {
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
                     .productId(product.getId())
+                    .sellerId(product.getSellerId())
                     .productName(product.getName())
                     .productImage(
                             getPrimaryImage(product))
@@ -930,5 +931,108 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         return mapToResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersForSeller(Long sellerId) {
+        if (sellerId == null || sellerId <= 0) {
+            throw new IllegalArgumentException("Invalid seller ID.");
+        }
+
+        return orderRepository.findOrdersBySellerId(sellerId)
+                .stream()
+                .map(order -> {
+                    // Include only this seller's items.
+                    List<OrderItemResponse> sellerItems = order.getItems()
+                            .stream()
+                            .filter(item -> sellerId.equals(item.getSellerId()))
+                            .map(item -> new OrderItemResponse(
+                                    item.getId(),
+                                    item.getProductId(),
+                                    item.getProductName(),
+                                    item.getProductImage(),
+                                    item.getQuantity(),
+                                    item.getPrice(),
+                                    item.getTotalPrice()))
+                            .toList();
+
+                    // Calculate totals from this seller's items only.
+                    BigDecimal sellerSubtotal = sellerItems.stream()
+                            .map(OrderItemResponse::getTotalPrice)
+                            .filter(java.util.Objects::nonNull)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    return new OrderResponse(
+                            order.getId(),
+                            order.getUserId(),
+                            order.getCustomerEmail(),
+                            order.getOrderNumber(),
+                            sellerSubtotal,
+                            BigDecimal.ZERO,
+                            BigDecimal.ZERO,
+                            sellerSubtotal,
+                            order.getStatus().name(),
+                            order.getPaymentStatus().name(),
+                            order.getShippingAddress() == null ? null
+                                    : new ShippingAddressResponse(
+                                            order.getShippingAddress().getFullName(),
+                                            order.getShippingAddress().getPhone(),
+                                            order.getShippingAddress().getAddressLine1(),
+                                            order.getShippingAddress().getAddressLine2(),
+                                            order.getShippingAddress().getCity(),
+                                            order.getShippingAddress().getState(),
+                                            order.getShippingAddress().getPincode(),
+                                            order.getShippingAddress().getCountry()),
+                            order.getCreatedAt(),
+                            sellerItems,
+                            order.getCarrier(),
+                            order.getTrackingNumber(),
+                            order.getExpectedDeliveryDate());
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderForSeller(Long orderId, Long sellerId) {
+
+        if (sellerId == null || sellerId <= 0) {
+            throw new IllegalArgumentException("Invalid seller ID.");
+        }
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        List<OrderItemResponse> sellerItems = order.getItems()
+                .stream()
+                .filter(item -> sellerId.equals(item.getSellerId()))
+                .map(item -> new OrderItemResponse(
+                        item.getId(),
+                        item.getProductId(),
+                        item.getProductName(),
+                        item.getProductImage(),
+                        item.getQuantity(),
+                        item.getPrice(),
+                        item.getTotalPrice()))
+                .toList();
+
+        if (sellerItems.isEmpty()) {
+            throw new IllegalStateException(
+                    "You are not authorized to access this order.");
+        }
+
+        BigDecimal sellerSubtotal = sellerItems.stream()
+                .map(OrderItemResponse::getTotalPrice)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        OrderResponse response = getOrderForAdmin(orderId);
+
+        response.setItems(sellerItems);
+        response.setSubtotal(sellerSubtotal);
+        response.setDiscount(BigDecimal.ZERO);
+        response.setShippingFee(BigDecimal.ZERO);
+        response.setTotalAmount(sellerSubtotal);
+
+        return response;
     }
 }

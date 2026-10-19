@@ -38,4 +38,15 @@ public interface OrderClient {
             @PathVariable Long orderId,
             @RequestBody UpdatePaymentStatusRequest request,
             @RequestHeader("X-Internal-Service-Key") String serviceKey);
+
+    @GetMapping("/api/orders/internal/seller")
+    List<OrderResponse> getOrdersForSeller(
+            @RequestParam("sellerId") Long sellerId,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
+
+    @GetMapping("/api/orders/internal/seller/{orderId}")
+    OrderResponse getOrderForSeller(
+            @PathVariable("orderId") Long orderId,
+            @RequestParam("sellerId") Long sellerId,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
 }

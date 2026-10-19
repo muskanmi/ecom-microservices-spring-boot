@@ -37,4 +37,7 @@ public class OrderItem {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalPrice;
+
+    @Column(name = "seller_id")
+    private Long sellerId;
 }

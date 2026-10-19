@@ -9,6 +9,7 @@ import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import { Alert, Button, CircularProgress, TextField } from "@mui/material";
 
 import { createProduct, uploadProductImages } from "../services/productApi";
+import { getSellerProfile } from "../services/authApi";
 
 function ProductForm() {
   const navigate = useNavigate();
@@ -28,12 +29,63 @@ function ProductForm() {
   const [error, setError] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
 
-  /*
-   * ---------------------------------------------------------
-   * FORM CHANGE
-   * ---------------------------------------------------------
-   */
+  const [approvalStatus, setApprovalStatus] = useState("");
+  const [approvalLoading, setApprovalLoading] = useState(true);
+  const [approvalError, setApprovalError] = useState("");
 
+  const isApproved =
+    !approvalLoading && !approvalError && approvalStatus === "APPROVED";
+
+  // Verify the seller's current approval status.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function verifyApproval() {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        if (!cancelled) {
+          setApprovalError("Your session has expired. Please log in again.");
+          setApprovalLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const response = await getSellerProfile(token);
+        const status = response?.data?.approvalStatus;
+
+        if (!status) {
+          throw new Error("Seller approval status is unavailable.");
+        }
+
+        if (!cancelled) {
+          setApprovalStatus(String(status).trim().toUpperCase());
+          setApprovalError("");
+        }
+      } catch (err) {
+        console.error("Failed to verify seller approval:", err);
+
+        if (!cancelled) {
+          setApprovalError(
+            "Unable to verify your seller approval status. Please refresh and try again.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setApprovalLoading(false);
+        }
+      }
+    }
+
+    verifyApproval();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Form field changes.
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -43,12 +95,7 @@ function ProductForm() {
     }));
   };
 
-  /*
-   * ---------------------------------------------------------
-   * IMAGE SELECTION
-   * ---------------------------------------------------------
-   */
-
+  // Select and validate product images.
   const handleImageSelection = (event) => {
     const files = Array.from(event.target.files || []);
 
@@ -62,13 +109,11 @@ function ProductForm() {
     const invalidFiles = [];
 
     files.forEach((file) => {
-      // Check file type
       if (!file.type.startsWith("image/")) {
         invalidFiles.push(`${file.name} is not an image.`);
         return;
       }
 
-      // Backend currently allows max 10 MB per image
       if (file.size > 10 * 1024 * 1024) {
         invalidFiles.push(`${file.name} is larger than 10 MB.`);
         return;
@@ -85,15 +130,8 @@ function ProductForm() {
       setSelectedImages((current) => [...current, ...validFiles]);
     }
 
-    // Allow selecting the same file again
     event.target.value = "";
   };
-
-  /*
-   * ---------------------------------------------------------
-   * REMOVE SELECTED IMAGE
-   * ---------------------------------------------------------
-   */
 
   const removeSelectedImage = (indexToRemove) => {
     setSelectedImages((current) =>
@@ -101,11 +139,25 @@ function ProductForm() {
     );
   };
 
-  /*
-   * ---------------------------------------------------------
-   * VALIDATION
-   * ---------------------------------------------------------
-   */
+  const getPreviewUrl = (file) => {
+    if (!file.__previewUrl) {
+      file.__previewUrl = URL.createObjectURL(file);
+    }
+
+    return file.__previewUrl;
+  };
+
+  // Release preview URLs when images change or the component unmounts.
+  useEffect(() => {
+    return () => {
+      selectedImages.forEach((file) => {
+        if (file.__previewUrl) {
+          URL.revokeObjectURL(file.__previewUrl);
+          delete file.__previewUrl;
+        }
+      });
+    };
+  }, [selectedImages]);
 
   const validateForm = () => {
     if (!formData.name.trim()) {
@@ -116,11 +168,19 @@ function ProductForm() {
       return "Product description is required.";
     }
 
-    if (!formData.price || Number(formData.price) <= 0) {
+    if (
+      formData.price === "" ||
+      !Number.isFinite(Number(formData.price)) ||
+      Number(formData.price) <= 0
+    ) {
       return "Please enter a valid selling price.";
     }
 
-    if (!formData.mrp || Number(formData.mrp) <= 0) {
+    if (
+      formData.mrp === "" ||
+      !Number.isFinite(Number(formData.mrp)) ||
+      Number(formData.mrp) <= 0
+    ) {
       return "Please enter a valid MRP.";
     }
 
@@ -130,25 +190,24 @@ function ProductForm() {
 
     if (
       formData.stock === "" ||
-      Number(formData.stock) < 0 ||
-      !Number.isInteger(Number(formData.stock))
+      !Number.isInteger(Number(formData.stock)) ||
+      Number(formData.stock) < 0
     ) {
       return "Please enter a valid stock quantity.";
     }
 
-    if (!formData.categoryId || Number(formData.categoryId) <= 0) {
+    if (
+      formData.categoryId === "" ||
+      !Number.isInteger(Number(formData.categoryId)) ||
+      Number(formData.categoryId) <= 0
+    ) {
       return "Please enter a valid category ID.";
     }
 
     return null;
   };
 
-  /*
-   * ---------------------------------------------------------
-   * CREATE PRODUCT
-   * ---------------------------------------------------------
-   */
-
+  // Create the product, then upload its images.
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -158,6 +217,28 @@ function ProductForm() {
 
     setError("");
     setUploadStatus("");
+
+    // Do not allow submission unless approval is verified.
+    if (approvalLoading) {
+      setError("Please wait while your seller approval is verified.");
+      return;
+    }
+
+    if (approvalError) {
+      setError(approvalError);
+      return;
+    }
+
+    if (approvalStatus !== "APPROVED") {
+      setError(
+        approvalStatus === "PENDING"
+          ? "Your seller application is awaiting approval. You cannot create products yet."
+          : approvalStatus === "REJECTED"
+            ? "Your seller application has been rejected. You cannot create products."
+            : "Your seller approval must be verified before creating products.",
+      );
+      return;
+    }
 
     const validationError = validateForm();
 
@@ -177,36 +258,17 @@ function ProductForm() {
 
     try {
       setLoading(true);
-
-      /*
-       * =====================================================
-       * STEP 1 — CREATE PRODUCT
-       * =====================================================
-       */
-
       setUploadStatus("Creating product...");
 
       const productResponse = await createProduct(request);
-
       const createdProduct = productResponse?.data;
-
-      console.log("Product created:", createdProduct);
-
-      const productId = createdProduct?.id;
+      const productId = createdProduct?.id ?? createdProduct?.productId;
 
       if (!productId) {
         throw new Error(
           "Product was created, but the server did not return a product ID.",
         );
       }
-
-      console.log("Created product ID:", productId);
-
-      /*
-       * =====================================================
-       * STEP 2 — UPLOAD IMAGES
-       * =====================================================
-       */
 
       if (selectedImages.length > 0) {
         setUploadStatus(
@@ -216,25 +278,15 @@ function ProductForm() {
         );
 
         await uploadProductImages(productId, selectedImages);
-
-        console.log("Product images uploaded successfully.");
       }
-
-      /*
-       * =====================================================
-       * STEP 3 — SUCCESS
-       * =====================================================
-       */
 
       navigate(`/admin/products/${productId}`);
     } catch (err) {
       console.error("Product creation failed:", err);
 
-      const backendMessage =
-        err?.response?.data?.message || err?.response?.data?.error;
-
       setError(
-        backendMessage ||
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
           err?.message ||
           "Unable to create the product. Please try again.",
       );
@@ -244,48 +296,27 @@ function ProductForm() {
     }
   };
 
-  /*
-   * ---------------------------------------------------------
-   * CLEAN UP IMAGE PREVIEW URLS
-   * ---------------------------------------------------------
-   */
-
-  useEffect(() => {
-    return () => {
-      selectedImages.forEach((file) => {
-        if (file.__previewUrl) {
-          URL.revokeObjectURL(file.__previewUrl);
-        }
-      });
-    };
-  }, [selectedImages]);
-
-  /*
-   * ---------------------------------------------------------
-   * CREATE PREVIEW URL
-   * ---------------------------------------------------------
-   */
-
-  const getPreviewUrl = (file) => {
-    if (!file.__previewUrl) {
-      file.__previewUrl = URL.createObjectURL(file);
-    }
-
-    return file.__previewUrl;
+  const inputSx = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 0,
+      backgroundColor: "#FFFCF4",
+      "& fieldset": {
+        borderColor: "#DED7C9",
+      },
+      "&:hover fieldset": {
+        borderColor: "#A9A195",
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "#2D3A3A",
+      },
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: "#2D3A3A",
+    },
   };
-
-  /*
-   * ---------------------------------------------------------
-   * UI
-   * ---------------------------------------------------------
-   */
 
   return (
     <div className="mx-auto max-w-[1200px]">
-      {/* =====================================================
-          PAGE HEADER
-      ===================================================== */}
-
       <div className="mb-8">
         <button
           type="button"
@@ -308,9 +339,32 @@ function ProductForm() {
         </p>
       </div>
 
-      {/* =====================================================
-          ERROR
-      ===================================================== */}
+      {/* Seller approval status */}
+      {approvalLoading ? (
+        <Alert severity="info" sx={{ mb: 3, borderRadius: 0 }}>
+          Verifying seller approval...
+        </Alert>
+      ) : approvalError ? (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 0 }}>
+          {approvalError}
+        </Alert>
+      ) : approvalStatus === "PENDING" ? (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 0 }}>
+          Your seller application is awaiting approval. Product creation will be
+          available once your account is approved.
+        </Alert>
+      ) : approvalStatus === "REJECTED" ? (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 0 }}>
+          Your seller application has been rejected. You cannot create products
+          with this account. Please contact marketplace support if you need
+          assistance.
+        </Alert>
+      ) : approvalStatus !== "APPROVED" ? (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 0 }}>
+          Your seller approval status could not be verified. Product creation is
+          unavailable until your status is confirmed.
+        </Alert>
+      ) : null}
 
       {error && (
         <Alert
@@ -331,10 +385,6 @@ function ProductForm() {
         </Alert>
       )}
 
-      {/* =====================================================
-          UPLOAD STATUS
-      ===================================================== */}
-
       {uploadStatus && (
         <Alert
           severity="info"
@@ -344,105 +394,54 @@ function ProductForm() {
             border: "1px solid #DED7C9",
             backgroundColor: "#F7F1E5",
             color: "#2D3A3A",
-            "& .MuiAlert-icon": {
-              color: "#2D3A3A",
-            },
           }}
         >
           {uploadStatus}
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* =================================================
-              PRODUCT INFORMATION
-          ================================================= */}
+      {/* Only approved sellers can see and use the form. */}
+      {isApproved && (
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <section className="border border-[#DED7C9] bg-[#F7F1E5] lg:col-span-2">
+              <div className="border-b border-[#DED7C9] px-6 py-5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  Product Information
+                </p>
+                <h2 className="mt-2 font-serif text-xl text-[#233636]">
+                  Basic Details
+                </h2>
+              </div>
 
-          <section className="border border-[#DED7C9] bg-[#F7F1E5] lg:col-span-2">
-            <div className="border-b border-[#DED7C9] px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
-                Product Information
-              </p>
+              <div className="space-y-5 px-6 py-7">
+                <TextField
+                  fullWidth
+                  required
+                  label="Product Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="e.g. Wireless Headphones"
+                  disabled={loading}
+                  sx={inputSx}
+                />
 
-              <h2 className="mt-2 font-serif text-xl text-[#233636]">
-                Basic Details
-              </h2>
-            </div>
+                <TextField
+                  fullWidth
+                  required
+                  multiline
+                  minRows={5}
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Describe the product..."
+                  disabled={loading}
+                  sx={inputSx}
+                />
 
-            <div className="space-y-5 px-6 py-7">
-              {/* PRODUCT NAME */}
-
-              <TextField
-                fullWidth
-                required
-                label="Product Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Wireless Headphones"
-                variant="outlined"
-                disabled={loading}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#A9A195",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
-              />
-
-              {/* DESCRIPTION */}
-
-              <TextField
-                fullWidth
-                required
-                multiline
-                minRows={5}
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Describe the product..."
-                variant="outlined"
-                disabled={loading}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#A9A195",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
-              />
-
-              {/* =================================================
-                  PRODUCT IMAGES
-              ================================================= */}
-
-              <div className="border-t border-[#DED7C9] pt-6">
-                <div className="mb-4">
+                <div className="border-t border-[#DED7C9] pt-6">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
                     Catalogue
                   </p>
@@ -452,317 +451,214 @@ function ProductForm() {
                   </h3>
 
                   <p className="mt-2 text-xs leading-5 text-[#8A8378]">
-                    Add one or more images for this product. Each image must be
-                    10 MB or smaller.
+                    Add one or more images. Each image must be 10 MB or smaller.
                   </p>
-                </div>
 
-                {/* HIDDEN FILE INPUT */}
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageSelection}
-                  className="hidden"
-                  disabled={loading}
-                />
-
-                {/* IMAGE PREVIEWS */}
-
-                {selectedImages.length > 0 && (
-                  <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                    {selectedImages.map((file, index) => (
-                      <div
-                        key={`${file.name}-${file.lastModified}-${index}`}
-                        className="group relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
-                      >
-                        <img
-                          src={getPreviewUrl(file)}
-                          alt={`Product preview ${index + 1}`}
-                          className="h-40 w-full object-cover"
-                        />
-
-                        {/* REMOVE BUTTON */}
-
-                        <button
-                          type="button"
-                          onClick={() => removeSelectedImage(index)}
-                          disabled={loading}
-                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] opacity-0 transition group-hover:opacity-100 hover:bg-[#F7EDEA] disabled:cursor-not-allowed"
-                          aria-label={`Remove image ${index + 1}`}
-                        >
-                          <DeleteOutlineOutlinedIcon fontSize="small" />
-                        </button>
-
-                        {/* FILE NAME */}
-
-                        <div className="border-t border-[#DED7C9] px-3 py-2">
-                          <p className="truncate text-xs text-[#6F766F]">
-                            {file.name}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* UPLOAD AREA */}
-
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={loading}
-                  className="flex w-full flex-col items-center justify-center border border-dashed border-[#B7B0A4] bg-[#FFFCF4] px-6 py-8 text-center transition hover:border-[#2D3A3A] hover:bg-[#F9F4EA] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ImageOutlinedIcon
-                    sx={{
-                      fontSize: 32,
-                      color: "#8A8378",
-                      mb: 1,
-                    }}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageSelection}
+                    className="hidden"
+                    disabled={loading}
                   />
 
-                  <span className="font-serif text-lg text-[#233636]">
-                    {selectedImages.length > 0
-                      ? "Add More Images"
-                      : "Select Product Images"}
-                  </span>
+                  {selectedImages.length > 0 && (
+                    <div className="mb-5 mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                      {selectedImages.map((file, index) => (
+                        <div
+                          key={`${file.name}-${file.lastModified}-${index}`}
+                          className="group relative overflow-hidden border border-[#DED7C9] bg-[#FFFCF4]"
+                        >
+                          <img
+                            src={getPreviewUrl(file)}
+                            alt={`Product preview ${index + 1}`}
+                            className="h-40 w-full object-cover"
+                          />
 
-                  <span className="mt-2 text-xs text-[#8A8378]">
-                    JPG, PNG, WEBP and other image formats
-                  </span>
-                </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedImage(index)}
+                            disabled={loading}
+                            aria-label={`Remove image ${index + 1}`}
+                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#DED7C9] bg-[#FFFCF4] text-[#7A4A42] opacity-100 transition hover:bg-[#F7EDEA] disabled:cursor-not-allowed"
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </button>
+
+                          <div className="border-t border-[#DED7C9] px-3 py-2">
+                            <p className="truncate text-xs text-[#6F766F]">
+                              {file.name}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={loading}
+                    className="mt-5 flex w-full flex-col items-center justify-center border border-dashed border-[#B7B0A4] bg-[#FFFCF4] px-6 py-8 text-center transition hover:border-[#2D3A3A] hover:bg-[#F9F4EA] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ImageOutlinedIcon
+                      sx={{
+                        fontSize: 32,
+                        color: "#8A8378",
+                        mb: 1,
+                      }}
+                    />
+
+                    <span className="font-serif text-lg text-[#233636]">
+                      {selectedImages.length > 0
+                        ? "Add More Images"
+                        : "Select Product Images"}
+                    </span>
+
+                    <span className="mt-2 text-xs text-[#8A8378]">
+                      JPG, PNG, WEBP and other image formats
+                    </span>
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* =================================================
-              PRICING & INVENTORY
-          ================================================= */}
+            <section className="border border-[#DED7C9] bg-[#F7F1E5]">
+              <div className="border-b border-[#DED7C9] px-6 py-5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
+                  Catalogue
+                </p>
+                <h2 className="mt-2 font-serif text-xl text-[#233636]">
+                  Pricing &amp; Inventory
+                </h2>
+              </div>
 
-          <section className="border border-[#DED7C9] bg-[#F7F1E5]">
-            <div className="border-b border-[#DED7C9] px-6 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8378]">
-                Catalogue
-              </p>
+              <div className="space-y-5 px-6 py-7">
+                <TextField
+                  fullWidth
+                  required
+                  type="number"
+                  label="Selling Price"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  inputProps={{ min: 0, step: "0.01" }}
+                  InputProps={{
+                    startAdornment: (
+                      <span className="mr-2 text-sm text-[#8A8378]">₹</span>
+                    ),
+                  }}
+                  disabled={loading}
+                  sx={inputSx}
+                />
 
-              <h2 className="mt-2 font-serif text-xl text-[#233636]">
-                Pricing & Inventory
-              </h2>
-            </div>
+                <TextField
+                  fullWidth
+                  required
+                  type="number"
+                  label="MRP"
+                  name="mrp"
+                  value={formData.mrp}
+                  onChange={handleChange}
+                  inputProps={{ min: 0, step: "0.01" }}
+                  InputProps={{
+                    startAdornment: (
+                      <span className="mr-2 text-sm text-[#8A8378]">₹</span>
+                    ),
+                  }}
+                  disabled={loading}
+                  sx={inputSx}
+                />
 
-            <div className="space-y-5 px-6 py-7">
-              {/* SELLING PRICE */}
+                <TextField
+                  fullWidth
+                  required
+                  type="number"
+                  label="Stock Quantity"
+                  name="stock"
+                  value={formData.stock}
+                  onChange={handleChange}
+                  inputProps={{ min: 0, step: 1 }}
+                  disabled={loading}
+                  sx={inputSx}
+                />
 
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="Selling Price"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                inputProps={{
-                  min: 0,
-                  step: "0.01",
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <span className="mr-2 text-sm text-[#8A8378]">₹</span>
-                  ),
-                }}
-                variant="outlined"
-                disabled={loading}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
-              />
-
-              {/* MRP */}
-
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="MRP"
-                name="mrp"
-                value={formData.mrp}
-                onChange={handleChange}
-                inputProps={{
-                  min: 0,
-                  step: "0.01",
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <span className="mr-2 text-sm text-[#8A8378]">₹</span>
-                  ),
-                }}
-                variant="outlined"
-                disabled={loading}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
-              />
-
-              {/* STOCK */}
-
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="Stock Quantity"
-                name="stock"
-                value={formData.stock}
-                onChange={handleChange}
-                inputProps={{
-                  min: 0,
-                  step: 1,
-                }}
-                variant="outlined"
-                disabled={loading}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                }}
-              />
-
-              {/* CATEGORY */}
-
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="Category ID"
-                name="categoryId"
-                value={formData.categoryId}
-                onChange={handleChange}
-                inputProps={{
-                  min: 1,
-                  step: 1,
-                }}
-                helperText="Use the category ID from your catalogue."
-                variant="outlined"
-                disabled={loading}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    backgroundColor: "#FFFCF4",
-                    "& fieldset": {
-                      borderColor: "#DED7C9",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#2D3A3A",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#2D3A3A",
-                  },
-                  "& .MuiFormHelperText-root": {
-                    marginLeft: 0,
-                    color: "#8A8378",
-                  },
-                }}
-              />
-            </div>
-          </section>
-        </div>
-
-        {/* =====================================================
-            ACTIONS
-        ===================================================== */}
-
-        <div className="mt-6 flex justify-end gap-3 border-t border-[#DED7C9] pt-6">
-          <Button
-            type="button"
-            onClick={() => navigate("/admin/products")}
-            variant="outlined"
-            disabled={loading}
-            sx={{
-              borderRadius: 0,
-              borderColor: "#B7B0A4",
-              color: "#4F5955",
-              textTransform: "none",
-              padding: "10px 20px",
-              boxShadow: "none",
-              "&:hover": {
-                borderColor: "#2D3A3A",
-                backgroundColor: "#F7F1E5",
-              },
-            }}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading}
-            startIcon={
-              loading ? (
-                <CircularProgress
-                  size={17}
+                <TextField
+                  fullWidth
+                  required
+                  type="number"
+                  label="Category ID"
+                  name="categoryId"
+                  value={formData.categoryId}
+                  onChange={handleChange}
+                  inputProps={{ min: 1, step: 1 }}
+                  helperText="Use the category ID from your catalogue."
+                  disabled={loading}
                   sx={{
-                    color: "#FFFCF4",
+                    ...inputSx,
+                    "& .MuiFormHelperText-root": {
+                      marginLeft: 0,
+                      color: "#8A8378",
+                    },
                   }}
                 />
-              ) : (
-                <SaveOutlinedIcon />
-              )
-            }
-            sx={{
-              borderRadius: 0,
-              backgroundColor: "#2D3A3A",
-              color: "#FFFCF4",
-              textTransform: "none",
-              padding: "10px 22px",
-              boxShadow: "none",
-              "&:hover": {
-                backgroundColor: "#233636",
+              </div>
+            </section>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3 border-t border-[#DED7C9] pt-6">
+            <Button
+              type="button"
+              onClick={() => navigate("/admin/products")}
+              variant="outlined"
+              disabled={loading}
+              sx={{
+                borderRadius: 0,
+                borderColor: "#B7B0A4",
+                color: "#4F5955",
+                textTransform: "none",
+                padding: "10px 20px",
                 boxShadow: "none",
-              },
-            }}
-          >
-            {loading ? uploadStatus || "Creating..." : "Create Product"}
-          </Button>
-        </div>
-      </form>
+                "&:hover": {
+                  borderColor: "#2D3A3A",
+                  backgroundColor: "#F7F1E5",
+                },
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading || !isApproved}
+              startIcon={
+                loading ? (
+                  <CircularProgress size={17} sx={{ color: "#FFFCF4" }} />
+                ) : (
+                  <SaveOutlinedIcon />
+                )
+              }
+              sx={{
+                borderRadius: 0,
+                backgroundColor: "#2D3A3A",
+                color: "#FFFCF4",
+                textTransform: "none",
+                padding: "10px 22px",
+                boxShadow: "none",
+                "&:hover": {
+                  backgroundColor: "#233636",
+                  boxShadow: "none",
+                },
+              }}
+            >
+              {loading ? uploadStatus || "Creating..." : "Create Product"}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

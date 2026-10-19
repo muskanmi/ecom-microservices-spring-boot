@@ -55,13 +55,15 @@ public class SellerAdminController {
 
     @GetMapping("/orders")
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
-        return ResponseEntity.ok(sellerAdminService.getAllOrders());
+        return ResponseEntity.ok(sellerAdminService.getAllOrders(getAuthenticatedSellerId()));
     }
 
     @GetMapping("/orders/{orderId}")
     public ResponseEntity<OrderResponse> getOrderById(
             @PathVariable Long orderId) {
-        return ResponseEntity.ok(sellerAdminService.getOrderById(orderId));
+
+        Long sellerId = getAuthenticatedSellerId();
+        return ResponseEntity.ok(sellerAdminService.getOrderForSeller(sellerId, orderId));
     }
 
     @PutMapping("/orders/{orderId}/shipping")
