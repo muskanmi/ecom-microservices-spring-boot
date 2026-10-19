@@ -1,4 +1,5 @@
 import { Button, Chip, CircularProgress } from "@mui/material";
+import { Link } from "react-router-dom";
 
 function getStatusColor(status) {
   switch (status?.toUpperCase()) {
@@ -52,7 +53,7 @@ export default function SellerTable({
 
   return (
     <div className="overflow-x-auto border border-[#E7E0D1] bg-white">
-      <table className="w-full min-w-[900px] border-collapse text-left">
+      <table className="w-full min-w-[1000px] border-collapse text-left">
         <thead className="bg-[#F5F0E5]">
           <tr>
             {["Seller", "Shop name", "Registered", "Status", "Actions"].map(
@@ -111,53 +112,66 @@ export default function SellerTable({
                 </td>
 
                 <td className="px-5 py-5">
-                  {status === "PENDING" ? (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={isUpdating}
-                        onClick={() =>
-                          onUpdateApproval(seller.sellerProfileId, "APPROVED")
-                        }
-                        sx={{
-                          backgroundColor: "#2D5B4C",
-                          textTransform: "none",
-                          boxShadow: "none",
-                          "&:hover": {
-                            backgroundColor: "#23483C",
-                            boxShadow: "none",
-                          },
-                        }}
-                      >
-                        {isUpdating ? (
-                          <CircularProgress size={16} color="inherit" />
-                        ) : (
-                          "Approve"
-                        )}
-                      </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      component={Link}
+                      to={`/sellers/${seller.sellerProfileId}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        color: "#233636",
+                        borderColor: "#BEB7A6",
+                        borderRadius: "3px",
+                        textTransform: "none",
+                      }}
+                    >
+                      View Details
+                    </Button>
 
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        disabled={isUpdating}
-                        onClick={() =>
-                          onUpdateApproval(seller.sellerProfileId, "REJECTED")
-                        }
-                        sx={{
-                          color: "#A33B32",
-                          borderColor: "#D9B8B1",
-                          textTransform: "none",
-                        }}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-[#77796F]">
-                      No action required
-                    </span>
-                  )}
+                    {status === "PENDING" && (
+                      <>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            onUpdateApproval(seller.sellerProfileId, "APPROVED")
+                          }
+                          sx={{
+                            backgroundColor: "#2D5B4C",
+                            textTransform: "none",
+                            boxShadow: "none",
+                            "&:hover": {
+                              backgroundColor: "#23483C",
+                              boxShadow: "none",
+                            },
+                          }}
+                        >
+                          {isUpdating ? (
+                            <CircularProgress size={16} color="inherit" />
+                          ) : (
+                            "Approve"
+                          )}
+                        </Button>
+
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            onUpdateApproval(seller.sellerProfileId, "REJECTED")
+                          }
+                          sx={{
+                            color: "#A33B32",
+                            borderColor: "#D9B8B1",
+                            textTransform: "none",
+                          }}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

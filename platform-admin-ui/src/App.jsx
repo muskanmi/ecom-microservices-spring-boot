@@ -9,6 +9,9 @@ import CustomerManagementPage from "./pages/CustomerManagementPage";
 import MarketplaceOrdersPage from "./pages/MarketplaceOrdersPage";
 import CatalogManagementPage from "./pages/CatalogManagementPage";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
+import CustomerDetailsPage from "./pages/CustomerDetailsPage";
+import SellerDetailsPage from "./pages/SellerDetailsPage";
+import ProductDetailsPage from "./pages/ProductDetailsPage";
 
 export default function App() {
   return (
@@ -25,6 +28,12 @@ export default function App() {
           <Route path="/orders" element={<MarketplaceOrdersPage />} />
           <Route path="/catalog" element={<CatalogManagementPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailsPage />} />
+          <Route
+            path="/customers/:customerId"
+            element={<CustomerDetailsPage />}
+          />
+          <Route path="/sellers/:sellerId" element={<SellerDetailsPage />} />
+          <Route path="/catalog/:productId" element={<ProductDetailsPage />} />
         </Route>
       </Route>
 

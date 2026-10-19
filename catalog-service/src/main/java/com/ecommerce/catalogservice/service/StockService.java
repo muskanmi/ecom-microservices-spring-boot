@@ -18,53 +18,33 @@ public class StockService {
     private final ProductRepository productRepository;
 
     @Transactional
-    public void deductStock(
-            StockDeductionRequest request) {
+    public void deductStock(StockDeductionRequest request) {
 
         for (StockDeductionItemRequest item : request.getItems()) {
 
-            Product product = productRepository.findById(
-                    item.getProductId()).orElseThrow(
-                            () -> new RuntimeException(
-                                    "Product not found: "
-                                            + item.getProductId()));
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Product not found: " + item.getProductId()));
 
-            System.out.println(
-                    "===== CATALOG STOCK DEDUCTION =====");
-
-            System.out.println(
-                    "Product ID: "
-                            + item.getProductId());
-
-            System.out.println(
-                    "Current stock: "
-                            + product.getStock());
-
-            System.out.println(
-                    "Requested quantity: "
-                            + item.getQuantity());
+            if (!Boolean.TRUE.equals(product.getActive())) {
+                throw new InsufficientStockException(
+                        "Product '" + product.getName()
+                                + "' is currently unavailable.");
+            }
 
             int updatedRows = productRepository.deductStockIfAvailable(
                     item.getProductId(),
                     item.getQuantity());
 
-            System.out.println(
-                    "Updated rows: "
-                            + updatedRows);
-
             if (updatedRows == 0) {
-
                 throw new InsufficientStockException(
-                        "Insufficient stock for product '"
+                        "Insufficient stock or product unavailable for '"
                                 + product.getName()
                                 + "'. Available: "
                                 + product.getStock()
                                 + ", requested: "
                                 + item.getQuantity());
             }
-
-            System.out.println(
-                    "Stock deduction completed successfully.");
         }
     }
 

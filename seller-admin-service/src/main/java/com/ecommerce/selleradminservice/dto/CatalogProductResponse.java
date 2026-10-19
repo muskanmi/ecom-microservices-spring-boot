@@ -34,4 +34,6 @@ public class CatalogProductResponse {
     private String parentCategoryName;
 
     private List<CatalogProductImageResponse> images;
+
+    private Boolean active;
 }

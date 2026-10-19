@@ -55,7 +55,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponse getProductById(Long id) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         return mapToResponse(product);
@@ -254,6 +254,9 @@ public class ProductService {
         response.setPrice(product.getPrice());
         response.setMrp(product.getMrp());
         response.setStock(product.getStock());
+
+        response.setActive(product.getActive());
+
         response.setSellerId(product.getSellerId());
         response.setCreatedAt(product.getCreatedAt());
 
@@ -441,5 +444,25 @@ public class ProductService {
         }
 
         productImageRepository.delete(image);
+    }
+
+    @Transactional
+    public Product updateProductActivation(Long productId, boolean active) {
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Product not found: " + productId));
+
+        product.setActive(active);
+
+        return productRepository.save(product);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAllProductsForAdmin() {
+        return productRepository.findAllByOrderByIdAsc()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 }

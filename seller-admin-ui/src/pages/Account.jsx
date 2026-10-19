@@ -10,6 +10,7 @@ import {
 import {
   currentUser,
   getSellerProfile,
+  createSellerProfile,
   updateProfile,
   updateSellerProfile,
   changePassword,
@@ -19,6 +20,9 @@ import {
 function Account() {
   const [user, setUser] = useState(null);
   const [sellerProfile, setSellerProfile] = useState(null);
+  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [shopName, setShopName] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -87,22 +91,39 @@ function Account() {
       try {
         setErrorMessage("");
 
-        const [userResponse, sellerResponse] = await Promise.all([
-          currentUser(token),
-          getSellerProfile(token),
-        ]);
+        const userResponse = await currentUser(token);
+        const userData = userResponse.data;
 
-        setUser(userResponse.data);
-        setSellerProfile(sellerResponse.data);
-
+        setUser(userData);
         setProfileForm({
-          name: userResponse.data.name || "",
-          email: userResponse.data.email || "",
+          name: userData.name || "",
+          email: userData.email || "",
         });
 
-        setStoreForm({
-          shopName: sellerResponse.data.shopName || "",
-        });
+        try {
+          const sellerResponse = await getSellerProfile(token);
+          const sellerData = sellerResponse.data;
+
+          setSellerProfile(sellerData);
+          setStoreForm({
+            shopName: sellerData.shopName || "",
+          });
+          setProfileError("");
+        } catch (sellerError) {
+          const message = sellerError.response?.data?.message;
+
+          if (
+            message === "Seller Profile does not exist" ||
+            sellerError.response?.status === 404
+          ) {
+            setSellerProfile(null);
+            setStoreForm({ shopName: "" });
+            setProfileError("");
+          } else {
+            console.error("Failed to load seller profile:", sellerError);
+            setProfileError(message || "Unable to load your seller profile.");
+          }
+        }
       } catch (error) {
         console.error("Failed to load seller account:", error);
 
@@ -192,6 +213,52 @@ function Account() {
       );
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const handleCreateSellerProfile = async (event) => {
+    event.preventDefault();
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setErrorMessage("Your session has expired. Please log in again.");
+      return;
+    }
+
+    if (!shopName.trim()) {
+      setProfileError("Store name is required.");
+      return;
+    }
+
+    try {
+      setCreatingProfile(true);
+      setProfileError("");
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const response = await createSellerProfile(token, {
+        shopName: shopName.trim(),
+      });
+
+      setSellerProfile(response.data);
+      setStoreForm({
+        shopName: response.data.shopName || shopName.trim(),
+      });
+      setShopName("");
+
+      setSuccessMessage(
+        "Store profile created successfully. Your application is pending approval.",
+      );
+    } catch (error) {
+      console.error("Failed to create seller profile:", error);
+
+      setProfileError(
+        error.response?.data?.message ||
+          "Unable to create your seller profile.",
+      );
+    } finally {
+      setCreatingProfile(false);
     }
   };
 
@@ -785,6 +852,64 @@ function Account() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+      )}
+
+      {user && !sellerProfile && (
+        <section className="mt-6 border border-[#E4DDCF] bg-[#F7F1E5]">
+          <div className="border-b border-[#E4DDCF] px-6 py-5">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#7A817B]">
+              Seller Account
+            </p>
+
+            <h2 className="mt-1 font-serif text-2xl text-[#263331]">
+              Set up your store
+            </h2>
+          </div>
+
+          <div className="p-6">
+            <p className="max-w-[700px] text-sm leading-6 text-[#6F766F]">
+              Create your store profile to submit your seller application for
+              approval.
+            </p>
+
+            {profileError && (
+              <div className="mt-5">
+                <Alert severity="error">{profileError}</Alert>
+              </div>
+            )}
+
+            <form
+              onSubmit={handleCreateSellerProfile}
+              className="mt-6 max-w-[580px]"
+            >
+              <TextField
+                label="Store name"
+                value={shopName}
+                onChange={(event) => setShopName(event.target.value)}
+                required
+                fullWidth
+                placeholder="Enter your store name"
+              />
+
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={creatingProfile}
+                sx={{
+                  mt: 2.5,
+                  backgroundColor: "#164E4A",
+                  textTransform: "none",
+                  padding: "10px 22px",
+                  "&:hover": {
+                    backgroundColor: "#123F3B",
+                  },
+                }}
+              >
+                {creatingProfile ? "Creating..." : "Create Store Profile"}
+              </Button>
+            </form>
           </div>
         </section>
       )}

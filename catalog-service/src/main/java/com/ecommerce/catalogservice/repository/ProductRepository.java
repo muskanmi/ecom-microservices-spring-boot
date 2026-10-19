@@ -14,13 +14,12 @@ import com.ecommerce.catalogservice.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-        // =========================================================
-        // PUBLIC PRODUCT SEARCH
-        // =========================================================
+        // PUBLIC PRODUCT SEARCH: active products only
 
         @Query("""
                         SELECT p FROM Product p
-                        WHERE (:category IS NULL OR :category = ''
+                        WHERE p.active = true
+                          AND (:category IS NULL OR :category = ''
                                OR LOWER(p.category.name) = LOWER(:category))
                           AND (:minPrice IS NULL OR p.price >= :minPrice)
                           AND (:maxPrice IS NULL OR p.price <= :maxPrice)
@@ -30,23 +29,26 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                         @Param("minPrice") BigDecimal minPrice,
                         @Param("maxPrice") BigDecimal maxPrice);
 
-        // =========================================================
+        // Public product details: active products only
+
+        Optional<Product> findByIdAndActiveTrue(Long id);
+
         // SELLER PRODUCT OWNERSHIP
-        // =========================================================
 
         List<Product> findBySellerId(Long sellerId);
 
         Optional<Product> findByIdAndSellerId(Long id, Long sellerId);
 
-        // =========================================================
+        List<Product> findAllByOrderByIdAsc();
+
         // STOCK MANAGEMENT
-        // =========================================================
 
         @Modifying
         @Query("""
                         UPDATE Product p
                         SET p.stock = p.stock - :quantity
                         WHERE p.id = :productId
+                          AND p.active = true
                           AND p.stock >= :quantity
                         """)
         int deductStockIfAvailable(

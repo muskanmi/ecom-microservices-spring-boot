@@ -1,3 +1,4 @@
+
 package com.ecommerce.catalogservice.entity;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+
 import lombok.Data;
 
 @Entity
@@ -41,6 +43,9 @@ public class Product {
 
     private Long sellerId;
 
+    @Column(nullable = false)
+    private Boolean active = true;
+
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -53,5 +58,9 @@ public class Product {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+
+        if (active == null) {
+            active = true;
+        }
     }
 }

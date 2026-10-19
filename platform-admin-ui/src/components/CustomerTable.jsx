@@ -1,4 +1,5 @@
-import { Avatar } from "@mui/material";
+import { Avatar, Button } from "@mui/material";
+import { Link } from "react-router-dom";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -28,17 +29,19 @@ export default function CustomerTable({ customers }) {
 
   return (
     <div className="overflow-x-auto border border-[#E7E0D1] bg-white">
-      <table className="w-full min-w-[700px] border-collapse text-left">
+      <table className="w-full min-w-[850px] border-collapse text-left">
         <thead className="bg-[#F5F0E5]">
           <tr>
-            {["Customer", "Customer ID", "Registered"].map((heading) => (
-              <th
-                key={heading}
-                className="border-b border-[#E7E0D1] px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[#77796F]"
-              >
-                {heading}
-              </th>
-            ))}
+            {["Customer", "Customer ID", "Registered", "Action"].map(
+              (heading) => (
+                <th
+                  key={heading}
+                  className="border-b border-[#E7E0D1] px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[#77796F]"
+                >
+                  {heading}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
 
@@ -80,6 +83,28 @@ export default function CustomerTable({ customers }) {
 
               <td className="px-5 py-5 text-sm text-[#77796F]">
                 {formatDate(customer.createdAt)}
+              </td>
+
+              <td className="px-5 py-5">
+                <Button
+                  component={Link}
+                  to={`/customers/${customer.id}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    color: "#233636",
+                    borderColor: "#BEB7A6",
+                    borderRadius: "3px",
+                    textTransform: "none",
+                    whiteSpace: "nowrap",
+                    "&:hover": {
+                      borderColor: "#2D5B4C",
+                      backgroundColor: "#F7F3E9",
+                    },
+                  }}
+                >
+                  View Details
+                </Button>
               </td>
             </tr>
           ))}

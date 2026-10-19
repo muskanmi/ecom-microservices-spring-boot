@@ -77,6 +77,30 @@ function StockBadge({ stock }) {
   );
 }
 
+function ProductStatusBadge({ active }) {
+  if (active === false) {
+    return (
+      <span className="inline-flex whitespace-nowrap border border-[#DED7C9] bg-[#F3ECDF] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#77796F]">
+        Inactive
+      </span>
+    );
+  }
+
+  if (active === true) {
+    return (
+      <span className="inline-flex whitespace-nowrap border border-[#C9DCCB] bg-[#EEF5EE] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#55745A]">
+        Active
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex whitespace-nowrap border border-[#E6D7B8] bg-[#F9F3E5] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#8A744B]">
+      Unknown
+    </span>
+  );
+}
+
 function DeleteModal({ product, deleting, onCancel, onConfirm }) {
   if (!product) {
     return null;
@@ -620,9 +644,9 @@ function Products() {
                         <p className="mt-1 text-xs text-[#8A8378]">units</p>
                       </td>
 
-                      {/* STATUS */}
+                      {/* PRODUCT STATUS */}
                       <td className="px-6 py-5">
-                        <StockBadge stock={stock} />
+                        <ProductStatusBadge active={product.active} />
                       </td>
 
                       {/* ACTIONS */}

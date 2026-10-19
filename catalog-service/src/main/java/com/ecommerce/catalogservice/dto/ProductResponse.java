@@ -29,4 +29,6 @@ public class ProductResponse {
     private LocalDateTime createdAt;
 
     private List<ProductImageResponse> images;
+
+    private Boolean active;
 }
