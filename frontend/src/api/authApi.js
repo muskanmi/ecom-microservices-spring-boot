@@ -9,23 +9,29 @@ const authApi = axios.create({
   },
 });
 
-export const registerUser = (data) => authApi.post("/register", data);
+export const registerUser = (data) => {
+  return authApi.post("/register", data);
+};
 
-export const loginUser = (data) => authApi.post("/login", data);
+export const loginUser = (data) => {
+  return authApi.post("/login", data);
+};
 
-export const currentUser = (token) =>
-  authApi.get("/me", {
+export const currentUser = (token) => {
+  return authApi.get("/me", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
+};
 
-export const updateProfile = (data, token) =>
-  authApi.put("/me", data, {
+export const updateProfile = (data, token) => {
+  return authApi.put("/me", data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
+};
 
 export const uploadAvatar = (file, token) => {
   const formData = new FormData();
@@ -39,11 +45,12 @@ export const uploadAvatar = (file, token) => {
   });
 };
 
-export const changePassword = (data, token) =>
-  authApi.put("/me/password", data, {
+export const changePassword = (data, token) => {
+  return authApi.put("/me/password", data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
+};
 
 export default authApi;
