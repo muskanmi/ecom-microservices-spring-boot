@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .logout(logout -> logout.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/*/internal/**").denyAll()
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/auth/register",
@@ -41,13 +43,18 @@ public class SecurityConfig {
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password")
                         .permitAll()
+
                         .requestMatchers(
                                 HttpMethod.GET, "/api/products", "/api/products/**")
                         .permitAll()
+
                         .requestMatchers(
                                 HttpMethod.POST, "/api/payments/webhook")
                         .permitAll()
-                        .requestMatchers("/api/orders/internal/**").denyAll()
+
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/seller/**").hasRole("SELLER")
+
                         .anyRequest().authenticated())
                 .addFilterBefore(
                         jwtAuthFilter,

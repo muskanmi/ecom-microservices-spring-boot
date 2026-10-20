@@ -2,7 +2,11 @@
 package com.ecommerce.apigateway.security;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,6 +19,7 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
@@ -33,10 +38,17 @@ public class GatewayJwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
+        SecurityContextHolder.clearContext();
+
+        // Never trust identity headers supplied by the browser.
+        Map<String, String> trustedHeaders = new LinkedHashMap<>();
+
+        HttpServletRequest sanitizedRequest = new TrustedHeaderRequestWrapper(request, trustedHeaders);
+
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(sanitizedRequest, response);
             return;
         }
 
@@ -47,13 +59,23 @@ public class GatewayJwtAuthFilter extends OncePerRequestFilter {
 
             String email = claims.getSubject();
             String role = claims.get("role", String.class);
+            Object userIdClaim = claims.get("userId");
 
-            if (email == null || role == null || role.isBlank()) {
+            if (email == null || email.isBlank()
+                    || role == null || role.isBlank()
+                    || userIdClaim == null
+                    || userIdClaim.toString().isBlank()) {
                 response.sendError(
                         HttpServletResponse.SC_UNAUTHORIZED,
                         "Invalid authentication token");
                 return;
             }
+
+            String userId = userIdClaim.toString();
+
+            // These values come from the validated JWT, not the request.
+            trustedHeaders.put("X-User-Id", userId);
+            trustedHeaders.put("X-User-Role", role);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     email,
@@ -65,14 +87,61 @@ public class GatewayJwtAuthFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext()
                     .setAuthentication(authentication);
 
+            filterChain.doFilter(sanitizedRequest, response);
+
         } catch (JwtException | IllegalArgumentException ex) {
             SecurityContextHolder.clearContext();
             response.sendError(
                     HttpServletResponse.SC_UNAUTHORIZED,
                     "Invalid or expired authentication token");
-            return;
+        }
+    }
+
+    private static class TrustedHeaderRequestWrapper
+            extends HttpServletRequestWrapper {
+
+        private final Map<String, String> trustedHeaders;
+
+        TrustedHeaderRequestWrapper(
+                HttpServletRequest request,
+                Map<String, String> trustedHeaders) {
+            super(request);
+            this.trustedHeaders = trustedHeaders;
         }
 
-        filterChain.doFilter(request, response);
+        @Override
+        public String getHeader(String name) {
+            if (isIdentityHeader(name)) {
+                return trustedHeaders.get(name);
+            }
+            return super.getHeader(name);
+        }
+
+        @Override
+        public Enumeration<String> getHeaders(String name) {
+            if (isIdentityHeader(name)) {
+                String value = trustedHeaders.get(name);
+                return value == null
+                        ? Collections.emptyEnumeration()
+                        : Collections.enumeration(List.of(value));
+            }
+            return super.getHeaders(name);
+        }
+
+        @Override
+        public Enumeration<String> getHeaderNames() {
+            List<String> names = Collections.list(super.getHeaderNames());
+
+            names.removeIf(TrustedHeaderRequestWrapper::isIdentityHeader);
+
+            names.addAll(trustedHeaders.keySet());
+
+            return Collections.enumeration(names);
+        }
+
+        private static boolean isIdentityHeader(String name) {
+            return "X-User-Id".equalsIgnoreCase(name)
+                    || "X-User-Role".equalsIgnoreCase(name);
+        }
     }
 }
