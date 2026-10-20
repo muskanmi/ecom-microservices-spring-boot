@@ -1,56 +1,49 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8081/api/auth";
+const API_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 
 const authApi = axios.create({
-    baseURL: API_URL,
-    headers: {
-        'Content-Type': "application/json"
-    }
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-export const registerUser = (data) => {
-    return authApi.post("/register", data);
-}
+export const registerUser = (data) => authApi.post("/register", data);
 
-export const loginUser = (data) => {
-    return authApi.post("/login", data);
-}
+export const loginUser = (data) => authApi.post("/login", data);
 
-export const currentUser = (token) => {
-    return authApi.get("/me", {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        }
-    })
-}
+export const currentUser = (token) =>
+  authApi.get("/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
-export const updateProfile = (data, token) => {
-    return authApi.put("/me", data, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-        }
-    })
-}
+export const updateProfile = (data, token) =>
+  authApi.put("/me", data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
 export const uploadAvatar = (file, token) => {
-    const formData = new FormData();
-    formData.append("file", file);
+  const formData = new FormData();
+  formData.append("file", file);
 
-    return authApi.post("/me/avatar", formData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-        },
-    });
+  return authApi.post("/me/avatar", formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };
 
-export const changePassword = (data, token) => {
-    return authApi.put("/me/password", data, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
+export const changePassword = (data, token) =>
+  authApi.put("/me/password", data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
 export default authApi;
