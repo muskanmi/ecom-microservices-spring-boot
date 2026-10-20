@@ -1,5 +1,5 @@
-const API_URL = "http://localhost:8081";
-export const CATALOG_URL = "http://localhost:8082";
+const API_URL = import.meta.env.VITE_API_URL;
+export const CATALOG_URL = import.meta.env.VITE_API_URL;
 
 async function parseResponse(response) {
   return response.json().catch(() => null);
