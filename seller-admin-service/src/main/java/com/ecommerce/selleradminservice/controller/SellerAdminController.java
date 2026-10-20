@@ -25,7 +25,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/seller")
 @RequiredArgsConstructor
 public class SellerAdminController {
 

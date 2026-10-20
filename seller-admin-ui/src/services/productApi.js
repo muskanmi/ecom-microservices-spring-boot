@@ -4,19 +4,19 @@ import api from "./api";
 // PRODUCTS
 // ============================================================
 
-export const getProducts = () => api.get("/api/admin/products");
+export const getProducts = () => api.get("/api/seller/products");
 
 export const getProduct = (productId) =>
-  api.get(`/api/admin/products/${productId}`);
+  api.get(`/api/seller/products/${productId}`);
 
 export const createProduct = (product) =>
-  api.post("/api/admin/products", product);
+  api.post("/api/seller/products", product);
 
 export const updateProduct = (productId, product) =>
-  api.put(`/api/admin/products/${productId}`, product);
+  api.put(`/api/seller/products/${productId}`, product);
 
 export const deleteProduct = (productId) =>
-  api.delete(`/api/admin/products/${productId}`);
+  api.delete(`/api/seller/products/${productId}`);
 
 // ============================================================
 // PRODUCT IMAGES
@@ -29,7 +29,7 @@ export const uploadProductImages = (productId, files) => {
     formData.append("files", file);
   });
 
-  return api.post(`/api/admin/products/${productId}/images`, formData, {
+  return api.post(`/api/seller/products/${productId}/images`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -46,7 +46,7 @@ export const updateProductImage = (productId, imageId, file) => {
   formData.append("file", file);
 
   return api.put(
-    `/api/admin/products/${productId}/images/${imageId}`,
+    `/api/seller/products/${productId}/images/${imageId}`,
     formData,
     {
       headers: {
@@ -61,4 +61,4 @@ export const updateProductImage = (productId, imageId, file) => {
 // ============================================================
 
 export const deleteProductImage = (productId, imageId) =>
-  api.delete(`/api/admin/products/${productId}/images/${imageId}`);
+  api.delete(`/api/seller/products/${productId}/images/${imageId}`);
