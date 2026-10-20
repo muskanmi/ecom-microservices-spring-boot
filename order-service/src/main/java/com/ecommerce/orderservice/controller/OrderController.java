@@ -168,4 +168,36 @@ public class OrderController {
         return ResponseEntity.ok(
                 orderService.getOrderForSeller(orderId, sellerId));
     }
+
+    @PutMapping("/internal/seller/{orderId}/status")
+    public ResponseEntity<OrderResponse> updateSellerOrderStatus(
+            @PathVariable Long orderId,
+            @RequestParam Long sellerId,
+            @Valid @RequestBody UpdateOrderStatusRequest request,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.updateOrderStatusForSeller(
+                        orderId, sellerId, request.getStatus()));
+    }
+
+    @PutMapping("/internal/seller/{orderId}/shipping")
+    public ResponseEntity<OrderResponse> updateSellerShippingInfo(
+            @PathVariable Long orderId,
+            @RequestParam Long sellerId,
+            @Valid @RequestBody UpdateShippingInfoRequest request,
+            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+        if (!internalServiceKey.equals(serviceKey)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(
+                orderService.updateShippingInfoForSeller(
+                        orderId, sellerId, request));
+    }
 }

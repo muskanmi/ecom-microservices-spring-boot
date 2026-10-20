@@ -3,8 +3,10 @@ package com.ecommerce.orderservice.service;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.ecommerce.orderservice.client.CatalogStockClient;
 import com.ecommerce.orderservice.client.NotificationClient;
@@ -1034,5 +1036,53 @@ public class OrderService {
         response.setTotalAmount(sellerSubtotal);
 
         return response;
+    }
+
+    private Order getOrderForSellerUpdate(Long orderId, Long sellerId) {
+        if (sellerId == null || sellerId <= 0) {
+            throw new IllegalArgumentException("Invalid seller ID.");
+        }
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "This order cannot be managed by the seller.");
+        }
+
+        boolean ownsAllItems = order.getItems().stream()
+                .allMatch(item -> sellerId.equals(item.getSellerId()));
+
+        if (!ownsAllItems) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You cannot update an order containing another seller's items.");
+        }
+
+        return order;
+    }
+
+    @Transactional
+    public OrderResponse updateOrderStatusForSeller(
+            Long orderId,
+            Long sellerId,
+            String status) {
+
+        getOrderForSellerUpdate(orderId, sellerId);
+
+        return updateOrderStatus(orderId, status);
+    }
+
+    @Transactional
+    public OrderResponse updateShippingInfoForSeller(
+            Long orderId,
+            Long sellerId,
+            UpdateShippingInfoRequest request) {
+
+        getOrderForSellerUpdate(orderId, sellerId);
+
+        return updateShippingInfo(orderId, request);
     }
 }

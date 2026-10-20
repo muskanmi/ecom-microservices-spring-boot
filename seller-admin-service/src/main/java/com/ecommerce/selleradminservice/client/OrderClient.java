@@ -49,4 +49,18 @@ public interface OrderClient {
             @PathVariable("orderId") Long orderId,
             @RequestParam("sellerId") Long sellerId,
             @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
+
+    @PutMapping("/api/orders/internal/seller/{orderId}/status")
+    OrderResponse updateOrderStatusForSeller(
+            @PathVariable("orderId") Long orderId,
+            @RequestParam("sellerId") Long sellerId,
+            @RequestBody UpdateOrderStatusRequest request,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
+
+    @PutMapping("/api/orders/internal/seller/{orderId}/shipping")
+    OrderResponse updateShippingInfoForSeller(
+            @PathVariable("orderId") Long orderId,
+            @RequestParam("sellerId") Long sellerId,
+            @RequestBody UpdateShippingInfoRequest request,
+            @RequestHeader("X-Internal-Service-Key") String internalServiceKey);
 }

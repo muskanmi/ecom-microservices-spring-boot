@@ -70,16 +70,22 @@ public class SellerAdminController {
     public ResponseEntity<OrderResponse> updateShippingInfo(
             @PathVariable Long orderId,
             @Valid @RequestBody UpdateShippingInfoRequest request) {
+
+        Long sellerId = getAuthenticatedSellerId();
+
         return ResponseEntity.ok(
-                sellerAdminService.updateShippingInfo(orderId, request));
+                sellerAdminService.updateShippingInfo(sellerId, orderId, request));
     }
 
     @PutMapping("/orders/{orderId}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(
             @PathVariable Long orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
+
+        Long sellerId = getAuthenticatedSellerId();
+
         return ResponseEntity.ok(
-                sellerAdminService.updateOrderStatus(orderId, request));
+                sellerAdminService.updateOrderStatus(sellerId, orderId, request));
     }
 
     @PutMapping("/orders/{orderId}/payment-status")

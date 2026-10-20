@@ -52,19 +52,21 @@ public class SellerAdminService {
     }
 
     public OrderResponse updateShippingInfo(
+            Long sellerId,
             Long orderId,
             UpdateShippingInfoRequest request) {
 
-        return orderClient.updateShippingInfo(
-                orderId, request, internalServiceKey);
+        return orderClient.updateShippingInfoForSeller(
+                orderId, sellerId, request, internalServiceKey);
     }
 
     public OrderResponse updateOrderStatus(
+            Long sellerId,
             Long orderId,
             UpdateOrderStatusRequest request) {
 
-        return orderClient.updateOrderStatus(
-                orderId, request, internalServiceKey);
+        return orderClient.updateOrderStatusForSeller(
+                orderId, sellerId, request, internalServiceKey);
     }
 
     public OrderResponse updatePaymentStatus(
