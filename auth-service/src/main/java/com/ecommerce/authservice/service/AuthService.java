@@ -1,13 +1,17 @@
 package com.ecommerce.authservice.service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.MessageDigest;
+import java.util.Base64;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,6 +45,17 @@ public class AuthService {
     private final SellerProfileRepository sellerProfileRepository;
     private final NotificationClient notificationClient;
     private final String internalServiceKey = "INTERNAL_SERVICE_KEY";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private String hashResetToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("Unable to hash reset token.", exception);
+        }
+    }
 
     @Transactional
     public User registerUser(RegisterRequest request) {
@@ -171,47 +186,54 @@ public class AuthService {
 
     @Transactional
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
-        Optional<User> userOptonal = userRepository.findByEmail(request.getEmail());
-        String token = null;
+        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
 
-        if (userOptonal.isPresent()) {
-            User user = userOptonal.get();
-            token = UUID.randomUUID().toString();
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
 
-            user.setResetToken(token);
+            byte[] randomBytes = new byte[32];
+            SECURE_RANDOM.nextBytes(randomBytes);
+
+            String token = Base64.getUrlEncoder()
+                    .withoutPadding()
+                    .encodeToString(randomBytes);
+
+            user.setResetToken(hashResetToken(token));
             user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
             userRepository.save(user);
+
+            notificationClient.sendEmail(
+                    internalServiceKey,
+                    new SendEmailRequest(
+                            user.getEmail(),
+                            "Password Reset Request",
+                            "Use this token to reset your password: " + token));
         }
 
-        notificationClient.sendEmail(
-                internalServiceKey,
-                new SendEmailRequest(request.getEmail(), "Password Reset Request",
-                        "Use this token to reset your password: " + token));
-
         return new ForgotPasswordResponse(
-                "If that email exists, a reset link has been sent.",
-                token);
+                "If that email exists, a reset link has been sent.");
     }
 
     @Transactional
     public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
-        // step 1
-        User user = userRepository.findByResetToken(request.getToken())
-                .orElseThrow(() -> new RuntimeException("Invalid or expired reset token"));
+        String tokenHash = hashResetToken(request.getToken());
 
-        // step 2
-        if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+        User user = userRepository.findByResetToken(tokenHash)
+                .orElseThrow(() -> new RuntimeException(
+                        "Invalid or expired reset token"));
+
+        if (user.getResetTokenExpiry() == null
+                || !user.getResetTokenExpiry().isAfter(LocalDateTime.now())) {
             throw new RuntimeException("Invalid or expired reset token");
         }
 
-        // step 3
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-
         user.setResetToken(null);
         user.setResetTokenExpiry(null);
 
-        return new ResetPasswordResponse(
-                "Successfully reset password");
+        userRepository.save(user);
+
+        return new ResetPasswordResponse("Successfully reset password");
     }
 
     @Transactional
