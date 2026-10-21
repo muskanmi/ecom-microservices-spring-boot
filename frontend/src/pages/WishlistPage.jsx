@@ -23,7 +23,7 @@ import { removeFromWishlist } from "../api/wishlistApi";
 import { addToCart } from "../api/cartApi";
 import { useState } from "react";
 
-const API_BASE_URL = "http://localhost:8082";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const WishlistPage = () => {
   const navigate = useNavigate();

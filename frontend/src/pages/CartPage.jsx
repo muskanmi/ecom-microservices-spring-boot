@@ -22,7 +22,7 @@ import { useState } from "react";
 import { useWishlist } from "../context/WishlistContext";
 import { addToWishlist, removeFromWishlist } from "../api/wishlistApi";
 
-const API_BASE_URL = "http://localhost:8082";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const CartPage = () => {
   const { cart, cartItemCount, fetchCart } = useCart();

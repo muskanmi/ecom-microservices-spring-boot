@@ -36,7 +36,7 @@ import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { addToWishlist, removeFromWishlist } from "../api/wishlistApi";
 
-const API_URL = "http://localhost:8082";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ProductDetailsPage = () => {
   const navigate = useNavigate();

@@ -35,7 +35,7 @@ const muted = "#737373";
 const border = "#E6E0D5";
 const gold = "#F4B432";
 
-const API_URL = "http://localhost:8081";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ProfilePage() {
   const navigate = useNavigate();

@@ -48,6 +48,8 @@ public class SecurityConfig {
                                 HttpMethod.GET, "/api/products", "/api/products/**")
                         .permitAll()
 
+                        .requestMatchers("/uploads/**").permitAll()
+
                         .requestMatchers(
                                 HttpMethod.POST, "/api/payments/webhook")
                         .permitAll()

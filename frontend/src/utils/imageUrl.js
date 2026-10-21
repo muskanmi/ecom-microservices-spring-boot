@@ -1,17 +1,14 @@
-const CATALOG_SERVICE_URL = "http://localhost:8082";
+const CATALOG_SERVICE_URL = import.meta.env.VITE_API_URL;
 
 export const getImageUrl = (imageUrl) => {
-    if (!imageUrl) {
-        return "/placeholder-product.png";
-    }
+  if (!imageUrl) {
+    return "/placeholder-product.png";
+  }
 
-    // Already a complete URL
-    if (
-        imageUrl.startsWith("http://") ||
-        imageUrl.startsWith("https://")
-    ) {
-        return imageUrl;
-    }
+  // Already a complete URL
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
 
-    return `${CATALOG_SERVICE_URL}${imageUrl}`;
+  return `${CATALOG_SERVICE_URL}${imageUrl}`;
 };
