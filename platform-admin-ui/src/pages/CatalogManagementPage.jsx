@@ -28,6 +28,8 @@ export default function CatalogManagementPage() {
 
     try {
       const result = await getAllCatalogProducts(token);
+      console.log(result, "res");
+
       setProducts(result);
     } catch (err) {
       if (err.message?.includes("sign in again")) {
