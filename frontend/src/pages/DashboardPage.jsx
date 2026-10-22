@@ -572,7 +572,7 @@ const DashboardPage = () => {
                     component="img"
                     src={
                       product.images?.length > 0
-                        ? `http://localhost:8082${product.images[0].imageUrl}`
+                        ? `${import.meta.env.VITE_API_URL}${product.images[0].imageUrl}`
                         : "/placeholder.png"
                     }
                     alt={product.name}
