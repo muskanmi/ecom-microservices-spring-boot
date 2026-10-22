@@ -569,7 +569,7 @@ function Account() {
                 <Avatar
                   src={
                     user.avatarUrl
-                      ? `http://localhost:8081${user.avatarUrl}?v=${avatarVersion}`
+                      ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}?v=${avatarVersion}`
                       : undefined
                   }
                   sx={{

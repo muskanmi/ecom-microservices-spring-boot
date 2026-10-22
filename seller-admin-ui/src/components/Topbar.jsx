@@ -73,7 +73,7 @@ function Topbar() {
   const avatarLetter = user?.name?.trim()?.charAt(0)?.toUpperCase() || "S";
 
   const avatarUrl = user?.avatarUrl
-    ? `http://localhost:8081${user.avatarUrl}`
+    ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}`
     : undefined;
 
   return (
