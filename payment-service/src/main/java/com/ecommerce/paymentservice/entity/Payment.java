@@ -40,6 +40,20 @@ public class Payment {
 
     private String stripePaymentIntentId;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private String provider = "STRIPE";
+
+    @Column(unique = true)
+    private String razorpayOrderId;
+
+    @Column(unique = true)
+    private String razorpayPaymentId;
+
+    private String razorpaySignature;
+
+    private String razorpayRefundId;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
