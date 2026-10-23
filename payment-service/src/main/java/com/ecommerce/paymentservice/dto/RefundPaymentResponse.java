@@ -1,3 +1,4 @@
+
 package com.ecommerce.paymentservice.dto;
 
 import lombok.AllArgsConstructor;
@@ -14,8 +15,14 @@ import java.math.BigDecimal;
 public class RefundPaymentResponse {
 
     private Long orderId;
+
     private Long paymentId;
+
     private String paymentStatus;
+
     private String stripeRefundId;
+
+    private String razorpayRefundId;
+
     private BigDecimal amount;
 }

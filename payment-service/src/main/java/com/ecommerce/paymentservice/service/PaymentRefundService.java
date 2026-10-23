@@ -1,3 +1,4 @@
+
 package com.ecommerce.paymentservice.service;
 
 import com.ecommerce.paymentservice.client.NotificationClient;
@@ -7,15 +8,20 @@ import com.ecommerce.paymentservice.dto.RefundPaymentResponse;
 import com.ecommerce.paymentservice.dto.SendEmailRequest;
 import com.ecommerce.paymentservice.entity.Payment;
 import com.ecommerce.paymentservice.repository.PaymentRepository;
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.net.RequestOptions;
 
 import lombok.RequiredArgsConstructor;
 
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +30,7 @@ public class PaymentRefundService {
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
     private final NotificationClient notificationClient;
+    private final RazorpayClient razorpayClient;
 
     @Value("${internal.service.key}")
     private String internalServiceKey;
@@ -32,121 +39,161 @@ public class PaymentRefundService {
     private String stripeSecretKey;
 
     @Transactional
-    public RefundPaymentResponse refundPayment(
-            Long orderId) {
-
-        System.out.println(
-                "===== CUSTOMER PAYMENT REFUND =====");
-
-        System.out.println(
-                "Order ID: " + orderId);
-
+    public RefundPaymentResponse refundPayment(Long orderId) {
+        /*
+         * Prefer a currently PAID payment. If none exists, return
+         * the most recent completed refund for an idempotent retry.
+         *
+         * This avoids treating an old refunded payment as the
+         * active payment when a newer PAID attempt exists.
+         */
         Payment payment = paymentRepository
                 .findFirstByOrderIdAndStatusOrderByCreatedAtDesc(
-                        orderId,
-                        "PAID")
-                .orElseThrow(() -> new RuntimeException(
-                        "No PAID payment found for order: "
-                                + orderId));
+                        orderId, "PAID")
+                .orElseGet(() -> findLatestRefundedPayment(orderId));
 
-        if (payment.getStripeRefundId() != null) {
+        if (payment == null) {
+            throw new IllegalStateException(
+                    "No PAID or REFUNDED payment found for order: " + orderId);
+        }
 
-            System.out.println(
-                    "Payment already has a Stripe refund: "
-                            + payment.getStripeRefundId());
-
+        if ("REFUNDED".equalsIgnoreCase(payment.getStatus())) {
             return buildResponse(payment);
         }
 
-        if (payment.getStripePaymentIntentId() == null
-                || payment.getStripePaymentIntentId().isBlank()) {
+        String provider = payment.getProvider();
 
-            throw new RuntimeException(
+        if ("RAZORPAY".equalsIgnoreCase(provider)) {
+            refundRazorpayPayment(payment);
+        } else if ("STRIPE".equalsIgnoreCase(provider)
+                || provider == null
+                || provider.isBlank()) {
+            refundStripePayment(payment);
+        } else {
+            throw new IllegalStateException(
+                    "Unsupported payment provider: " + provider);
+        }
+
+        payment.setStatus("REFUNDED");
+        paymentRepository.save(payment);
+
+        /*
+         * Do not roll back a completed provider refund because
+         * order lookup or email delivery failed.
+         */
+        try {
+            OrderResponse order = orderClient.getOrderById(
+                    payment.getOrderId(),
+                    payment.getUserId());
+
+            sendRefundEmail(payment, order);
+        } catch (Exception e) {
+            System.err.println(
+                    "Refund completed, but refund notification could not be sent. "
+                            + "Order ID: " + payment.getOrderId()
+                            + ", reason: " + e.getMessage());
+        }
+
+        return buildResponse(payment);
+    }
+
+    private Payment findLatestRefundedPayment(Long orderId) {
+        List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+
+        return payments.stream()
+                .filter(p -> "REFUNDED".equalsIgnoreCase(p.getStatus()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void refundStripePayment(Payment payment) {
+        /*
+         * If a Stripe refund ID is already persisted, do not create
+         * another refund.
+         */
+        if (payment.getStripeRefundId() != null
+                && !payment.getStripeRefundId().isBlank()) {
+            return;
+        }
+
+        String paymentIntentId = payment.getStripePaymentIntentId();
+
+        if (paymentIntentId == null || paymentIntentId.isBlank()) {
+            throw new IllegalStateException(
                     "Stripe PaymentIntent ID is missing for order: "
-                            + orderId);
+                            + payment.getOrderId());
         }
 
         try {
-
-            System.out.println(
-                    "Stripe PaymentIntent: "
-                            + payment.getStripePaymentIntentId());
-
-            RequestOptions requestOptions = RequestOptions.builder()
+            RequestOptions options = RequestOptions.builder()
                     .setApiKey(stripeSecretKey)
                     .setIdempotencyKey(
-                            "refund-order-" + orderId)
+                            "refund-order-" + payment.getOrderId())
                     .build();
 
             Refund refund = Refund.create(
-                    com.stripe.param.RefundCreateParams
-                            .builder()
-                            .setPaymentIntent(
-                                    payment.getStripePaymentIntentId())
+                    com.stripe.param.RefundCreateParams.builder()
+                            .setPaymentIntent(paymentIntentId)
                             .build(),
-                    requestOptions);
+                    options);
 
-            payment.setStripeRefundId(
-                    refund.getId());
-
-            payment.setStatus(
-                    "REFUNDED");
-
+            payment.setStripeRefundId(refund.getId());
             paymentRepository.save(payment);
+        } catch (StripeException e) {
+            throw new IllegalStateException(
+                    "Stripe refund failed for order: "
+                            + payment.getOrderId(),
+                    e);
+        }
+    }
 
-            System.out.println(
-                    "Stripe refund successful");
+    private void refundRazorpayPayment(Payment payment) {
+        /*
+         * A stored refund ID means the provider refund was already
+         * created. Do not submit a second refund.
+         */
+        if (payment.getRazorpayRefundId() != null
+                && !payment.getRazorpayRefundId().isBlank()) {
+            return;
+        }
 
-            System.out.println(
-                    "Stripe Refund ID: "
-                            + refund.getId());
+        String razorpayPaymentId = payment.getRazorpayPaymentId();
 
-            System.out.println(
-                    "Payment status: "
-                            + payment.getStatus());
+        if (razorpayPaymentId == null || razorpayPaymentId.isBlank()) {
+            throw new IllegalStateException(
+                    "Razorpay payment ID is missing for order: "
+                            + payment.getOrderId());
+        }
+
+        try {
+            JSONObject refundRequest = new JSONObject();
+            JSONObject notes = new JSONObject();
+            notes.put("localOrderId", String.valueOf(payment.getOrderId()));
+            notes.put("localPaymentId", String.valueOf(payment.getId()));
+            refundRequest.put("notes", notes);
 
             /*
-             * Get order details so we can send
-             * the refund email to the customer.
+             * Omitting the amount requests a full refund.
+             * The payment ID is the provider's captured payment ID,
+             * not the Razorpay order ID.
              */
-            try {
+            com.razorpay.Refund refund = razorpayClient.payments.refund(
+                    razorpayPaymentId,
+                    refundRequest);
 
-                OrderResponse orderResponse = orderClient.getOrderById(
-                        payment.getOrderId(),
-                        payment.getUserId());
+            String refundId = refund.get("id");
 
-                sendRefundEmail(
-                        payment,
-                        orderResponse);
-
-            } catch (Exception e) {
-
-                /*
-                 * Do not fail a successful refund
-                 * because email/order lookup failed.
-                 */
-                System.out.println(
-                        "===== COULD NOT SEND REFUND EMAIL =====");
-
-                System.out.println(
-                        "Order ID: "
-                                + payment.getOrderId());
-
-                System.out.println(
-                        "Reason: "
-                                + e.getMessage());
+            if (refundId == null || refundId.isBlank()) {
+                throw new IllegalStateException(
+                        "Razorpay did not return a refund ID");
             }
 
-            return buildResponse(payment);
-
-        } catch (StripeException e) {
-
-            System.out.println(
-                    "Stripe refund failed");
-
-            throw new RuntimeException(
-                    "Stripe refund failed for order: "
-                            + orderId,
+            payment.setRazorpayRefundId(refundId);
+            paymentRepository.save(payment);
+        } catch (RazorpayException e) {
+            throw new IllegalStateException(
+                    "Razorpay refund failed for order: "
+                            + payment.getOrderId(),
                     e);
         }
     }
@@ -155,84 +202,45 @@ public class PaymentRefundService {
             Payment payment,
             OrderResponse order) {
 
+        if (order == null
+                || order.getCustomerEmail() == null
+                || order.getCustomerEmail().isBlank()) {
+            return;
+        }
+
+        String orderNumber = order.getOrderNumber() == null
+                ? String.valueOf(payment.getOrderId())
+                : order.getOrderNumber();
+
+        SendEmailRequest request = new SendEmailRequest();
+        request.setRecipientEmail(order.getCustomerEmail());
+        request.setSubject("Payment Refunded - " + orderNumber);
+        request.setMessage(
+                "Hello,\n\n"
+                        + "Your payment for order " + orderNumber
+                        + " has been refunded.\n\n"
+                        + "Refund amount: ₹" + payment.getAmount() + "\n\n"
+                        + "The time taken for the refund to appear depends "
+                        + "on your bank and payment provider.\n\n"
+                        + "Thank you,\nMarketplace Team");
+
         try {
-
-            String recipientEmail = order.getCustomerEmail();
-
-            if (recipientEmail == null
-                    || recipientEmail.isBlank()) {
-
-                System.out.println(
-                        "Refund email skipped: customer email is missing for order "
-                                + payment.getOrderId());
-
-                return;
-            }
-
-            String orderNumber = order.getOrderNumber();
-
-            String subject = "Payment Refunded - " + orderNumber;
-
-            String message = "Hello,\n\n"
-                    + "Your order " + orderNumber
-                    + " has been cancelled successfully.\n\n"
-                    + "Payment Amount: ₹"
-                    + payment.getAmount()
-                    + "\n\n"
-                    + "The payment has been refunded to your original payment method.\n"
-                    + "Please allow some time for the refund to appear in your account, "
-                    + "depending on your bank or payment provider.\n\n"
-                    + "Thank you,\n"
-                    + "Marketplace Team";
-
-            SendEmailRequest request = new SendEmailRequest();
-
-            request.setRecipientEmail(
-                    recipientEmail);
-
-            request.setSubject(subject);
-
-            request.setMessage(message);
-
-            notificationClient.sendEmail(
-                    internalServiceKey,
-                    request);
-
-            System.out.println(
-                    "===== REFUND EMAIL SENT =====");
-
-            System.out.println(
-                    "Recipient: " + recipientEmail);
-
-            System.out.println(
-                    "Subject: " + subject);
-
+            notificationClient.sendEmail(internalServiceKey, request);
         } catch (Exception e) {
-
-            /*
-             * Email failure should NOT undo a successful Stripe refund.
-             */
-            System.out.println(
-                    "===== REFUND EMAIL FAILED =====");
-
-            System.out.println(
-                    "Order ID: " + payment.getOrderId());
-
-            System.out.println(
-                    "Reason: " + e.getMessage());
+            System.err.println(
+                    "Refund email failed for order "
+                            + payment.getOrderId()
+                            + ": " + e.getMessage());
         }
     }
 
-    private RefundPaymentResponse buildResponse(
-            Payment payment) {
-
+    private RefundPaymentResponse buildResponse(Payment payment) {
         return RefundPaymentResponse.builder()
                 .orderId(payment.getOrderId())
                 .paymentId(payment.getId())
-                .paymentStatus(
-                        payment.getStatus())
-                .stripeRefundId(
-                        payment.getStripeRefundId())
+                .paymentStatus(payment.getStatus())
+                .stripeRefundId(payment.getStripeRefundId())
+                .razorpayRefundId(payment.getRazorpayRefundId())
                 .amount(payment.getAmount())
                 .build();
     }

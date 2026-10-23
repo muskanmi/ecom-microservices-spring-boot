@@ -14,7 +14,7 @@ import {
 } from "@mui/icons-material";
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import { getOrderById } from "../api/orderApi";
@@ -38,7 +38,14 @@ const COLORS = {
 
 export default function PaymentSuccessPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  const provider = new URLSearchParams(location.search)
+    .get("provider")
+    ?.toLowerCase();
+
+  const paymentProvider = provider === "razorpay" ? "Razorpay" : "Stripe";
 
   const [status, setStatus] = useState("CHECKING");
   const [order, setOrder] = useState(null);
@@ -191,8 +198,8 @@ export default function PaymentSuccessPage() {
             lineHeight: 1.7,
           }}
         >
-          Your payment was received by Stripe. We are now confirming stock and
-          finalizing your order.
+          Your {paymentProvider} payment is being verified. We are confirming
+          your order and finalizing the details.
         </Typography>
 
         <Typography

@@ -1,3 +1,4 @@
+
 package com.ecommerce.paymentservice.service;
 
 import com.ecommerce.paymentservice.client.OrderClient;
@@ -9,7 +10,6 @@ import com.ecommerce.paymentservice.entity.Payment;
 import com.ecommerce.paymentservice.exception.OrderNotPayableException;
 import com.ecommerce.paymentservice.repository.PaymentRepository;
 import com.razorpay.Order;
-import com.razorpay.PaymentClient;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
@@ -49,7 +49,8 @@ public class RazorpayPaymentService {
                 localOrderId,
                 userId);
 
-        if (order == null || order.getUserId() == null
+        if (order == null
+                || order.getUserId() == null
                 || !order.getUserId().equals(userId)) {
             throw new OrderNotPayableException(
                     "Order not found or does not belong to you");
@@ -106,11 +107,14 @@ public class RazorpayPaymentService {
                 localOrderId);
     }
 
-    @Transactional
+    /*
+     * Do not wrap the entire method in one database transaction.
+     * Provider refunds and Order Service updates are remote actions.
+     * Local payment records must remain persisted if a remote call fails.
+     */
     public void verifyPayment(
             Long userId,
-            RazorpayVerifyRequest request)
-            throws RazorpayException {
+            RazorpayVerifyRequest request) throws RazorpayException {
 
         Payment payment = paymentRepository
                 .findByRazorpayOrderId(request.getRazorpayOrderId())
@@ -122,14 +126,32 @@ public class RazorpayPaymentService {
                     "This payment does not belong to you");
         }
 
-        if ("PAID".equalsIgnoreCase(payment.getStatus())) {
-            // Idempotent: repeated callback must not confirm twice.
-            return;
-        }
-
         if (!"RAZORPAY".equalsIgnoreCase(payment.getProvider())) {
             throw new OrderNotPayableException(
                     "Payment provider does not match");
+        }
+
+        /*
+         * Idempotent callback handling.
+         */
+        if ("PAID".equalsIgnoreCase(payment.getStatus())) {
+            if (request.getRazorpayPaymentId().equals(
+                    payment.getRazorpayPaymentId())) {
+                return;
+            }
+
+            throw new OrderNotPayableException(
+                    "This Razorpay order has already been paid");
+        }
+
+        if ("REFUNDED".equalsIgnoreCase(payment.getStatus())) {
+            throw new OrderNotPayableException(
+                    "This payment has already been refunded");
+        }
+
+        if (!"PENDING".equalsIgnoreCase(payment.getStatus())) {
+            throw new OrderNotPayableException(
+                    "This payment is not available for verification");
         }
 
         JSONObject signatureData = new JSONObject();
@@ -152,15 +174,16 @@ public class RazorpayPaymentService {
                     "Razorpay payment signature is invalid");
         }
 
-        // Verify the payment status with Razorpay's server, too.
+        /*
+         * Confirm captured status directly with Razorpay.
+         */
         com.razorpay.Payment razorpayPayment = razorpayClient.payments.fetch(
                 request.getRazorpayPaymentId());
 
-        String razorpayOrderIdFromPayment = razorpayPayment.get("order_id");
+        String providerOrderId = razorpayPayment.get("order_id");
         String providerStatus = razorpayPayment.get("status");
 
-        if (!request.getRazorpayOrderId().equals(
-                razorpayOrderIdFromPayment)) {
+        if (!request.getRazorpayOrderId().equals(providerOrderId)) {
             throw new OrderNotPayableException(
                     "Payment does not match the Razorpay order");
         }
@@ -170,10 +193,15 @@ public class RazorpayPaymentService {
                     "Razorpay has not captured this payment");
         }
 
+        /*
+         * Persist provider confirmation before contacting Order Service.
+         * This leaves an audit trail if order confirmation fails.
+         */
         payment.setRazorpayPaymentId(
                 request.getRazorpayPaymentId());
         payment.setRazorpaySignature(
                 request.getRazorpaySignature());
+        paymentRepository.save(payment);
 
         UpdatePaymentStatusRequest statusRequest = new UpdatePaymentStatusRequest();
         statusRequest.setPaymentStatus("PAID");
@@ -187,16 +215,81 @@ public class RazorpayPaymentService {
             payment.setStatus("PAID");
             paymentRepository.save(payment);
 
-        } catch (FeignException.Conflict exception) {
+        } catch (FeignException.Conflict conflict) {
             /*
-             * The order service rejected confirmation, for example
-             * because inventory is no longer available.
-             *
-             * Do not mark the payment as PAID locally. Refund
-             * compensation must be performed before returning a
-             * final failure to the customer.
+             * The payment was captured, but the order could not be
+             * confirmed, for example because inventory was unavailable.
              */
-            throw exception;
+            refundAfterOrderConfirmationFailure(payment, conflict);
+        }
+    }
+
+    private void refundAfterOrderConfirmationFailure(
+            Payment payment,
+            FeignException.Conflict originalConflict) {
+
+        payment.setStatus("REFUND_PENDING");
+        paymentRepository.save(payment);
+
+        try {
+            JSONObject refundRequest = new JSONObject();
+            JSONObject notes = new JSONObject();
+            notes.put("localOrderId", String.valueOf(payment.getOrderId()));
+            notes.put("localPaymentId", String.valueOf(payment.getId()));
+            notes.put("reason", "ORDER_CONFIRMATION_FAILED");
+            refundRequest.put("notes", notes);
+
+            com.razorpay.Refund refund = razorpayClient.payments.refund(
+                    payment.getRazorpayPaymentId(),
+                    refundRequest);
+
+            String refundId = refund.get("id");
+
+            if (refundId == null || refundId.isBlank()) {
+                throw new IllegalStateException(
+                        "Razorpay did not return a refund ID");
+            }
+
+            payment.setRazorpayRefundId(refundId);
+            payment.setStatus("REFUNDED");
+            paymentRepository.save(payment);
+
+            /*
+             * Tell Order Service that the captured payment was refunded.
+             * If this remote update fails, keep the refund ID locally
+             * so reconciliation can repair the order later.
+             */
+            try {
+                UpdatePaymentStatusRequest refundedRequest = new UpdatePaymentStatusRequest();
+                refundedRequest.setPaymentStatus("REFUNDED");
+
+                orderClient.updatePaymentStatus(
+                        payment.getOrderId(),
+                        refundedRequest,
+                        internalServiceKey);
+            } catch (Exception orderUpdateException) {
+                System.err.println(
+                        "Razorpay refund succeeded, but Order Service "
+                                + "could not be updated. Order ID: "
+                                + payment.getOrderId()
+                                + ", refund ID: " + refundId
+                                + ", reason: "
+                                + orderUpdateException.getMessage());
+            }
+
+            throw new OrderNotPayableException(
+                    "Payment was captured but the order could not be confirmed. "
+                            + "A refund has been initiated.");
+
+        } catch (RazorpayException | IllegalStateException refundException) {
+            payment.setStatus("REFUND_PENDING");
+            paymentRepository.save(payment);
+
+            throw new IllegalStateException(
+                    "Order confirmation failed and the Razorpay refund "
+                            + "could not be confirmed. Manual reconciliation "
+                            + "is required for order " + payment.getOrderId(),
+                    refundException);
         }
     }
 }
