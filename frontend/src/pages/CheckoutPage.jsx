@@ -7,6 +7,11 @@ import {
   Stack,
   TextField,
   Typography,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
 } from "@mui/material";
 
 import { useState } from "react";
@@ -16,7 +21,12 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { createOrder, getOrderById } from "../api/orderApi";
 import { getImageUrl } from "../utils/imageUrl";
-import { createCheckoutSession } from "../api/paymentApi.JS";
+import {
+  createCheckoutSession,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from "../api/paymentApi.JS";
+import loadRazorpay from "../utils/loadRazorpay";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -37,6 +47,7 @@ export default function CheckoutPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("STRIPE");
 
   const [createdOrderId, setCreatedOrderId] = useState(() =>
     sessionStorage.getItem("checkoutOrderId"),
@@ -193,18 +204,112 @@ export default function CheckoutPage() {
 
       /*
        * ---------------------------------------------------------
-       * CREATE STRIPE CHECKOUT SESSION
+       * START PAYMENT WITH THE SELECTED PROVIDER
        * ---------------------------------------------------------
        */
-      const paymentResponse = await createCheckoutSession(
+      if (paymentMethod === "STRIPE") {
+        const paymentResponse = await createCheckoutSession(
+          orderId,
+          token,
+          user.id,
+        );
+
+        const checkoutUrl = paymentResponse.data.checkoutUrl;
+
+        if (!checkoutUrl) {
+          throw new Error(
+            "Stripe checkout URL was not returned by the server.",
+          );
+        }
+
+        window.location.href = checkoutUrl;
+        return;
+      }
+
+      const razorpayLoaded = await loadRazorpay();
+
+      if (!razorpayLoaded || !window.Razorpay) {
+        throw new Error(
+          "Razorpay Checkout could not be loaded. Please try again.",
+        );
+      }
+
+      const razorpayResponse = await createRazorpayOrder(
         orderId,
         token,
         user.id,
       );
 
-      const checkoutUrl = paymentResponse.data.checkoutUrl;
+      const razorpayOrder = razorpayResponse.data;
 
-      window.location.href = checkoutUrl;
+      const options = {
+        key: razorpayOrder.keyId,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: "Marketplace",
+        description: `Order #${orderId}`,
+        order_id: razorpayOrder.razorpayOrderId,
+        prefill: {
+          name: user.name || form.fullName.trim(),
+          email: user.email || "",
+          contact: form.phone.trim(),
+        },
+        theme: {
+          color: "#dca528",
+        },
+        handler: async (result) => {
+          try {
+            setError("");
+            setLoading(true);
+
+            await verifyRazorpayPayment(
+              {
+                razorpayOrderId: result.razorpay_order_id,
+                razorpayPaymentId: result.razorpay_payment_id,
+                razorpaySignature: result.razorpay_signature,
+              },
+              token,
+              user.id,
+            );
+
+            // PaymentSuccessPage checks the order status from the backend.
+            window.location.href = `/payment/success?provider=razorpay&orderId=${encodeURIComponent(orderId)}`;
+          } catch (verificationError) {
+            console.error(
+              "Razorpay payment verification failed:",
+              verificationError,
+            );
+
+            const message =
+              verificationError.response?.data?.message ||
+              "We could not confirm your payment yet. Please check My Orders before trying to pay again.";
+
+            setError(
+              typeof message === "string"
+                ? message
+                : "We could not confirm your payment yet. Please check My Orders before trying to pay again.",
+            );
+          } finally {
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            // Keep the pending order so the customer can retry payment.
+          },
+        },
+      };
+
+      const checkout = new window.Razorpay(options);
+
+      checkout.on("payment.failed", (failure) => {
+        console.error("Razorpay payment failed:", failure);
+        setError(
+          failure.error?.description || "Payment failed. Please try again.",
+        );
+      });
+
+      checkout.open();
     } catch (error) {
       console.error("Checkout failed:", error);
 
@@ -505,6 +610,36 @@ export default function CheckoutPage() {
               </Box>
             </Stack>
 
+            <Divider sx={{ my: 3 }} />
+
+            <FormControl>
+              <FormLabel
+                id="payment-method-label"
+                sx={{ fontWeight: 700, color: "#173f3a" }}
+              >
+                Payment Method
+              </FormLabel>
+
+              <RadioGroup
+                aria-labelledby="payment-method-label"
+                name="paymentMethod"
+                value={paymentMethod}
+                onChange={(event) => setPaymentMethod(event.target.value)}
+              >
+                <FormControlLabel
+                  value="STRIPE"
+                  control={<Radio />}
+                  label="Card / Stripe Checkout"
+                />
+
+                <FormControlLabel
+                  value="RAZORPAY"
+                  control={<Radio />}
+                  label="Razorpay (UPI, cards and other available methods)"
+                />
+              </RadioGroup>
+            </FormControl>
+
             <Button
               variant="contained"
               fullWidth
@@ -520,7 +655,7 @@ export default function CheckoutPage() {
                 },
               }}
             >
-              {loading ? "Creating Order..." : "Place Order"}
+              {loading ? "Preparing Payment..." : "Place Order"}
             </Button>
           </Paper>
         </Box>
