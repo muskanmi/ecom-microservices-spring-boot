@@ -13,3 +13,23 @@ export const createCheckoutSession = (orderId, token, userId) =>
       },
     },
   );
+
+export const createRazorpayOrder = (orderId, token, userId) =>
+  axios.post(
+    `${API_URL}/razorpay/order/${orderId}`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-User-Id": userId,
+      },
+    },
+  );
+
+export const verifyRazorpayPayment = (paymentData, token, userId) =>
+  axios.post(`${API_URL}/razorpay/verify`, paymentData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-User-Id": userId,
+    },
+  });

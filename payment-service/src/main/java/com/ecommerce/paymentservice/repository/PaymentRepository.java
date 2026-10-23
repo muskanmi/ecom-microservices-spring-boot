@@ -21,4 +21,6 @@ public interface PaymentRepository
             Long orderId,
             String status);
 
+    Optional<Payment> findByRazorpayOrderId(String razorpayOrderId);
+
 }
