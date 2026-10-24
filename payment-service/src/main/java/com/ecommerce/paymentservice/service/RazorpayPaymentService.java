@@ -1,10 +1,12 @@
 
 package com.ecommerce.paymentservice.service;
 
+import com.ecommerce.paymentservice.client.NotificationClient;
 import com.ecommerce.paymentservice.client.OrderClient;
 import com.ecommerce.paymentservice.dto.OrderResponse;
 import com.ecommerce.paymentservice.dto.RazorpayOrderResponse;
 import com.ecommerce.paymentservice.dto.RazorpayVerifyRequest;
+import com.ecommerce.paymentservice.dto.SendEmailRequest;
 import com.ecommerce.paymentservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.paymentservice.entity.Payment;
 import com.ecommerce.paymentservice.exception.OrderNotPayableException;
@@ -30,6 +32,7 @@ public class RazorpayPaymentService {
     private final RazorpayClient razorpayClient;
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
+    private final NotificationClient notificationClient;
 
     @Value("${razorpay.key-id}")
     private String keyId;
@@ -207,13 +210,35 @@ public class RazorpayPaymentService {
         statusRequest.setPaymentStatus("PAID");
 
         try {
-            orderClient.updatePaymentStatus(
+            OrderResponse orderResponse = orderClient.updatePaymentStatus(
                     payment.getOrderId(),
                     statusRequest,
                     internalServiceKey);
 
+            /*
+             * Mark the local payment as PAID only after Order Service
+             * successfully confirms the order.
+             */
             payment.setStatus("PAID");
             paymentRepository.save(payment);
+
+            /*
+             * Send the same order-confirmation email used by Stripe.
+             * Email failures must not undo a successful payment.
+             */
+            sendNotificationEmail(
+                    orderResponse.getCustomerEmail(),
+                    "Order Confirmed - " + orderResponse.getOrderNumber(),
+                    "Hello,\n\n"
+                            + "Your order "
+                            + orderResponse.getOrderNumber()
+                            + " has been successfully confirmed.\n\n"
+                            + "Order Total: ₹"
+                            + orderResponse.getTotalAmount()
+                            + "\n\n"
+                            + "Thank you for shopping with Marketplace.\n\n"
+                            + "Regards,\n"
+                            + "Marketplace Team");
 
         } catch (FeignException.Conflict conflict) {
             /*
@@ -290,6 +315,44 @@ public class RazorpayPaymentService {
                             + "could not be confirmed. Manual reconciliation "
                             + "is required for order " + payment.getOrderId(),
                     refundException);
+        }
+    }
+
+    private void sendNotificationEmail(
+            String recipientEmail,
+            String subject,
+            String message) {
+
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            System.out.println(
+                    "Razorpay order confirmation email skipped: customer email is missing.");
+            return;
+        }
+
+        try {
+            SendEmailRequest request = new SendEmailRequest(
+                    recipientEmail,
+                    subject,
+                    message);
+
+            notificationClient.sendEmail(
+                    internalServiceKey,
+                    request);
+
+            System.out.println(
+                    "===== RAZORPAY ORDER CONFIRMATION EMAIL SENT =====");
+            System.out.println("Recipient: " + recipientEmail);
+            System.out.println("Subject: " + subject);
+
+        } catch (Exception e) {
+            /*
+             * Do not fail or reverse a successfully confirmed payment
+             * just because the email service is temporarily unavailable.
+             */
+            System.err.println(
+                    "===== RAZORPAY ORDER CONFIRMATION EMAIL FAILED =====");
+            System.err.println("Recipient: " + recipientEmail);
+            System.err.println("Reason: " + e.getMessage());
         }
     }
 }
