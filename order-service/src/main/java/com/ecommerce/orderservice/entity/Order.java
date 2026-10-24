@@ -36,6 +36,9 @@ public class Order {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal discount;
 
+    @Column(length = 50)
+    private String couponCode;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal shippingFee;
 

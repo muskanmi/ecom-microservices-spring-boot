@@ -7,11 +7,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.ecommerce.orderservice.dto.CouponValidationRequest;
+import com.ecommerce.orderservice.dto.CouponValidationResponse;
 import com.ecommerce.orderservice.dto.CreateOrderRequest;
 import com.ecommerce.orderservice.dto.OrderResponse;
 import com.ecommerce.orderservice.dto.UpdateOrderStatusRequest;
 import com.ecommerce.orderservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.orderservice.dto.UpdateShippingInfoRequest;
+import com.ecommerce.orderservice.service.CouponService;
 import com.ecommerce.orderservice.service.OrderService;
 
 import java.util.List;
@@ -25,6 +28,7 @@ public class OrderController {
     private String internalServiceKey;
 
     private final OrderService orderService;
+    private final CouponService couponService;
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
@@ -199,5 +203,15 @@ public class OrderController {
         return ResponseEntity.ok(
                 orderService.updateShippingInfoForSeller(
                         orderId, sellerId, request));
+    }
+
+    @PostMapping("/coupons/validate")
+    public ResponseEntity<CouponValidationResponse> validateCoupon(
+            @Valid @RequestBody CouponValidationRequest request) {
+
+        return ResponseEntity.ok(
+                couponService.validateCoupon(
+                        request.getCode(),
+                        request.getSubtotal()));
     }
 }

@@ -34,6 +34,8 @@ public class OrderResponse {
 
     private String paymentStatus;
 
+    private String couponCode;
+
     private ShippingAddressResponse shippingAddress;
 
     private LocalDateTime createdAt;

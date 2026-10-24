@@ -17,6 +17,8 @@ public class CreateOrderRequest {
     @Email
     private String customerEmail;
 
+    private String couponCode;
+
     // later
     // couponCode
     // giftCard

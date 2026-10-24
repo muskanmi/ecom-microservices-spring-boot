@@ -48,6 +48,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartService cartService;
+    private final CouponService couponService;
     private final CatalogStockClient catalogStockClient;
     private final PaymentClient paymentClient;
     private final NotificationClient notificationClient;

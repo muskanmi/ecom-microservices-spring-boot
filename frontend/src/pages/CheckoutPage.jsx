@@ -49,6 +49,11 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("STRIPE");
 
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
   const [createdOrderId, setCreatedOrderId] = useState(() =>
     sessionStorage.getItem("checkoutOrderId"),
   );
@@ -72,7 +77,8 @@ export default function CheckoutPage() {
 
   const delivery = 0;
 
-  const total = subtotal + delivery;
+  const discount = appliedCoupon?.discount ?? 0;
+  const total = Math.max(0, subtotal + delivery - discount);
 
   const handlePlaceOrder = async () => {
     if (!user?.id) {
@@ -324,6 +330,45 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Enter a coupon code.");
+      return;
+    }
+
+    try {
+      setCouponLoading(true);
+      setCouponError("");
+
+      const token = localStorage.getItem("token");
+
+      const response = await validateCoupon(
+        couponCode.trim(),
+        subtotal,
+        token,
+        user.id,
+      );
+
+      setAppliedCoupon(response.data);
+    } catch (error) {
+      setAppliedCoupon(null);
+
+      setCouponError(
+        error.response?.data?.detail ||
+          error.response?.data?.message ||
+          "Unable to apply this coupon.",
+      );
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
   };
 
   if (!user) {
