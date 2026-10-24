@@ -14,6 +14,7 @@ import {
   RadioGroup,
 } from "@mui/material";
 
+import axios from "axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -27,6 +28,19 @@ import {
   verifyRazorpayPayment,
 } from "../api/paymentApi.JS";
 import loadRazorpay from "../utils/loadRazorpay";
+
+const validateCoupon = (code, subtotal, token, userId) =>
+  axios.post(
+    `${import.meta.env.VITE_API_URL}/api/orders/coupons/validate`,
+    { code, subtotal },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-User-Id": userId,
+        "Content-Type": "application/json",
+      },
+    },
+  );
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -136,10 +150,13 @@ export default function CheckoutPage() {
 
           console.log("Existing checkout order:", existingOrder);
 
+          const selectedCouponCode = appliedCoupon?.code || null;
+
           const canReuseOrder =
-            existingOrder.userId === user.id &&
+            String(existingOrder.userId) === String(user.id) &&
             existingOrder.status === "PENDING_PAYMENT" &&
-            existingOrder.paymentStatus === "PENDING";
+            existingOrder.paymentStatus === "PENDING" &&
+            (existingOrder.couponCode || null) === selectedCouponCode;
 
           if (!canReuseOrder) {
             console.log("Existing checkout order is no longer reusable.");
@@ -179,6 +196,7 @@ export default function CheckoutPage() {
         const orderResponse = await createOrder(
           {
             customerEmail: user.email.trim(),
+            couponCode: appliedCoupon?.code || null,
 
             shippingAddress: {
               fullName: form.fullName.trim(),
@@ -352,6 +370,8 @@ export default function CheckoutPage() {
       );
 
       setAppliedCoupon(response.data);
+      sessionStorage.removeItem("checkoutOrderId");
+      setCreatedOrderId(null);
     } catch (error) {
       setAppliedCoupon(null);
 
@@ -369,6 +389,8 @@ export default function CheckoutPage() {
     setAppliedCoupon(null);
     setCouponCode("");
     setCouponError("");
+    sessionStorage.removeItem("checkoutOrderId");
+    setCreatedOrderId(null);
   };
 
   if (!user) {
@@ -597,6 +619,66 @@ export default function CheckoutPage() {
 
             <Divider sx={{ my: 3 }} />
 
+            <Typography sx={{ fontWeight: 700, mb: 1 }}>
+              Apply Coupon
+            </Typography>
+
+            {appliedCoupon ? (
+              <Alert
+                severity="success"
+                sx={{ mb: 2 }}
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={handleRemoveCoupon}
+                  >
+                    Remove
+                  </Button>
+                }
+              >
+                <strong>{appliedCoupon.code}</strong> applied. You save ₹
+                {Number(appliedCoupon.discount || 0).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                .
+              </Alert>
+            ) : (
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                sx={{ mb: 1 }}
+              >
+                <TextField
+                  label="Coupon code"
+                  value={couponCode}
+                  onChange={(event) => {
+                    setCouponCode(event.target.value);
+                    if (couponError) setCouponError("");
+                  }}
+                  size="small"
+                  fullWidth
+                  disabled={couponLoading || loading}
+                  inputProps={{ "aria-label": "Coupon code" }}
+                />
+                <Button
+                  variant="outlined"
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || loading || !couponCode.trim()}
+                  sx={{ whiteSpace: "nowrap", minWidth: 110 }}
+                >
+                  {couponLoading ? "Applying…" : "Apply"}
+                </Button>
+              </Stack>
+            )}
+
+            {couponError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {couponError}
+              </Alert>
+            )}
+
             <Stack spacing={2}>
               <Box
                 sx={{
@@ -608,6 +690,24 @@ export default function CheckoutPage() {
 
                 <Typography>₹{subtotal.toLocaleString("en-IN")}</Typography>
               </Box>
+
+              {appliedCoupon && Number(discount) > 0 && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography>Coupon discount</Typography>
+                  <Typography sx={{ color: "#18864b", fontWeight: 600 }}>
+                    −₹
+                    {Number(discount).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </Typography>
+                </Box>
+              )}
 
               <Box
                 sx={{

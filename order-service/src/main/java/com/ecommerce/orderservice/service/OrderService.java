@@ -18,6 +18,7 @@ import com.ecommerce.orderservice.dto.CatalogProductResponse;
 import com.ecommerce.orderservice.dto.CatalogStockDeductionItemRequest;
 import com.ecommerce.orderservice.dto.CatalogStockDeductionRequest;
 import com.ecommerce.orderservice.dto.CreateOrderRequest;
+import com.ecommerce.orderservice.dto.CouponValidationResponse;
 import com.ecommerce.orderservice.dto.OrderItemResponse;
 import com.ecommerce.orderservice.dto.OrderResponse;
 import com.ecommerce.orderservice.dto.PaymentRefundResponse;
@@ -140,19 +141,37 @@ public class OrderService {
             subtotal = subtotal.add(itemTotal);
         }
 
+        subtotal = subtotal.setScale(2, RoundingMode.HALF_UP);
+
         BigDecimal discount = BigDecimal.ZERO;
+        String appliedCouponCode = null;
+
+        if (request.getCouponCode() != null
+                && !request.getCouponCode().isBlank()) {
+
+            // Always validate and calculate the discount on the server.
+            // Never trust the discount or total displayed by the frontend.
+            CouponValidationResponse couponValidation = couponService.validateCoupon(
+                    request.getCouponCode(),
+                    subtotal);
+
+            discount = couponValidation.getDiscount();
+            appliedCouponCode = couponValidation.getCode();
+        }
 
         BigDecimal shippingFee = BigDecimal.ZERO;
 
         BigDecimal totalAmount = subtotal
                 .subtract(discount)
                 .add(shippingFee)
+                .max(BigDecimal.ZERO)
                 .setScale(
                         2,
                         RoundingMode.HALF_UP);
 
         order.setSubtotal(subtotal);
         order.setDiscount(discount);
+        order.setCouponCode(appliedCouponCode);
         order.setShippingFee(shippingFee);
         order.setTotalAmount(totalAmount);
 
@@ -909,6 +928,7 @@ public class OrderService {
                 order.getTotalAmount(),
                 order.getStatus().name(),
                 order.getPaymentStatus().name(),
+                order.getCouponCode(),
                 addressResponse,
                 order.getCreatedAt(),
                 items,
@@ -976,6 +996,7 @@ public class OrderService {
                             sellerSubtotal,
                             order.getStatus().name(),
                             order.getPaymentStatus().name(),
+                            order.getCouponCode(),
                             order.getShippingAddress() == null ? null
                                     : new ShippingAddressResponse(
                                             order.getShippingAddress().getFullName(),
