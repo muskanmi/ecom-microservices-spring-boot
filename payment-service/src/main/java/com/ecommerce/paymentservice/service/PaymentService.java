@@ -1,7 +1,7 @@
+
 package com.ecommerce.paymentservice.service;
 
 import com.ecommerce.paymentservice.client.OrderClient;
-import com.ecommerce.paymentservice.dto.OrderItemResponse;
 import com.ecommerce.paymentservice.dto.OrderResponse;
 import com.ecommerce.paymentservice.entity.Payment;
 import com.ecommerce.paymentservice.exception.OrderNotPayableException;
@@ -53,11 +53,9 @@ public class PaymentService {
          * ORDER MUST BE PAYABLE
          * ---------------------------------------------------------
          *
-         * Only:
-         *
+         * Only orders with:
          * status = PENDING_PAYMENT
          * paymentStatus = PENDING
-         *
          * can create a Stripe Checkout Session.
          */
         if (!"PENDING_PAYMENT".equals(order.getStatus())
@@ -67,35 +65,59 @@ public class PaymentService {
                     "Order is not available for payment");
         }
 
-        List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
+        /*
+         * ---------------------------------------------------------
+         * USE THE FINAL ORDER TOTAL
+         * ---------------------------------------------------------
+         *
+         * Use the persisted order total after coupon discounts
+         * and delivery charges, rather than recalculating the
+         * amount from individual product prices.
+         *
+         * Example:
+         * Subtotal: ₹1299.00
+         * Coupon discount: ₹129.90
+         * Final total: ₹1169.10
+         *
+         * Stripe expects the amount in the currency's minor unit.
+         */
+        if (order.getTotalAmount() == null
+                || order.getTotalAmount().signum() <= 0) {
 
-        for (OrderItemResponse item : order.getItems()) {
-
-            long amountInMinorUnit = item.getPrice()
-                    .movePointRight(2)
-                    .longValueExact();
-
-            SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
-                    .setQuantity(
-                            item.getQuantity().longValue())
-                    .setPriceData(
-                            SessionCreateParams.LineItem.PriceData
-                                    .builder()
-                                    .setCurrency("inr")
-                                    .setUnitAmount(
-                                            amountInMinorUnit)
-                                    .setProductData(
-                                            SessionCreateParams.LineItem.PriceData.ProductData
-                                                    .builder()
-                                                    .setName(
-                                                            item.getProductName())
-                                                    .build())
-                                    .build())
-                    .build();
-
-            lineItems.add(lineItem);
+            throw new IllegalArgumentException(
+                    "Order total must be greater than zero");
         }
 
+        long amountInMinorUnit = order.getTotalAmount()
+                .movePointRight(2)
+                .longValueExact();
+
+        List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
+
+        SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
+                .setQuantity(1L)
+                .setPriceData(
+                        SessionCreateParams.LineItem.PriceData
+                                .builder()
+                                .setCurrency("inr")
+                                .setUnitAmount(amountInMinorUnit)
+                                .setProductData(
+                                        SessionCreateParams.LineItem.PriceData.ProductData
+                                                .builder()
+                                                .setName(
+                                                        "Marketplace Order "
+                                                                + orderId)
+                                                .build())
+                                .build())
+                .build();
+
+        lineItems.add(lineItem);
+
+        /*
+         * ---------------------------------------------------------
+         * CREATE STRIPE CHECKOUT SESSION
+         * ---------------------------------------------------------
+         */
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(
                         SessionCreateParams.Mode.PAYMENT)
@@ -121,6 +143,11 @@ public class PaymentService {
                 .sessions()
                 .create(params);
 
+        /*
+         * ---------------------------------------------------------
+         * SAVE PAYMENT ATTEMPT
+         * ---------------------------------------------------------
+         */
         Payment payment = Payment.builder()
                 .orderId(orderId)
                 .userId(userId)

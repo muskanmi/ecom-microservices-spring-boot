@@ -9,6 +9,11 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
   Paper,
   Stack,
   Typography,
@@ -35,6 +40,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { cancelOrder, getOrderById } from "../api/orderApi";
 import { getImageUrl } from "../utils/imageUrl";
+import {
+  createCheckoutSession,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from "../api/paymentApi.JS";
+import loadRazorpay from "../utils/loadRazorpay";
 
 const COLORS = {
   ink: "#173F3D",
@@ -68,6 +79,9 @@ export default function OrderDetailsPage() {
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [retryPaymentMethod, setRetryPaymentMethod] = useState("STRIPE");
+  const [retryingPayment, setRetryingPayment] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -204,6 +218,140 @@ export default function OrderDetailsPage() {
 
   const isPaidOrder =
     order.status === "CONFIRMED" && order.paymentStatus === "PAID";
+
+  const canContinuePayment =
+    order.status === "PENDING_PAYMENT" && order.paymentStatus === "PENDING";
+
+  const handleContinuePayment = async () => {
+    if (!canContinuePayment || !user?.id) {
+      setError(
+        "This order is no longer eligible for payment. Please refresh the page.",
+      );
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setError("Your session has expired. Please log in again.");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setRetryingPayment(true);
+      setError("");
+
+      // Reuse this order. Do not create a second order or recalculate its total.
+      if (retryPaymentMethod === "STRIPE") {
+        const response = await createCheckoutSession(order.id, token, user.id);
+        const checkoutUrl = response.data?.checkoutUrl;
+
+        if (!checkoutUrl) {
+          throw new Error(
+            "Stripe checkout URL was not returned by the server.",
+          );
+        }
+
+        window.location.assign(checkoutUrl);
+        return;
+      }
+
+      const razorpayLoaded = await loadRazorpay();
+      if (!razorpayLoaded || !window.Razorpay) {
+        throw new Error(
+          "Razorpay Checkout could not be loaded. Please try again.",
+        );
+      }
+
+      const response = await createRazorpayOrder(order.id, token, user.id);
+      const razorpayOrder = response.data;
+
+      if (!razorpayOrder?.keyId || !razorpayOrder?.razorpayOrderId) {
+        throw new Error(
+          "Razorpay order details were not returned by the server.",
+        );
+      }
+
+      const checkout = new window.Razorpay({
+        key: razorpayOrder.keyId,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency || "INR",
+        name: "Marketplace",
+        description: `Order ${order.orderNumber || order.id}`,
+        order_id: razorpayOrder.razorpayOrderId,
+        prefill: {
+          name: order.shippingAddress?.fullName || user.name || "",
+          email: user.email || "",
+          contact: order.shippingAddress?.phone || "",
+        },
+        theme: { color: "#dca528" },
+        handler: async (result) => {
+          try {
+            setRetryingPayment(true);
+            setError("");
+            await verifyRazorpayPayment(
+              {
+                razorpayOrderId: result.razorpay_order_id,
+                razorpayPaymentId: result.razorpay_payment_id,
+                razorpaySignature: result.razorpay_signature,
+              },
+              token,
+              user.id,
+            );
+
+            // The success page/backend remains responsible for final status confirmation.
+            window.location.assign(
+              `/payment/success?provider=razorpay&orderId=${encodeURIComponent(order.id)}`,
+            );
+          } catch (verificationError) {
+            console.error(
+              "Razorpay retry verification failed:",
+              verificationError,
+            );
+            const message =
+              verificationError.response?.data?.message ||
+              verificationError.message ||
+              "We could not confirm your payment yet. Please check My Orders before retrying.";
+            setError(
+              typeof message === "string"
+                ? message
+                : "We could not confirm your payment yet.",
+            );
+            setRetryingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            // Keep the order pending so the customer can retry later.
+            setRetryingPayment(false);
+          },
+        },
+      });
+
+      checkout.on("payment.failed", (failure) => {
+        setError(
+          failure.error?.description || "Payment failed. Please try again.",
+        );
+        setRetryingPayment(false);
+      });
+
+      setPaymentDialogOpen(false);
+      checkout.open();
+    } catch (paymentError) {
+      console.error("Unable to continue payment:", paymentError);
+      const message =
+        paymentError.response?.data?.message ||
+        paymentError.message ||
+        "Unable to proceed with payment.";
+      setError(
+        typeof message === "string"
+          ? message
+          : "Unable to proceed with payment.",
+      );
+      setRetryingPayment(false);
+    }
+  };
 
   const handleCancelOrder = async () => {
     try {
@@ -1190,6 +1338,43 @@ export default function OrderDetailsPage() {
             </Paper>
 
             <Stack spacing={1.5}>
+              {canContinuePayment && (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={
+                    retryingPayment ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <PaymentRounded />
+                    )
+                  }
+                  onClick={() => setPaymentDialogOpen(true)}
+                  disabled={retryingPayment}
+                  sx={{
+                    py: 1.3,
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    color: COLORS.inkDark,
+                    backgroundColor: COLORS.gold,
+                    boxShadow: "none",
+                    "&:hover": {
+                      backgroundColor: COLORS.goldDark,
+                      boxShadow: "none",
+                    },
+                    "&:disabled": {
+                      backgroundColor: "#E9D49F",
+                      color: COLORS.muted,
+                    },
+                  }}
+                >
+                  {retryingPayment
+                    ? "Processing Payment..."
+                    : "Continue Payment"}
+                </Button>
+              )}
+
               {canCancel && (
                 <Button
                   fullWidth
@@ -1262,6 +1447,100 @@ export default function OrderDetailsPage() {
           </Stack>
         </Box>
       </Box>
+
+      {/* =====================================================
+          CONTINUE PAYMENT PROVIDER DIALOG
+      ===================================================== */}
+      <Dialog
+        open={paymentDialogOpen}
+        onClose={() => !retryingPayment && setPaymentDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            backgroundColor: COLORS.paper,
+            border: `1px solid ${COLORS.border}`,
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: COLORS.ink, fontWeight: 800 }}>
+          Continue payment
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: COLORS.muted, fontSize: 14, mb: 2 }}>
+            Choose a payment method to complete this existing order. You will
+            not be charged for a new order.
+          </Typography>
+          <FormControl>
+            <FormLabel sx={{ color: COLORS.ink, fontWeight: 700, mb: 0.5 }}>
+              Payment method
+            </FormLabel>
+            <RadioGroup
+              value={retryPaymentMethod}
+              onChange={(event) => setRetryPaymentMethod(event.target.value)}
+            >
+              <FormControlLabel
+                value="STRIPE"
+                control={
+                  <Radio
+                    sx={{
+                      color: COLORS.ink,
+                      "&.Mui-checked": { color: COLORS.ink },
+                    }}
+                  />
+                }
+                label="Stripe"
+              />
+              <FormControlLabel
+                value="RAZORPAY"
+                control={
+                  <Radio
+                    sx={{
+                      color: COLORS.ink,
+                      "&.Mui-checked": { color: COLORS.ink },
+                    }}
+                  />
+                }
+                label="Razorpay"
+              />
+            </RadioGroup>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            onClick={() => setPaymentDialogOpen(false)}
+            disabled={retryingPayment}
+            sx={{ color: COLORS.ink, textTransform: "none", fontWeight: 700 }}
+          >
+            Not now
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleContinuePayment}
+            disabled={retryingPayment}
+            sx={{
+              minWidth: 150,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              color: COLORS.inkDark,
+              backgroundColor: COLORS.gold,
+              boxShadow: "none",
+              "&:hover": {
+                backgroundColor: COLORS.goldDark,
+                boxShadow: "none",
+              },
+            }}
+          >
+            {retryingPayment ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Proceed to Pay"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* =====================================================
           CANCEL ORDER CONFIRMATION DIALOG
