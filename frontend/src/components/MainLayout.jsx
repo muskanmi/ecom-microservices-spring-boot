@@ -37,6 +37,8 @@ import {
   Search,
   ShoppingCartOutlined,
   ShoppingBagOutlined,
+  PersonOutlined,
+  HelpOutlined,
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
@@ -566,57 +568,234 @@ const MainLayout = () => {
                   vertical: "top",
                   horizontal: "right",
                 }}
+                slotProps={{
+                  paper: {
+                    elevation: 0,
+                    sx: {
+                      mt: 1.5,
+                      width: 270,
+                      overflow: "hidden",
+                      bgcolor: paper,
+                      color: ink,
+                      border: `1px solid ${border}`,
+                      borderRadius: "12px",
+                      boxShadow: "0 12px 32px rgba(36, 43, 35, 0.12)",
+                      "& .MuiList-root": {
+                        p: 1,
+                      },
+                    },
+                  },
+                }}
               >
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    navigate("/profile");
+                {/* Account header */}
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
                   }}
                 >
-                  My Profile
-                </MenuItem>
+                  <Avatar
+                    src={
+                      user.avatarUrl
+                        ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}`
+                        : undefined
+                    }
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      bgcolor: ink,
+                      color: paper,
+                      border: `1px solid ${border}`,
+                      fontSize: 15,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {(user.name || "U").slice(0, 1).toUpperCase()}
+                  </Avatar>
 
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    navigate("/orders");
-                  }}
-                >
-                  My Orders
-                </MenuItem>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                      sx={{
+                        fontFamily: '"Georgia", "Times New Roman", serif',
+                        fontSize: 17,
+                        fontWeight: 700,
+                        color: ink,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {user.name}
+                    </Typography>
 
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    navigate("/wishlist");
-                  }}
-                >
-                  Wishlist
-                </MenuItem>
+                    <Typography
+                      sx={{
+                        mt: 0.35,
+                        fontFamily: monoFont,
+                        fontSize: 9,
+                        letterSpacing: 1.2,
+                        color: muted,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Customer account
+                    </Typography>
+                  </Box>
+                </Box>
 
-                <Divider />
+                <Divider sx={{ borderColor: border, mx: 1 }} />
 
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    navigate("/settings");
-                  }}
-                >
-                  Account Settings
-                </MenuItem>
+                {/* Main navigation */}
+                <Box sx={{ py: 0.7 }}>
+                  <Typography
+                    sx={{
+                      px: 1.5,
+                      py: 0.7,
+                      fontFamily: monoFont,
+                      fontSize: 9,
+                      letterSpacing: 1.5,
+                      textTransform: "uppercase",
+                      color: muted,
+                    }}
+                  >
+                    Your account
+                  </Typography>
 
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    navigate("/support");
-                  }}
-                >
-                  Help & Support
-                </MenuItem>
+                  {[
+                    {
+                      label: "My Profile",
+                      icon: PersonOutlined,
+                      action: () => navigate("/profile"),
+                    },
+                    {
+                      label: "My Orders",
+                      icon: Inventory2Outlined,
+                      action: () => navigate("/orders"),
+                    },
+                    {
+                      label: "Wishlist",
+                      icon: FavoriteBorder,
+                      action: () => navigate("/wishlist"),
+                    },
+                  ].map(({ label, icon: Icon, action }) => (
+                    <MenuItem
+                      key={label}
+                      onClick={() => {
+                        handleClose();
+                        action();
+                      }}
+                      sx={{
+                        minHeight: 42,
+                        mx: 0.5,
+                        px: 1.5,
+                        gap: 1.5,
+                        borderRadius: "7px",
+                        color: ink,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        transition: "background-color 160ms ease",
 
-                <Divider />
+                        "&:hover": {
+                          bgcolor: "#F1EADD",
+                        },
 
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                        "& .menu-icon": {
+                          color: muted,
+                          fontSize: 19,
+                          transition: "color 160ms ease",
+                        },
+
+                        "&:hover .menu-icon": {
+                          color: ink,
+                        },
+                      }}
+                    >
+                      <Icon className="menu-icon" />
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Box>
+
+                <Divider sx={{ borderColor: border, mx: 1 }} />
+
+                {/* Settings and support */}
+                <Box sx={{ py: 0.7 }}>
+                  {[
+                    {
+                      label: "Account Settings",
+                      icon: SettingsOutlined,
+                      action: () => navigate("/settings"),
+                    },
+                    {
+                      label: "Help & Support",
+                      icon: HelpOutlined,
+                      action: () => navigate("/support"),
+                    },
+                  ].map(({ label, icon: Icon, action }) => (
+                    <MenuItem
+                      key={label}
+                      onClick={() => {
+                        handleClose();
+                        action();
+                      }}
+                      sx={{
+                        minHeight: 42,
+                        mx: 0.5,
+                        px: 1.5,
+                        gap: 1.5,
+                        borderRadius: "7px",
+                        color: ink,
+                        fontSize: 13,
+                        fontWeight: 500,
+
+                        "&:hover": {
+                          bgcolor: "#F1EADD",
+                        },
+
+                        "& .menu-icon": {
+                          color: muted,
+                          fontSize: 19,
+                        },
+                      }}
+                    >
+                      <Icon className="menu-icon" />
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Box>
+
+                <Divider sx={{ borderColor: border, mx: 1 }} />
+
+                {/* Logout */}
+                <Box sx={{ p: 0.7 }}>
+                  <MenuItem
+                    onClick={handleLogout}
+                    sx={{
+                      minHeight: 42,
+                      mx: 0.5,
+                      px: 1.5,
+                      gap: 1.5,
+                      borderRadius: "7px",
+                      color: "#A7443C",
+                      fontSize: 13,
+                      fontWeight: 600,
+
+                      "&:hover": {
+                        bgcolor: "#F8EAE5",
+                      },
+
+                      "& .menu-icon": {
+                        fontSize: 19,
+                      },
+                    }}
+                  >
+                    <LogoutOutlined className="menu-icon" />
+                    Log out
+                  </MenuItem>
+                </Box>
               </Menu>
             </Stack>
           </Stack>
