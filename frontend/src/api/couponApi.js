@@ -17,3 +17,11 @@ export const validateCoupon = (code, subtotal, token, userId) =>
       },
     },
   );
+
+export const getAvailableCouponCount = (token, userId) =>
+  axios.get(`${API_URL}/coupons/available/count`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-User-Id": userId,
+    },
+  });

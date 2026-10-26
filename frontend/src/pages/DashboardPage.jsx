@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getProducts } from "../api/productApi";
+import { getOrders } from "../api/orderApi";
+import { getAvailableCouponCount } from "../api/couponApi";
 
 import {
   Box,
@@ -80,54 +82,6 @@ const categories = [
   { label: "More", image: plant },
 ];
 
-const recentOrders = [
-  {
-    id: "ORD-10123",
-    date: "May 19, 2025",
-    status: "Delivered",
-    price: 1299,
-    image: blackHandbag,
-  },
-  {
-    id: "ORD-10122",
-    date: "May 17, 2025",
-    status: "Delivered",
-    price: 2499,
-    image: smartwatch,
-  },
-  {
-    id: "ORD-10121",
-    date: "May 16, 2025",
-    status: "Shipped",
-    price: 1799,
-    image: runningShoes,
-  },
-];
-
-const topPicks = [
-  {
-    name: "Minimalist 10% Niacinamide Serum",
-    sub: "Beauty",
-    price: 299,
-    mrp: 599,
-    image: lipstick,
-  },
-  {
-    name: "Men Black Cotton T-Shirt",
-    sub: "Fashion",
-    price: 499,
-    mrp: 999,
-    image: fashionDress,
-  },
-];
-
-const overview = [
-  { label: "Total Orders", value: 12, icon: Inventory2Outlined },
-  { label: "Wishlist Items", value: 8, icon: FavoriteBorder },
-  { label: "Saved Addresses", value: 3, icon: PlaceOutlined },
-  { label: "Coupons Available", value: 5, icon: ConfirmationNumberOutlined },
-];
-
 function rupee(value) {
   return `₹${value.toLocaleString("en-IN")}`;
 }
@@ -141,8 +95,61 @@ function discountPercentage(price, mrp) {
 }
 
 const statusColor = {
-  Delivered: { bg: "#EAF7EE", fg: "#17834B" },
-  Shipped: { bg: "#EEF4FF", fg: "#3267C8" },
+  DELIVERED: { bg: "#EAF7EE", fg: "#17834B" },
+  SHIPPED: { bg: "#EEF4FF", fg: "#3267C8" },
+  CONFIRMED: { bg: "#EAF7EE", fg: "#17834B" },
+  PROCESSING: { bg: "#F3EFE7", fg: "#75613D" },
+  PENDING: { bg: "#FFF4D6", fg: "#946B16" },
+  PENDING_PAYMENT: { bg: "#FFF4D6", fg: "#946B16" },
+  CANCELLED: { bg: "#FCEBE8", fg: "#B5473A" },
+  FAILED: { bg: "#FCEBE8", fg: "#B5473A" },
+  REFUNDED: { bg: "#EEF4FF", fg: "#3267C8" },
+};
+
+const getStatusStyle = (status) => {
+  const normalizedStatus = String(status || "PENDING")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+
+  return (
+    statusColor[normalizedStatus] || {
+      bg: "#F3EFE7",
+      fg: "#756F64",
+    }
+  );
+};
+
+const formatDate = (value) => {
+  if (!value) return "Date unavailable";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const resolveImageUrl = (value) => {
+  if (!value) return "/placeholder.png";
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  const baseUrl = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+  return `${baseUrl}/${String(value).replace(/^\//, "")}`;
+};
+
+const formatRupees = (value) => {
+  const amount = Number(value);
+
+  return `₹${(Number.isFinite(amount) ? amount : 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
 const DashboardPage = () => {
@@ -151,6 +158,51 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const { wishlist, fetchWishlist } = useWishlist();
   const [products, setProducts] = useState([]);
+  const [availableCouponCount, setAvailableCouponCount] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchAvailableCoupons = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        if (!token || !user?.id) {
+          if (active) setAvailableCouponCount(null);
+          return;
+        }
+
+        const response = await getAvailableCouponCount(token, user.id);
+
+        if (active) {
+          const payload = response.data;
+          const count =
+            typeof payload === "number"
+              ? payload
+              : (payload?.count ??
+                payload?.availableCount ??
+                payload?.availableCouponCount);
+          setAvailableCouponCount(
+            Number.isFinite(Number(count)) ? Number(count) : null,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to fetch available coupons:",
+          error.response?.status,
+          error.response?.data,
+        );
+
+        if (active) setAvailableCouponCount(null);
+      }
+    };
+
+    fetchAvailableCoupons();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -187,6 +239,145 @@ const DashboardPage = () => {
       console.error("Backend response:", error.response?.data);
     }
   };
+
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  // These remain null until dedicated APIs are available.
+  const [savedAddressCount] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchOrders = async () => {
+      if (!user?.id) {
+        if (active) {
+          setOrders([]);
+          setOrdersLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const response = await getOrders(token, user.id);
+
+        if (active) {
+          setOrders(Array.isArray(response.data) ? response.data : []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch account orders:", error);
+
+        if (active) {
+          setOrders([]);
+        }
+      } finally {
+        if (active) {
+          setOrdersLoading(false);
+        }
+      }
+    };
+
+    fetchOrders();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  const overview = [
+    {
+      label: "Total Orders",
+      value: ordersLoading ? "…" : orders.length,
+      icon: Inventory2Outlined,
+    },
+    {
+      label: "Wishlist Items",
+      value: wishlist?.items?.length ?? 0,
+      icon: FavoriteBorder,
+    },
+    {
+      label: "Saved Addresses",
+      value: savedAddressCount ?? "—",
+      icon: PlaceOutlined,
+    },
+    {
+      label: "Coupons Available",
+      value: availableCouponCount ?? "—",
+      icon: ConfirmationNumberOutlined,
+    },
+  ];
+
+  const totalSavings = orders
+    .filter((order) => order.paymentStatus === "PAID")
+    .reduce((sum, order) => sum + Number(order.discount || 0), 0);
+
+  const recentOrders = [...orders]
+    .sort((a, b) => {
+      const dateA = new Date(
+        a.createdAt || a.orderDate || a.createdDate || 0,
+      ).getTime();
+
+      const dateB = new Date(
+        b.createdAt || b.orderDate || b.createdDate || 0,
+      ).getTime();
+
+      return dateB - dateA;
+    })
+    .slice(0, 3)
+    .map((order) => {
+      const firstItem = order.items?.[0];
+
+      // Prefer the matching product from the products API for its image.
+      const matchingProduct = products.find(
+        (product) =>
+          String(product.id) ===
+          String(firstItem?.productId ?? firstItem?.product?.id),
+      );
+
+      const orderImage =
+        matchingProduct?.images?.[0]?.imageUrl ||
+        firstItem?.imageUrl ||
+        firstItem?.product?.images?.[0]?.imageUrl;
+
+      const image =
+        orderImage || firstItem?.product?.imageUrl
+          ? resolveImageUrl(orderImage || firstItem?.product?.imageUrl)
+          : null;
+
+      return {
+        id: order.orderNumber || order.id,
+        date: formatDate(
+          order.createdAt || order.orderDate || order.createdDate,
+        ),
+        status: String(order.status || "PENDING")
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, "_"),
+        price: order.totalAmount ?? order.total ?? 0,
+        image,
+      };
+    });
+
+  const topPicks = products
+    .filter((product) => product.active !== false)
+    .slice(0, 2)
+    .map((product) => {
+      const imageUrl = product.images?.[0]?.imageUrl;
+
+      return {
+        id: product.id,
+        name: product.name,
+        sub:
+          product.subcategory ||
+          product.categoryName ||
+          product.category?.name ||
+          "Marketplace product",
+        price: product.price ?? 0,
+        mrp: product.mrp ?? product.originalPrice ?? product.price ?? 0,
+        image: resolveImageUrl(imageUrl),
+      };
+    });
 
   const handleWishlistToggle = async (product) => {
     try {
@@ -243,7 +434,7 @@ const DashboardPage = () => {
             mt: 0.6,
           }}
         >
-          Welcome back, {user.name}
+          Welcome back, {user?.name || "there"}
         </Typography>
         <Typography sx={{ color: muted, fontSize: 14, mt: 0.8 }}>
           Discover something you&apos;ll love today.
@@ -570,11 +761,7 @@ const DashboardPage = () => {
                 >
                   <Box
                     component="img"
-                    src={
-                      product.images?.length > 0
-                        ? `${import.meta.env.VITE_API_URL}${product.images[0].imageUrl}`
-                        : "/placeholder.png"
-                    }
+                    src={resolveImageUrl(product.images?.[0]?.imageUrl)}
                     alt={product.name}
                     sx={{
                       display: "block",
@@ -794,22 +981,38 @@ const DashboardPage = () => {
                 <Stack
                   key={label}
                   direction="row"
+                  alignItems="center"
                   sx={{
                     width: "100%",
                     justifyContent: "space-between",
+                    gap: 1,
                   }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={1}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={1}
+                    sx={{ minWidth: 0 }}
+                  >
                     <Icon sx={{ fontSize: 18, color: muted }} />
-                    <Typography sx={{ fontSize: 13, color: "#4D4941" }}>
+
+                    <Typography
+                      sx={{
+                        fontSize: 13,
+                        color: "#4D4941",
+                      }}
+                    >
                       {label}
                     </Typography>
                   </Stack>
+
                   <Typography
                     sx={{
                       fontFamily: monoFont,
                       fontSize: 13,
                       fontWeight: 700,
+                      color: ink,
+                      flexShrink: 0,
                     }}
                   >
                     {value}
@@ -836,7 +1039,7 @@ const DashboardPage = () => {
                 You&apos;re saving with us.
                 <br />
                 <Box component="span" sx={{ fontWeight: 800 }}>
-                  ₹1,250 saved in total
+                  {rupee(totalSavings)} saved in total
                 </Box>
               </Typography>
             </Stack>
@@ -884,6 +1087,7 @@ const DashboardPage = () => {
                 </Typography>
               </Box>
               <Button
+                onClick={() => navigate("/orders")}
                 sx={{
                   p: 0,
                   color: ink,
@@ -898,64 +1102,99 @@ const DashboardPage = () => {
             </Stack>
 
             <Stack spacing={1.8}>
-              {recentOrders.map((order) => (
+              {ordersLoading ? (
                 <Stack
-                  key={order.id}
                   direction="row"
+                  justifyContent="center"
                   alignItems="center"
-                  spacing={1.2}
+                  spacing={1}
+                  sx={{ py: 2, color: muted }}
                 >
-                  <Box
-                    component="img"
-                    src={order.image}
-                    alt=""
+                  <CircularProgress size={18} sx={{ color: ink }} />
+                  <Typography sx={{ fontSize: 12 }}>
+                    Loading your orders…
+                  </Typography>
+                </Stack>
+              ) : recentOrders.length === 0 ? (
+                <Box sx={{ py: 2, textAlign: "center" }}>
+                  <Typography sx={{ fontSize: 12, color: muted }}>
+                    You haven&apos;t placed any orders yet.
+                  </Typography>
+                  <Button
+                    onClick={() => navigate("/products/1")}
                     sx={{
-                      width: 46,
-                      height: 46,
-                      objectFit: "contain",
-                      bgcolor: "#F3EFE7",
-                      borderRadius: 1.2,
-                      p: 0.4,
-                      flexShrink: 0,
+                      mt: 0.8,
+                      color: ink,
+                      textTransform: "none",
+                      fontWeight: 700,
+                      fontSize: 12,
                     }}
-                  />
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
+                  >
+                    Start shopping
+                  </Button>
+                </Box>
+              ) : (
+                recentOrders.map((order) => (
+                  <Stack
+                    key={order.id}
+                    direction="row"
+                    alignItems="center"
+                    spacing={1.2}
+                  >
+                    <Box
+                      component="img"
+                      src={order.image || "/placeholder.png"}
+                      alt="Order item"
                       sx={{
-                        fontFamily: monoFont,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: ink,
-                      }}
-                      noWrap
-                    >
-                      {order.id}
-                    </Typography>
-                    <Typography sx={{ fontSize: 10.5, color: muted, mt: 0.3 }}>
-                      {order.date}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: "right" }}>
-                    <Chip
-                      label={order.status}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: 9,
-                        fontWeight: 700,
-                        bgcolor: statusColor[order.status].bg,
-                        color: statusColor[order.status].fg,
-                        "& .MuiChip-label": { px: 0.8 },
+                        width: 46,
+                        height: 46,
+                        objectFit: "contain",
+                        bgcolor: "#F3EFE7",
+                        borderRadius: 1.2,
+                        p: 0.4,
+                        flexShrink: 0,
                       }}
                     />
-                    <Typography
-                      sx={{ fontSize: 12, fontWeight: 800, mt: 0.35 }}
-                    >
-                      {rupee(order.price)}
-                    </Typography>
-                  </Box>
-                </Stack>
-              ))}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography
+                        sx={{
+                          fontFamily: monoFont,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: ink,
+                        }}
+                        noWrap
+                      >
+                        {order.id}
+                      </Typography>
+                      <Typography
+                        sx={{ fontSize: 10.5, color: muted, mt: 0.3 }}
+                      >
+                        {order.date}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: "right" }}>
+                      <Chip
+                        label={order.status}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: 9,
+                          fontWeight: 700,
+                          bgcolor: getStatusStyle(order.status).bg,
+                          color: getStatusStyle(order.status).fg,
+                          "& .MuiChip-label": { px: 0.8 },
+                        }}
+                      />
+                      <Typography
+                        sx={{ fontSize: 12, fontWeight: 800, mt: 0.35 }}
+                      >
+                        {rupee(order.price)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                ))
+              )}
             </Stack>
           </Paper>
 
@@ -993,85 +1232,107 @@ const DashboardPage = () => {
             </Typography>
 
             <Stack spacing={1.8}>
-              {topPicks.map((product) => (
-                <Stack
-                  key={product.name}
-                  direction="row"
-                  alignItems="center"
-                  spacing={1.2}
-                >
-                  <Box
-                    component="img"
-                    src={product.image}
-                    alt={product.name}
-                    sx={{
-                      width: 70,
-                      height: 70,
-                      objectFit: "contain",
-                      bgcolor: "#F3EFE7",
-                      borderRadius: 1.2,
-                      p: 0.6,
-                      flexShrink: 0,
-                    }}
-                  />
-
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
+              {products.length === 0 ? (
+                <Typography sx={{ fontSize: 12, color: muted, py: 1 }}>
+                  No products are available right now.
+                </Typography>
+              ) : (
+                topPicks.map((product) => (
+                  <Stack
+                    key={product.id}
+                    direction="row"
+                    alignItems="center"
+                    spacing={1.2}
+                  >
+                    <Box
+                      component="img"
+                      src={product.image}
+                      alt={product.name}
                       sx={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: ink,
-                        lineHeight: 1.35,
+                        width: 70,
+                        height: 70,
+                        objectFit: "contain",
+                        bgcolor: "#F3EFE7",
+                        borderRadius: 1.2,
+                        p: 0.6,
+                        flexShrink: 0,
                       }}
-                    >
-                      {product.name}
-                    </Typography>
+                    />
 
-                    <Typography
-                      sx={{
-                        fontSize: 10,
-                        color: muted,
-                        mt: 0.2,
-                      }}
-                    >
-                      {product.sub}
-                    </Typography>
-
-                    <Stack
-                      direction="row"
-                      spacing={0.6}
-                      alignItems="baseline"
-                      sx={{ mt: 0.3 }}
-                    >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography
                         sx={{
                           fontSize: 12,
-                          fontWeight: 800,
+                          fontWeight: 700,
+                          color: ink,
+                          lineHeight: 1.35,
                         }}
                       >
-                        {rupee(product.price)}
+                        {product.name}
                       </Typography>
 
                       <Typography
                         sx={{
-                          fontSize: 9.5,
+                          fontSize: 10,
                           color: muted,
-                          textDecoration: "line-through",
+                          mt: 0.2,
                         }}
                       >
-                        {rupee(product.mrp)}
+                        {product.sub}
                       </Typography>
-                    </Stack>
-                  </Box>
 
-                  <Button
-                    variant="outlined"
-                    className="!min-w-[72px] !h-[42px] !px-4 !border-[1.5px] !border-gold !text-ink !text-xs !font-bold !normal-case !rounded-md !shrink-0 hover:!border-gold hover:!bg-gold/10"
-                  >
-                    Add
-                  </Button>
-                </Stack>
-              ))}
+                      <Stack
+                        direction="row"
+                        spacing={0.6}
+                        alignItems="baseline"
+                        sx={{ mt: 0.3 }}
+                      >
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {rupee(product.price)}
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            fontSize: 9.5,
+                            color: muted,
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          {rupee(product.mrp)}
+                        </Typography>
+                      </Stack>
+                    </Box>
+
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleAddToCart(product.id)}
+                      sx={{
+                        minWidth: 64,
+                        height: 36,
+                        px: 1.5,
+                        border: `1.5px solid ${gold}`,
+                        color: ink,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "none",
+                        borderRadius: 1.2,
+                        flexShrink: 0,
+                        "&:hover": {
+                          borderColor: goldDark,
+                          bgcolor: "rgba(232,170,43,.10)",
+                        },
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </Stack>
+                ))
+              )}
             </Stack>
           </Paper>
         </Stack>

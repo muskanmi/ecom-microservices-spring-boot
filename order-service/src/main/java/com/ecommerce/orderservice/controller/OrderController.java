@@ -24,194 +24,201 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderController {
 
-    @Value("${internal.service.key}")
-    private String internalServiceKey;
+        @Value("${internal.service.key}")
+        private String internalServiceKey;
 
-    private final OrderService orderService;
-    private final CouponService couponService;
+        private final OrderService orderService;
+        private final CouponService couponService;
 
-    @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(
-            @RequestHeader("X-User-Id") Long userId,
-            @Valid @RequestBody CreateOrderRequest request) {
+        @PostMapping
+        public ResponseEntity<OrderResponse> createOrder(
+                        @RequestHeader("X-User-Id") Long userId,
+                        @Valid @RequestBody CreateOrderRequest request) {
 
-        return ResponseEntity.ok(
-                orderService.createOrder(
-                        userId,
-                        request));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<OrderResponse>> getUserOrders(
-            @RequestHeader("X-User-Id") Long userId) {
-
-        return ResponseEntity.ok(
-                orderService.getUserOrders(userId));
-    }
-
-    @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponse> getOrderById(
-            @RequestHeader("X-User-Id") Long userId,
-            @PathVariable Long orderId) {
-
-        return ResponseEntity.ok(
-                orderService.getOrderById(
-                        orderId,
-                        userId));
-    }
-
-    @PostMapping("/{orderId}/cancel")
-    public ResponseEntity<OrderResponse> cancelOrder(
-            @RequestHeader("X-User-Id") Long userId,
-            @PathVariable Long orderId) {
-
-        return ResponseEntity.ok(
-                orderService.cancelOrder(
-                        orderId,
-                        userId));
-    }
-
-    @PutMapping("/internal/{orderId}/payment-status")
-    public ResponseEntity<OrderResponse> updatePaymentStatus(
-            @PathVariable Long orderId,
-            @RequestBody UpdatePaymentStatusRequest request,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
-
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.createOrder(
+                                                userId,
+                                                request));
         }
 
-        return ResponseEntity.ok(
-                orderService.updatePaymentStatus(
-                        orderId,
-                        request.getPaymentStatus()));
-    }
+        @GetMapping
+        public ResponseEntity<List<OrderResponse>> getUserOrders(
+                        @RequestHeader("X-User-Id") Long userId) {
 
-    @PutMapping("/internal/{orderId}/status")
-    public ResponseEntity<OrderResponse> updateOrderStatus(
-            @PathVariable Long orderId,
-            @Valid @RequestBody UpdateOrderStatusRequest request,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
-
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity
-                    .status(403)
-                    .build();
+                return ResponseEntity.ok(
+                                orderService.getUserOrders(userId));
         }
 
-        return ResponseEntity.ok(
-                orderService.updateOrderStatus(
-                        orderId,
-                        request.getStatus()));
-    }
+        @GetMapping("/{orderId}")
+        public ResponseEntity<OrderResponse> getOrderById(
+                        @RequestHeader("X-User-Id") Long userId,
+                        @PathVariable Long orderId) {
 
-    @PutMapping("/internal/{orderId}/shipping")
-    public ResponseEntity<OrderResponse> updateShippingInfo(
-            @PathVariable Long orderId,
-            @Valid @RequestBody UpdateShippingInfoRequest request,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
-
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.getOrderById(
+                                                orderId,
+                                                userId));
         }
 
-        return ResponseEntity.ok(
-                orderService.updateShippingInfo(
-                        orderId,
-                        request));
-    }
+        @PostMapping("/{orderId}/cancel")
+        public ResponseEntity<OrderResponse> cancelOrder(
+                        @RequestHeader("X-User-Id") Long userId,
+                        @PathVariable Long orderId) {
 
-    @GetMapping("/internal/admin")
-    public ResponseEntity<List<OrderResponse>> getAllOrdersForAdmin(
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
-
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.cancelOrder(
+                                                orderId,
+                                                userId));
         }
 
-        return ResponseEntity.ok(
-                orderService.getAllOrdersForAdmin());
-    }
+        @PutMapping("/internal/{orderId}/payment-status")
+        public ResponseEntity<OrderResponse> updatePaymentStatus(
+                        @PathVariable Long orderId,
+                        @RequestBody UpdatePaymentStatusRequest request,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
 
-    @GetMapping("/internal/admin/{orderId}")
-    public ResponseEntity<OrderResponse> getOrderForAdmin(
-            @PathVariable Long orderId,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
 
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.updatePaymentStatus(
+                                                orderId,
+                                                request.getPaymentStatus()));
         }
 
-        return ResponseEntity.ok(
-                orderService.getOrderForAdmin(orderId));
-    }
+        @PutMapping("/internal/{orderId}/status")
+        public ResponseEntity<OrderResponse> updateOrderStatus(
+                        @PathVariable Long orderId,
+                        @Valid @RequestBody UpdateOrderStatusRequest request,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
 
-    @GetMapping("/internal/seller")
-    public ResponseEntity<List<OrderResponse>> getOrdersForSeller(
-            @RequestParam Long sellerId,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity
+                                        .status(403)
+                                        .build();
+                }
 
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.updateOrderStatus(
+                                                orderId,
+                                                request.getStatus()));
         }
 
-        return ResponseEntity.ok(
-                orderService.getOrdersForSeller(sellerId));
-    }
+        @PutMapping("/internal/{orderId}/shipping")
+        public ResponseEntity<OrderResponse> updateShippingInfo(
+                        @PathVariable Long orderId,
+                        @Valid @RequestBody UpdateShippingInfoRequest request,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
 
-    @GetMapping("/internal/seller/{orderId}")
-    public ResponseEntity<OrderResponse> getOrderForSeller(
-            @PathVariable Long orderId,
-            @RequestParam Long sellerId,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
 
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.updateShippingInfo(
+                                                orderId,
+                                                request));
         }
 
-        return ResponseEntity.ok(
-                orderService.getOrderForSeller(orderId, sellerId));
-    }
+        @GetMapping("/internal/admin")
+        public ResponseEntity<List<OrderResponse>> getAllOrdersForAdmin(
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
 
-    @PutMapping("/internal/seller/{orderId}/status")
-    public ResponseEntity<OrderResponse> updateSellerOrderStatus(
-            @PathVariable Long orderId,
-            @RequestParam Long sellerId,
-            @Valid @RequestBody UpdateOrderStatusRequest request,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
 
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.getAllOrdersForAdmin());
         }
 
-        return ResponseEntity.ok(
-                orderService.updateOrderStatusForSeller(
-                        orderId, sellerId, request.getStatus()));
-    }
+        @GetMapping("/internal/admin/{orderId}")
+        public ResponseEntity<OrderResponse> getOrderForAdmin(
+                        @PathVariable Long orderId,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
 
-    @PutMapping("/internal/seller/{orderId}/shipping")
-    public ResponseEntity<OrderResponse> updateSellerShippingInfo(
-            @PathVariable Long orderId,
-            @RequestParam Long sellerId,
-            @Valid @RequestBody UpdateShippingInfoRequest request,
-            @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
 
-        if (!internalServiceKey.equals(serviceKey)) {
-            return ResponseEntity.status(403).build();
+                return ResponseEntity.ok(
+                                orderService.getOrderForAdmin(orderId));
         }
 
-        return ResponseEntity.ok(
-                orderService.updateShippingInfoForSeller(
-                        orderId, sellerId, request));
-    }
+        @GetMapping("/internal/seller")
+        public ResponseEntity<List<OrderResponse>> getOrdersForSeller(
+                        @RequestParam Long sellerId,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
 
-    @PostMapping("/coupons/validate")
-    public ResponseEntity<CouponValidationResponse> validateCoupon(
-            @Valid @RequestBody CouponValidationRequest request) {
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
 
-        return ResponseEntity.ok(
-                couponService.validateCoupon(
-                        request.getCode(),
-                        request.getSubtotal()));
-    }
+                return ResponseEntity.ok(
+                                orderService.getOrdersForSeller(sellerId));
+        }
+
+        @GetMapping("/internal/seller/{orderId}")
+        public ResponseEntity<OrderResponse> getOrderForSeller(
+                        @PathVariable Long orderId,
+                        @RequestParam Long sellerId,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
+
+                return ResponseEntity.ok(
+                                orderService.getOrderForSeller(orderId, sellerId));
+        }
+
+        @PutMapping("/internal/seller/{orderId}/status")
+        public ResponseEntity<OrderResponse> updateSellerOrderStatus(
+                        @PathVariable Long orderId,
+                        @RequestParam Long sellerId,
+                        @Valid @RequestBody UpdateOrderStatusRequest request,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
+
+                return ResponseEntity.ok(
+                                orderService.updateOrderStatusForSeller(
+                                                orderId, sellerId, request.getStatus()));
+        }
+
+        @PutMapping("/internal/seller/{orderId}/shipping")
+        public ResponseEntity<OrderResponse> updateSellerShippingInfo(
+                        @PathVariable Long orderId,
+                        @RequestParam Long sellerId,
+                        @Valid @RequestBody UpdateShippingInfoRequest request,
+                        @RequestHeader("X-Internal-Service-Key") String serviceKey) {
+
+                if (!internalServiceKey.equals(serviceKey)) {
+                        return ResponseEntity.status(403).build();
+                }
+
+                return ResponseEntity.ok(
+                                orderService.updateShippingInfoForSeller(
+                                                orderId, sellerId, request));
+        }
+
+        @PostMapping("/coupons/validate")
+        public ResponseEntity<CouponValidationResponse> validateCoupon(
+                        @Valid @RequestBody CouponValidationRequest request) {
+
+                return ResponseEntity.ok(
+                                couponService.validateCoupon(
+                                                request.getCode(),
+                                                request.getSubtotal()));
+        }
+
+        @GetMapping("/coupons/available/count")
+        public ResponseEntity<Long> getAvailableCouponCount() {
+                return ResponseEntity.ok(
+                                couponService.getAvailableCouponCount());
+        }
+
 }
