@@ -1,819 +1,972 @@
-import { useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-import {
-  Box,
-  Stack,
-  Avatar,
-  Button,
-  IconButton,
-  Badge,
-  Typography,
-  TextField,
-  InputAdornment,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Menu,
-  MenuItem,
-} from "@mui/material";
-
-import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
-
-import {
-  Home,
-  Inventory2Outlined,
-  FavoriteBorder,
-  PlaceOutlined,
-  CreditCardOutlined,
-  StarOutlined,
-  ConfirmationNumberOutlined,
-  NotificationsNoneOutlined,
-  SettingsOutlined,
-  LogoutOutlined,
-  Search,
-  ShoppingCartOutlined,
-  ShoppingBagOutlined,
-  PersonOutlined,
-  HelpOutlined,
-} from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 
-// --------------------------------------------------
-// Theme constants
-// --------------------------------------------------
+import {
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  ButtonBase,
+  CircularProgress,
+  Divider,
+  Drawer,
+  IconButton,
+  InputBase,
+  Menu,
+  MenuItem,
+  Select,
+  Typography,
+} from "@mui/material";
 
-const gold = "#E8AA2B";
-const ink = "#173F3D";
-const cream = "#F8F3E8";
-const paper = "#FFFCF4";
-const muted = "#756F64";
-const border = "#E5DED0";
+import {
+  ChevronRight,
+  Close,
+  ConfirmationNumberOutlined,
+  CreditCardOutlined,
+  FavoriteBorder,
+  HelpOutlined,
+  Inventory2Outlined,
+  KeyboardArrowDown,
+  LocalFireDepartment,
+  LocationOnOutlined,
+  LogoutOutlined,
+  Menu as MenuIcon,
+  NotificationsNoneOutlined,
+  PersonOutlined,
+  PlaceOutlined,
+  Search,
+  SettingsOutlined,
+  ShoppingBagOutlined,
+  ShoppingCartOutlined,
+  StarOutlined,
+} from "@mui/icons-material";
 
-const monoFont = '"Courier New", Courier, monospace';
+/* -------------------------------------------------------------------------- */
+/*  Config – edit these to match your router and catalogue                    */
+/* -------------------------------------------------------------------------- */
 
-// --------------------------------------------------
-// Sidebar navigation
-// --------------------------------------------------
+const ROUTES = {
+  home: "/dashboard",
+  cart: "/cart",
+  wishlist: "/wishlist",
+  addresses: "/addresses",
+  deals: "/deals",
+  search: "/search",
+  category: (name) => `/products?category=${encodeURIComponent(name)}`,
+};
 
-const navItems = [
-  {
-    label: "Home",
-    icon: Home,
-    path: "/dashboard",
-  },
-  {
-    label: "Orders",
-    icon: Inventory2Outlined,
-    path: "/orders",
-  },
-  {
-    label: "Wishlist",
-    icon: FavoriteBorder,
-    path: "/wishlist",
-  },
-  {
-    label: "Addresses",
-    icon: PlaceOutlined,
-    path: "/addresses",
-  },
+const NAV_CATEGORIES = [
+  "Fashion",
+  "Electronics",
+  "Home & Kitchen",
+  "Beauty",
+  "Footwear",
+  "Accessories",
+  "Groceries",
+  "Books",
+  "Toys & Games",
+  "Sports",
+];
+
+const MORE_CATEGORIES = [
+  "Jewellery",
+  "Health & Wellness",
+  "Automotive",
+  "Pet Supplies",
+];
+
+// Everything that used to live in the sidebar.
+const ACCOUNT_LINKS = [
+  { label: "My Profile", icon: PersonOutlined, path: "/profile" },
+  { label: "Orders", icon: Inventory2Outlined, path: "/orders" },
+  { label: "Wishlist", icon: FavoriteBorder, path: "/wishlist" },
+  { label: "Addresses", icon: PlaceOutlined, path: "/addresses" },
   {
     label: "Payment Methods",
     icon: CreditCardOutlined,
     path: "/payment-methods",
   },
-  {
-    label: "My Reviews",
-    icon: StarOutlined,
-    path: "/reviews",
-  },
-  {
-    label: "Coupons",
-    icon: ConfirmationNumberOutlined,
-    path: "/coupons",
-  },
+  { label: "My Reviews", icon: StarOutlined, path: "/reviews" },
+  { label: "Coupons", icon: ConfirmationNumberOutlined, path: "/coupons" },
   {
     label: "Notifications",
     icon: NotificationsNoneOutlined,
     path: "/notifications",
   },
-  {
-    label: "Account Settings",
-    icon: SettingsOutlined,
-    path: "/settings",
-  },
 ];
 
-// --------------------------------------------------
-// Main Layout
-// --------------------------------------------------
+const HELP_LINKS = [
+  { label: "Account Settings", icon: SettingsOutlined, path: "/settings" },
+  { label: "Help & Support", icon: HelpOutlined, path: "/support" },
+];
+
+/* -------------------------------------------------------------------------- */
+/*  Tokens                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const c = {
+  ink: "#173F3D",
+  inkDeep: "#0F2E2D",
+  gold: "#E8AA2B",
+  cream: "#F8F3E8",
+  paper: "#FFFCF4",
+  tint: "#F4EFE4",
+  muted: "#6B665B",
+  border: "#E5DED0",
+  danger: "#A7443C",
+  flame: "#FF9A3C",
+};
+
+const serif = '"Georgia", "Times New Roman", serif';
+
+/* -------------------------------------------------------------------------- */
+/*  Small building blocks                                                     */
+/* -------------------------------------------------------------------------- */
+
+const NavButton = ({ active, icon, endIcon, onClick, children }) => (
+  <ButtonBase
+    onClick={onClick}
+    sx={{
+      position: "relative",
+      flexShrink: 0,
+      gap: 0.75,
+      px: 1.5,
+      height: 44,
+      fontSize: 13.5,
+      fontWeight: active ? 700 : 500,
+      whiteSpace: "nowrap",
+      color: active ? "#fff" : "rgba(255,255,255,.88)",
+      "& .MuiSvgIcon-root": { fontSize: 20 },
+      "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,.08)" },
+      "&::after": {
+        content: '""',
+        position: "absolute",
+        left: 12,
+        right: 12,
+        bottom: 0,
+        height: 3,
+        borderRadius: "3px 3px 0 0",
+        bgcolor: active ? c.gold : "transparent",
+      },
+    }}
+  >
+    {icon}
+    {children}
+    {endIcon}
+  </ButtonBase>
+);
+
+const HeaderAction = ({ icon, label, count, ariaLabel, onClick }) => (
+  <ButtonBase
+    onClick={onClick}
+    aria-label={ariaLabel}
+    sx={{
+      gap: 0.9,
+      px: 1.25,
+      py: 0.75,
+      borderRadius: 2,
+      color: c.ink,
+      "&:hover": { bgcolor: c.tint },
+    }}
+  >
+    <Badge
+      badgeContent={count}
+      max={99}
+      invisible={!count}
+      sx={{
+        "& .MuiBadge-badge": {
+          bgcolor: c.gold,
+          color: c.ink,
+          fontWeight: 800,
+          fontSize: 10,
+          minWidth: 18,
+          height: 18,
+        },
+      }}
+    >
+      {icon}
+    </Badge>
+    <Typography
+      sx={{
+        fontSize: 13.5,
+        fontWeight: 600,
+        display: { xs: "none", md: "block" },
+      }}
+    >
+      {label}
+    </Typography>
+  </ButtonBase>
+);
+
+const DrawerSection = ({ title, children }) => (
+  <Box sx={{ py: 1 }}>
+    <Typography
+      sx={{
+        px: 2.5,
+        pb: 0.75,
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: ".06em",
+        textTransform: "uppercase",
+        color: c.muted,
+      }}
+    >
+      {title}
+    </Typography>
+    {children}
+  </Box>
+);
+
+const DrawerLink = ({ icon, active, onClick, children }) => (
+  <ButtonBase
+    onClick={onClick}
+    sx={{
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      gap: 1.5,
+      px: 2.5,
+      py: 1.25,
+      textAlign: "left",
+      color: c.ink,
+      bgcolor: active ? c.tint : "transparent",
+      "&:hover": { bgcolor: c.tint },
+    }}
+  >
+    {icon && (
+      <Box
+        sx={{
+          display: "grid",
+          color: c.muted,
+          "& .MuiSvgIcon-root": { fontSize: 20 },
+        }}
+      >
+        {icon}
+      </Box>
+    )}
+    <Typography sx={{ flex: 1, fontSize: 14, fontWeight: active ? 700 : 500 }}>
+      {children}
+    </Typography>
+    <ChevronRight sx={{ fontSize: 20, color: c.muted }} />
+  </ButtonBase>
+);
+
+/* -------------------------------------------------------------------------- */
+/*  Layout                                                                    */
+/* -------------------------------------------------------------------------- */
 
 const MainLayout = () => {
   const { user, logout, loading } = useAuth();
-
   const navigate = useNavigate();
   const location = useLocation();
-
   const { cartItemCount } = useCart();
   const { wishlistItemCount } = useWishlist();
 
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [accountAnchor, setAccountAnchor] = useState(null);
+  const [moreAnchor, setMoreAnchor] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchCategory, setSearchCategory] = useState("All Categories");
 
-  // --------------------------------------------------
-  // Logout
-  // --------------------------------------------------
+  const activeCategory = useMemo(
+    () => new URLSearchParams(location.search).get("category"),
+    [location.search],
+  );
+
+  const accountOpen = Boolean(accountAnchor);
+
+  const go = (path) => {
+    setAccountAnchor(null);
+    setMoreAnchor(null);
+    setDrawerOpen(false);
+    navigate(path);
+  };
 
   const handleLogout = () => {
-    setAnchorEl(null);
+    setAccountAnchor(null);
+    setDrawerOpen(false);
     logout();
     navigate("/login");
   };
 
-  // --------------------------------------------------
-  // Avatar menu
-  // --------------------------------------------------
+  const handleSearch = (event) => {
+    event.preventDefault();
 
-  const handleAvatarClick = (event) => {
-    setAnchorEl(event.currentTarget);
+    const query = searchText.trim();
+    const params = new URLSearchParams();
+
+    if (query) params.set("q", query);
+    if (searchCategory !== "All Categories") {
+      params.set("category", searchCategory);
+    }
+    if ([...params.keys()].length === 0) return;
+
+    navigate(`${ROUTES.search}?${params.toString()}`);
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
-
-  // --------------------------------------------------
-  // Loading state
-  // --------------------------------------------------
+  /* ------------------------------ guard states ----------------------------- */
 
   if (loading) {
     return (
       <Box
         sx={{
           minHeight: "100vh",
-          bgcolor: cream,
+          bgcolor: c.cream,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          gap: 2,
         }}
       >
-        <Typography
-          sx={{
-            fontFamily: monoFont,
-            fontSize: 10,
-            letterSpacing: 1.8,
-            textTransform: "uppercase",
-            color: muted,
-          }}
-        >
-          Loading marketplace
+        <CircularProgress size={28} sx={{ color: c.ink }} />
+        <Typography sx={{ fontSize: 13, color: c.muted }}>
+          Loading marketplace…
         </Typography>
       </Box>
     );
   }
 
-  // --------------------------------------------------
-  // Not authenticated
-  // --------------------------------------------------
-
   if (!user) {
-    navigate("/login");
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
-  // --------------------------------------------------
-  // Layout
-  // --------------------------------------------------
+  const avatarSrc = user.avatarUrl
+    ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}`
+    : undefined;
+  const initial = (user.name || "U").slice(0, 1).toUpperCase();
+  const firstName = (user.name || "there").split(" ")[0];
+
+  // Adjust to whatever address fields your user object actually has.
+  const deliverTo = user.pincode
+    ? [user.city, user.pincode].filter(Boolean).join(" ")
+    : "Select address";
+
+  const renderMenuLink = ({ label, icon: Icon, path }) => (
+    <MenuItem
+      key={label}
+      selected={location.pathname === path}
+      onClick={() => go(path)}
+      sx={{
+        minHeight: 40,
+        mx: 0.5,
+        px: 1.5,
+        gap: 1.5,
+        borderRadius: "8px",
+        color: c.ink,
+        fontSize: 13.5,
+        fontWeight: 500,
+        "&:hover, &.Mui-selected": { bgcolor: "#F1EADD" },
+        "&.Mui-selected:hover": { bgcolor: "#EBE2D0" },
+      }}
+    >
+      <Icon sx={{ fontSize: 19, color: c.muted }} />
+      {label}
+    </MenuItem>
+  );
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        bgcolor: cream,
+        bgcolor: c.cream,
+        color: c.ink,
         display: "flex",
-        color: ink,
+        flexDirection: "column",
       }}
     >
-      {/* ==================================================
-          SIDEBAR
-      ================================================== */}
-
-      <Box
-        component="aside"
-        sx={{
-          display: { xs: "none", lg: "flex" },
-          width: 245,
-          flexShrink: 0,
-          flexDirection: "column",
-          bgcolor: paper,
-          borderRight: `1px solid ${border}`,
-          px: 2.5,
-          py: 3,
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-        }}
-      >
-        {/* Marketplace Logo */}
-
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={1.25}
+      {/* ==================================================================
+          HEADER
+      ================================================================== */}
+      <Box component="header" sx={{ position: "sticky", top: 0, zIndex: 1100 }}>
+        {/* ---------------------------- Top bar ---------------------------- */}
+        <Box
           sx={{
-            px: 0.5,
-            mb: 4,
+            bgcolor: c.paper,
+            borderBottom: `1px solid ${c.border}`,
+            px: { xs: 2, sm: 3, xl: 5 },
           }}
         >
           <Box
             sx={{
-              width: 34,
-              height: 34,
-              borderRadius: 1,
-              bgcolor: ink,
+              maxWidth: 1500,
+              mx: "auto",
               display: "flex",
+              flexWrap: { xs: "wrap", md: "nowrap" },
               alignItems: "center",
-              justifyContent: "center",
+              columnGap: { xs: 1, md: 2.5 },
+              rowGap: 1,
+              py: { xs: 1.25, md: 1.5 },
             }}
           >
-            <ShoppingBagOutlined
+            {/* Logo */}
+            <ButtonBase
+              onClick={() => go(ROUTES.home)}
+              aria-label="Marketplace home"
               sx={{
-                color: "#fff",
-                fontSize: 18,
-              }}
-            />
-          </Box>
-
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: monoFont,
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: 1.7,
-                color: ink,
-                cursor: "pointer",
+                order: 1,
+                flexShrink: 0,
+                gap: 1.25,
+                borderRadius: 2,
+                textAlign: "left",
               }}
             >
-              MARKETPLACE
-            </Typography>
-
-            <Typography
-              sx={{
-                fontFamily: monoFont,
-                fontSize: 8.5,
-                letterSpacing: 1.2,
-                color: muted,
-                mt: 0.4,
-              }}
-            >
-              EVERYDAY SHOPPING
-            </Typography>
-          </Box>
-        </Stack>
-
-        {/* My Account */}
-
-        <Typography
-          sx={{
-            fontFamily: monoFont,
-            fontSize: 10,
-            letterSpacing: 1.8,
-            textTransform: "uppercase",
-            color: muted,
-            px: 1,
-            mb: 1.2,
-          }}
-        >
-          My account
-        </Typography>
-
-        {/* Navigation */}
-
-        <List sx={{ p: 0 }}>
-          {navItems.map(({ label, icon: Icon, path }) => {
-            const active =
-              location.pathname === path ||
-              (path === "/dashboard" &&
-                location.pathname.startsWith("/products"));
-
-            return (
-              <ListItemButton
-                key={label}
-                onClick={() => navigate(path)}
+              <Box
                 sx={{
-                  borderRadius: 1.2,
-                  py: 1,
-                  mb: 0.35,
-                  color: active ? "#fff" : ink,
-                  bgcolor: active ? ink : "transparent",
+                  width: 38,
+                  height: 38,
+                  borderRadius: 1.5,
+                  bgcolor: c.ink,
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <ShoppingBagOutlined sx={{ color: "#fff", fontSize: 22 }} />
+              </Box>
+              <Typography
+                sx={{
+                  display: { xs: "none", sm: "block" },
+                  fontFamily: serif,
+                  fontSize: { sm: 19, md: 22 },
+                  fontWeight: 600,
+                  letterSpacing: ".06em",
+                  color: c.ink,
+                }}
+              >
+                MARKETPLACE
+              </Typography>
+            </ButtonBase>
 
-                  "&:hover": {
-                    bgcolor: active ? ink : "#F1ECE1",
+            {/* Deliver to */}
+            <ButtonBase
+              onClick={() => go(ROUTES.addresses)}
+              sx={{
+                order: 2,
+                display: { xs: "none", lg: "flex" },
+                alignItems: "center",
+                gap: 0.75,
+                flexShrink: 0,
+                textAlign: "left",
+                borderRadius: 2,
+                px: 1,
+                py: 0.5,
+                "&:hover": { bgcolor: c.tint },
+              }}
+            >
+              <LocationOnOutlined sx={{ color: c.ink }} />
+              <Box sx={{ maxWidth: 150 }}>
+                <Typography
+                  sx={{ fontSize: 11, color: c.muted, lineHeight: 1.2 }}
+                >
+                  Deliver to
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: c.ink,
+                    lineHeight: 1.3,
+                  }}
+                  noWrap
+                >
+                  {deliverTo}
+                </Typography>
+              </Box>
+              <KeyboardArrowDown sx={{ fontSize: 18, color: c.ink }} />
+            </ButtonBase>
+
+            {/* Search */}
+            <Box
+              component="form"
+              role="search"
+              onSubmit={handleSearch}
+              sx={{
+                order: { xs: 4, md: 3 },
+                flex: { xs: "1 1 100%", md: "1 1 auto" },
+                maxWidth: { md: 760 },
+                minWidth: 0,
+                height: 46,
+                display: "flex",
+                alignItems: "stretch",
+                bgcolor: "#fff",
+                border: `1px solid ${c.border}`,
+                borderRadius: 2,
+                overflow: "hidden",
+                transition: "border-color .2s, box-shadow .2s",
+                "&:focus-within": {
+                  borderColor: c.ink,
+                  boxShadow: "0 0 0 3px rgba(23,63,61,.12)",
+                },
+              }}
+            >
+              <Select
+                value={searchCategory}
+                onChange={(event) => setSearchCategory(event.target.value)}
+                variant="standard"
+                inputProps={{ "aria-label": "Search category" }}
+                sx={{
+                  display: { xs: "none", sm: "flex" },
+                  alignItems: "center",
+                  width: 172,
+                  flexShrink: 0,
+                  px: 1.5,
+                  bgcolor: c.tint,
+                  borderRight: `1px solid ${c.border}`,
+                  fontSize: 13,
+                  color: c.muted,
+                  "&:before, &:after": { display: "none" },
+                  "& .MuiSelect-select": {
+                    py: 0,
+                    background: "transparent",
+                    "&:focus": { background: "transparent" },
                   },
                 }}
               >
-                <ListItemIcon
+                {["All Categories", ...NAV_CATEGORIES].map((name) => (
+                  <MenuItem key={name} value={name} sx={{ fontSize: 13 }}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </Select>
+
+              <InputBase
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder="Search for products, brands and more..."
+                inputProps={{ "aria-label": "Search products" }}
+                startAdornment={
+                  <Search sx={{ fontSize: 20, color: c.muted, mr: 1 }} />
+                }
+                sx={{ flex: 1, px: 1.75, fontSize: 14, minWidth: 0 }}
+              />
+
+              <ButtonBase
+                type="submit"
+                aria-label="Search"
+                sx={{
+                  width: 56,
+                  flexShrink: 0,
+                  bgcolor: c.ink,
+                  color: "#fff",
+                  "&:hover": { bgcolor: c.inkDeep },
+                }}
+              >
+                <Search />
+              </ButtonBase>
+            </Box>
+
+            {/* Actions */}
+            <Box
+              sx={{
+                order: { xs: 3, md: 4 },
+                ml: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                flexShrink: 0,
+              }}
+            >
+              <HeaderAction
+                icon={<FavoriteBorder />}
+                label="Wishlist"
+                ariaLabel="Wishlist"
+                count={wishlistItemCount}
+                onClick={() => go(ROUTES.wishlist)}
+              />
+              <HeaderAction
+                icon={<ShoppingCartOutlined />}
+                label="Cart"
+                ariaLabel="Cart"
+                count={cartItemCount}
+                onClick={() => go(ROUTES.cart)}
+              />
+
+              <ButtonBase
+                onClick={(event) => setAccountAnchor(event.currentTarget)}
+                aria-haspopup="menu"
+                aria-expanded={accountOpen}
+                aria-label="Account menu"
+                sx={{
+                  ml: 0.5,
+                  gap: 1.25,
+                  pl: 1,
+                  pr: 0.75,
+                  py: 0.5,
+                  borderRadius: 2,
+                  textAlign: "left",
+                  "&:hover": { bgcolor: c.tint },
+                }}
+              >
+                <Avatar
+                  src={avatarSrc}
                   sx={{
-                    minWidth: 34,
-                    color: "inherit",
+                    width: 36,
+                    height: 36,
+                    bgcolor: c.ink,
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 700,
                   }}
                 >
-                  <Icon sx={{ fontSize: 19 }} />
-                </ListItemIcon>
-
-                <ListItemText
-                  primary={label}
-                  primaryTypographyProps={{
-                    fontSize: 13,
-                    fontWeight: active ? 700 : 500,
+                  {initial}
+                </Avatar>
+                <Box
+                  sx={{ display: { xs: "none", md: "block" }, maxWidth: 130 }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      color: c.ink,
+                      lineHeight: 1.25,
+                    }}
+                    noWrap
+                  >
+                    {user.name}
+                  </Typography>
+                  <Typography
+                    sx={{ fontSize: 11, color: c.muted, lineHeight: 1.25 }}
+                  >
+                    Account &amp; Lists
+                  </Typography>
+                </Box>
+                <KeyboardArrowDown
+                  sx={{
+                    display: { xs: "none", md: "block" },
+                    fontSize: 20,
+                    color: c.ink,
+                    transform: accountOpen ? "rotate(180deg)" : "none",
+                    transition: "transform .2s",
                   }}
                 />
-              </ListItemButton>
-            );
-          })}
-        </List>
+              </ButtonBase>
+            </Box>
+          </Box>
+        </Box>
 
-        {/* Logout */}
-
-        <Box sx={{ mt: "auto" }}>
-          <Divider
+        {/* ------------------------- Category nav bar ---------------------- */}
+        <Box
+          component="nav"
+          aria-label="Categories"
+          sx={{ bgcolor: c.ink, color: "#fff" }}
+        >
+          <Box
             sx={{
-              borderColor: border,
-              mb: 2.5,
+              maxWidth: 1500,
+              mx: "auto",
+              px: { xs: 1, sm: 2, xl: 4 },
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              "&::-webkit-scrollbar": { display: "none" },
             }}
-          />
+          >
+            <NavButton onClick={() => setDrawerOpen(true)} icon={<MenuIcon />}>
+              <Box component="span" sx={{ fontWeight: 700 }}>
+                All Categories
+              </Box>
+            </NavButton>
 
+            <Box
+              aria-hidden
+              sx={{
+                width: "1px",
+                height: 22,
+                mx: 1,
+                flexShrink: 0,
+                bgcolor: "rgba(255,255,255,.22)",
+              }}
+            />
+
+            <NavButton
+              active={location.pathname === ROUTES.deals}
+              onClick={() => go(ROUTES.deals)}
+              icon={<LocalFireDepartment sx={{ color: c.flame }} />}
+            >
+              Today&apos;s Deals
+            </NavButton>
+
+            {NAV_CATEGORIES.map((name) => (
+              <NavButton
+                key={name}
+                active={activeCategory === name}
+                onClick={() => go(ROUTES.category(name))}
+              >
+                {name}
+              </NavButton>
+            ))}
+
+            <NavButton
+              onClick={(event) => setMoreAnchor(event.currentTarget)}
+              endIcon={<KeyboardArrowDown />}
+            >
+              More
+            </NavButton>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* "More" categories menu */}
+      <Menu
+        anchorEl={moreAnchor}
+        open={Boolean(moreAnchor)}
+        onClose={() => setMoreAnchor(null)}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              mt: 0.5,
+              minWidth: 200,
+              bgcolor: c.paper,
+              border: `1px solid ${c.border}`,
+              borderRadius: "12px",
+              boxShadow: "0 16px 40px rgba(23,63,61,.16)",
+            },
+          },
+        }}
+      >
+        {MORE_CATEGORIES.map((name) => (
+          <MenuItem
+            key={name}
+            onClick={() => go(ROUTES.category(name))}
+            sx={{ fontSize: 13.5, color: c.ink }}
+          >
+            {name}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Account dropdown */}
+      <Menu
+        anchorEl={accountAnchor}
+        open={accountOpen}
+        onClose={() => setAccountAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              mt: 1,
+              width: 290,
+              bgcolor: c.paper,
+              color: c.ink,
+              border: `1px solid ${c.border}`,
+              borderRadius: "14px",
+              boxShadow: "0 16px 40px rgba(23,63,61,.16)",
+              "& .MuiList-root": { p: 1 },
+            },
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1.5,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <Avatar
+            src={avatarSrc}
+            sx={{
+              width: 44,
+              height: 44,
+              bgcolor: c.ink,
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
+            {initial}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+              sx={{ fontSize: 15, fontWeight: 700, color: c.ink }}
+              noWrap
+            >
+              {user.name}
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: c.muted }}>
+              Customer account
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ borderColor: c.border, my: 0.5 }} />
+
+        <Typography
+          sx={{
+            px: 1.5,
+            pt: 0.75,
+            pb: 0.5,
+            fontSize: 11.5,
+            fontWeight: 700,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            color: c.muted,
+          }}
+        >
+          Your account
+        </Typography>
+        {ACCOUNT_LINKS.map(renderMenuLink)}
+
+        <Divider sx={{ borderColor: c.border, my: 0.5 }} />
+
+        {HELP_LINKS.map(renderMenuLink)}
+
+        <Divider sx={{ borderColor: c.border, my: 0.5 }} />
+
+        <MenuItem
+          onClick={handleLogout}
+          sx={{
+            minHeight: 40,
+            mx: 0.5,
+            px: 1.5,
+            gap: 1.5,
+            borderRadius: "8px",
+            color: c.danger,
+            fontSize: 13.5,
+            fontWeight: 600,
+            "&:hover": { bgcolor: "#F8EAE5" },
+          }}
+        >
+          <LogoutOutlined sx={{ fontSize: 19 }} />
+          Log out
+        </MenuItem>
+      </Menu>
+
+      {/* All Categories drawer (also the mobile menu) */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={{
+          "& .MuiDrawer-paper": {
+            width: { xs: "86vw", sm: 340 },
+            maxWidth: 360,
+            bgcolor: c.paper,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            bgcolor: c.ink,
+            color: "#fff",
+            px: 2.5,
+            py: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <Avatar
+            src={avatarSrc}
+            sx={{
+              width: 38,
+              height: 38,
+              bgcolor: "rgba(255,255,255,.16)",
+              fontWeight: 700,
+            }}
+          >
+            {initial}
+          </Avatar>
+          <Typography sx={{ fontSize: 17, fontWeight: 700 }} noWrap>
+            Hello, {firstName}
+          </Typography>
+          <IconButton
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close menu"
+            sx={{ ml: "auto", color: "#fff" }}
+          >
+            <Close />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ flex: 1, overflowY: "auto" }}>
+          <DrawerSection title="Shop by category">
+            <DrawerLink
+              icon={<LocalFireDepartment sx={{ color: c.flame }} />}
+              active={location.pathname === ROUTES.deals}
+              onClick={() => go(ROUTES.deals)}
+            >
+              Today&apos;s Deals
+            </DrawerLink>
+            {[...NAV_CATEGORIES, ...MORE_CATEGORIES].map((name) => (
+              <DrawerLink
+                key={name}
+                active={activeCategory === name}
+                onClick={() => go(ROUTES.category(name))}
+              >
+                {name}
+              </DrawerLink>
+            ))}
+          </DrawerSection>
+
+          <Divider sx={{ borderColor: c.border }} />
+
+          <DrawerSection title="Your account">
+            {ACCOUNT_LINKS.map(({ label, icon: Icon, path }) => (
+              <DrawerLink
+                key={label}
+                icon={<Icon />}
+                active={location.pathname === path}
+                onClick={() => go(path)}
+              >
+                {label}
+              </DrawerLink>
+            ))}
+          </DrawerSection>
+
+          <Divider sx={{ borderColor: c.border }} />
+
+          <DrawerSection title="Settings & help">
+            {HELP_LINKS.map(({ label, icon: Icon, path }) => (
+              <DrawerLink
+                key={label}
+                icon={<Icon />}
+                active={location.pathname === path}
+                onClick={() => go(path)}
+              >
+                {label}
+              </DrawerLink>
+            ))}
+          </DrawerSection>
+        </Box>
+
+        <Box sx={{ p: 1.5, borderTop: `1px solid ${c.border}` }}>
           <Button
             fullWidth
             startIcon={<LogoutOutlined />}
             onClick={handleLogout}
             sx={{
               justifyContent: "flex-start",
-              color: ink,
+              color: c.danger,
               textTransform: "none",
-              fontWeight: 600,
+              fontWeight: 700,
               px: 1.5,
               py: 1,
-              borderRadius: 1.2,
-
-              "&:hover": {
-                bgcolor: "#F1ECE1",
-              },
+              borderRadius: 2,
+              "&:hover": { bgcolor: "#F8EAE5" },
             }}
           >
             Log out
           </Button>
         </Box>
-      </Box>
+      </Drawer>
 
-      {/* ==================================================
-          MAIN CONTENT
-      ================================================== */}
-
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-        }}
-      >
-        {/* ==================================================
-            HEADER
-        ================================================== */}
-
-        <Box
-          component="header"
-          sx={{
-            bgcolor: paper,
-            borderBottom: `1px solid ${border}`,
-            px: {
-              xs: 2,
-              sm: 3,
-              xl: 5,
-            },
-            py: 1.8,
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            {/* Search */}
-
-            <TextField
-              fullWidth
-              placeholder="Search for products, brands and more..."
-              size="small"
-              sx={{
-                maxWidth: 650,
-
-                "& .MuiOutlinedInput-root": {
-                  bgcolor: "#F4EFE4",
-                  borderRadius: 1,
-                  fontSize: 13,
-                  height: 42,
-
-                  "& fieldset": {
-                    border: "none",
-                  },
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search
-                      sx={{
-                        fontSize: 19,
-                        color: muted,
-                      }}
-                    />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            {/* Spacer */}
-
-            <Box sx={{ flex: 1 }} />
-
-            {/* Wishlist */}
-
-            <IconButton
-              onClick={() => navigate("/wishlist")}
-              className="!flex !items-center !gap-2 !rounded-md !text-ink"
-            >
-              <Badge
-                badgeContent={wishlistItemCount}
-                color="warning"
-                invisible={wishlistItemCount === 0}
-                sx={{
-                  "& .MuiBadge-badge": {
-                    fontSize: 9,
-                    minWidth: 16,
-                    height: 16,
-                  },
-                }}
-              >
-                <FavoriteBorder />
-              </Badge>
-
-              <span className="text-sm font-medium">Wishlist</span>
-            </IconButton>
-
-            {/* Cart */}
-
-            <IconButton
-              onClick={() => navigate("/cart")}
-              className="!flex !items-center !gap-2 !rounded-md !text-ink !mr-4"
-            >
-              <Badge
-                badgeContent={cartItemCount}
-                sx={{
-                  "& .MuiBadge-badge": {
-                    bgcolor: gold,
-                    color: ink,
-                    fontSize: 9,
-                    minWidth: 16,
-                    height: 16,
-                  },
-                }}
-              >
-                <ShoppingCartOutlined />
-              </Badge>
-
-              <span className="text-sm font-medium">Cart</span>
-            </IconButton>
-
-            {/* User */}
-
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{
-                ml: 0.5,
-                alignItems: "center",
-              }}
-            >
-              <Box
-                onClick={handleAvatarClick}
-                className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 transition hover:bg-gray-100"
-              >
-                <Avatar
-                  src={
-                    user.avatarUrl
-                      ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}`
-                      : undefined
-                  }
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    bgcolor: ink,
-                    color: "#fff",
-                    fontSize: 13,
-                    fontWeight: 700,
-                  }}
-                >
-                  {(user.name || "U").slice(0, 1).toUpperCase()}
-                </Avatar>
-
-                <Box className="hidden sm:block">
-                  <Typography
-                    sx={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: ink,
-                    }}
-                  >
-                    {user.name}
-                  </Typography>
-
-                  <Typography
-                    sx={{
-                      fontSize: 8,
-                      color: muted,
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Customer
-                  </Typography>
-                </Box>
-
-                <KeyboardArrowDown
-                  sx={{
-                    color: ink,
-                    fontSize: 20,
-                    transform: open ? "rotate(180deg)" : "rotate(0deg)",
-                    transition: "transform 0.2s ease",
-                  }}
-                />
-              </Box>
-
-              {/* User Dropdown */}
-
-              <Menu
-                anchorEl={anchorEl}
-                open={open}
-                onClose={handleClose}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "right",
-                }}
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                slotProps={{
-                  paper: {
-                    elevation: 0,
-                    sx: {
-                      mt: 1.5,
-                      width: 270,
-                      overflow: "hidden",
-                      bgcolor: paper,
-                      color: ink,
-                      border: `1px solid ${border}`,
-                      borderRadius: "12px",
-                      boxShadow: "0 12px 32px rgba(36, 43, 35, 0.12)",
-                      "& .MuiList-root": {
-                        p: 1,
-                      },
-                    },
-                  },
-                }}
-              >
-                {/* Account header */}
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1.8,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                  }}
-                >
-                  <Avatar
-                    src={
-                      user.avatarUrl
-                        ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}`
-                        : undefined
-                    }
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      bgcolor: ink,
-                      color: paper,
-                      border: `1px solid ${border}`,
-                      fontSize: 15,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {(user.name || "U").slice(0, 1).toUpperCase()}
-                  </Avatar>
-
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography
-                      sx={{
-                        fontFamily: '"Georgia", "Times New Roman", serif',
-                        fontSize: 17,
-                        fontWeight: 700,
-                        color: ink,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {user.name}
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        mt: 0.35,
-                        fontFamily: monoFont,
-                        fontSize: 9,
-                        letterSpacing: 1.2,
-                        color: muted,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Customer account
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Divider sx={{ borderColor: border, mx: 1 }} />
-
-                {/* Main navigation */}
-                <Box sx={{ py: 0.7 }}>
-                  <Typography
-                    sx={{
-                      px: 1.5,
-                      py: 0.7,
-                      fontFamily: monoFont,
-                      fontSize: 9,
-                      letterSpacing: 1.5,
-                      textTransform: "uppercase",
-                      color: muted,
-                    }}
-                  >
-                    Your account
-                  </Typography>
-
-                  {[
-                    {
-                      label: "My Profile",
-                      icon: PersonOutlined,
-                      action: () => navigate("/profile"),
-                    },
-                    {
-                      label: "My Orders",
-                      icon: Inventory2Outlined,
-                      action: () => navigate("/orders"),
-                    },
-                    {
-                      label: "Wishlist",
-                      icon: FavoriteBorder,
-                      action: () => navigate("/wishlist"),
-                    },
-                  ].map(({ label, icon: Icon, action }) => (
-                    <MenuItem
-                      key={label}
-                      onClick={() => {
-                        handleClose();
-                        action();
-                      }}
-                      sx={{
-                        minHeight: 42,
-                        mx: 0.5,
-                        px: 1.5,
-                        gap: 1.5,
-                        borderRadius: "7px",
-                        color: ink,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        transition: "background-color 160ms ease",
-
-                        "&:hover": {
-                          bgcolor: "#F1EADD",
-                        },
-
-                        "& .menu-icon": {
-                          color: muted,
-                          fontSize: 19,
-                          transition: "color 160ms ease",
-                        },
-
-                        "&:hover .menu-icon": {
-                          color: ink,
-                        },
-                      }}
-                    >
-                      <Icon className="menu-icon" />
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Box>
-
-                <Divider sx={{ borderColor: border, mx: 1 }} />
-
-                {/* Settings and support */}
-                <Box sx={{ py: 0.7 }}>
-                  {[
-                    {
-                      label: "Account Settings",
-                      icon: SettingsOutlined,
-                      action: () => navigate("/settings"),
-                    },
-                    {
-                      label: "Help & Support",
-                      icon: HelpOutlined,
-                      action: () => navigate("/support"),
-                    },
-                  ].map(({ label, icon: Icon, action }) => (
-                    <MenuItem
-                      key={label}
-                      onClick={() => {
-                        handleClose();
-                        action();
-                      }}
-                      sx={{
-                        minHeight: 42,
-                        mx: 0.5,
-                        px: 1.5,
-                        gap: 1.5,
-                        borderRadius: "7px",
-                        color: ink,
-                        fontSize: 13,
-                        fontWeight: 500,
-
-                        "&:hover": {
-                          bgcolor: "#F1EADD",
-                        },
-
-                        "& .menu-icon": {
-                          color: muted,
-                          fontSize: 19,
-                        },
-                      }}
-                    >
-                      <Icon className="menu-icon" />
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Box>
-
-                <Divider sx={{ borderColor: border, mx: 1 }} />
-
-                {/* Logout */}
-                <Box sx={{ p: 0.7 }}>
-                  <MenuItem
-                    onClick={handleLogout}
-                    sx={{
-                      minHeight: 42,
-                      mx: 0.5,
-                      px: 1.5,
-                      gap: 1.5,
-                      borderRadius: "7px",
-                      color: "#A7443C",
-                      fontSize: 13,
-                      fontWeight: 600,
-
-                      "&:hover": {
-                        bgcolor: "#F8EAE5",
-                      },
-
-                      "& .menu-icon": {
-                        fontSize: 19,
-                      },
-                    }}
-                  >
-                    <LogoutOutlined className="menu-icon" />
-                    Log out
-                  </MenuItem>
-                </Box>
-              </Menu>
-            </Stack>
-          </Stack>
-        </Box>
-
-        {/* ==================================================
-            PAGE CONTENT
-        ================================================== */}
-
-        <Box
-          component="main"
-          sx={{
-            width: "100%",
-            minWidth: 0,
-          }}
-        >
-          <Outlet />
-        </Box>
+      {/* ==================================================================
+          PAGE CONTENT
+      ================================================================== */}
+      <Box component="main" sx={{ flex: 1, width: "100%", minWidth: 0 }}>
+        <Outlet />
       </Box>
     </Box>
   );
