@@ -2038,14 +2038,23 @@ const DashboardPage = () => {
               fontWeight: 700,
               borderRadius: 2,
               whiteSpace: "nowrap",
+              px: 3, // Horizontal padding
+              py: 1.5, // Vertical padding
               color: c.ink,
               bgcolor: c.surface,
               borderColor: c.border,
-              "&:hover": { borderColor: c.ink, bgcolor: c.surface },
+              "& .MuiButton-startIcon": {
+                mr: 1.25,
+              },
+              "&:hover": {
+                borderColor: c.ink,
+                bgcolor: c.surface,
+              },
             }}
           >
             Track orders
           </Button>
+
           <Button
             variant="outlined"
             startIcon={<ConfirmationNumberOutlined />}
@@ -2055,10 +2064,18 @@ const DashboardPage = () => {
               fontWeight: 700,
               borderRadius: 2,
               whiteSpace: "nowrap",
+              px: 3, // Horizontal padding
+              py: 1.5, // Vertical padding
               color: c.ink,
               bgcolor: c.surface,
               borderColor: c.border,
-              "&:hover": { borderColor: c.ink, bgcolor: c.surface },
+              "& .MuiButton-startIcon": {
+                mr: 1.25,
+              },
+              "&:hover": {
+                borderColor: c.ink,
+                bgcolor: c.surface,
+              },
             }}
           >
             My coupons
