@@ -15,6 +15,7 @@ import OrdersPage from "./pages/OrdersPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentCancelPage from "./pages/PaymentCancelPage";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
+import CouponsPage from "./pages/CouponsPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -54,6 +55,7 @@ const App = () => {
                 <Route path="/checkout" element={<CheckoutPage />} />
 
                 <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/coupons" element={<CouponsPage />} />
                 <Route
                   path="/payment/success"
                   element={<PaymentSuccessPage />}
