@@ -2,17 +2,18 @@ import axios from "axios";
 
 const API_URL = `${import.meta.env.VITE_API_URL}/api/orders`;
 
+const getHeaders = (token, userId) => ({
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  ...(userId ? { "X-User-Id": userId } : {}),
+});
+
 export const validateCoupon = (code, subtotal, token, userId) =>
   axios.post(
     `${API_URL}/coupons/validate`,
-    {
-      code,
-      subtotal,
-    },
+    { code, subtotal },
     {
       headers: {
-        Authorization: `Bearer ${token}`,
-        "X-User-Id": userId,
+        ...getHeaders(token, userId),
         "Content-Type": "application/json",
       },
     },
@@ -20,8 +21,10 @@ export const validateCoupon = (code, subtotal, token, userId) =>
 
 export const getAvailableCouponCount = (token, userId) =>
   axios.get(`${API_URL}/coupons/available/count`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "X-User-Id": userId,
-    },
+    headers: getHeaders(token, userId),
+  });
+
+export const getAvailableCoupons = (token, userId) =>
+  axios.get(`${API_URL}/coupons/available`, {
+    headers: getHeaders(token, userId),
   });

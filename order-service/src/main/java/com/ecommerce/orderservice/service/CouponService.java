@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -124,6 +125,18 @@ public class CouponService {
                                 .filter(coupon -> coupon.getExpiresAt() == null
                                                 || !now.isAfter(coupon.getExpiresAt()))
                                 .count();
+        }
+
+        public List<Coupon> getAvailableCoupons() {
+                LocalDateTime now = LocalDateTime.now();
+
+                return couponRepository.findByActiveTrue()
+                                .stream()
+                                .filter(coupon -> coupon.getStartsAt() == null
+                                                || !now.isBefore(coupon.getStartsAt()))
+                                .filter(coupon -> coupon.getExpiresAt() == null
+                                                || !now.isAfter(coupon.getExpiresAt()))
+                                .toList();
         }
 
 }

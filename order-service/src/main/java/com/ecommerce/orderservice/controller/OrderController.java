@@ -14,6 +14,7 @@ import com.ecommerce.orderservice.dto.OrderResponse;
 import com.ecommerce.orderservice.dto.UpdateOrderStatusRequest;
 import com.ecommerce.orderservice.dto.UpdatePaymentStatusRequest;
 import com.ecommerce.orderservice.dto.UpdateShippingInfoRequest;
+import com.ecommerce.orderservice.entity.Coupon;
 import com.ecommerce.orderservice.service.CouponService;
 import com.ecommerce.orderservice.service.OrderService;
 
@@ -219,6 +220,12 @@ public class OrderController {
         public ResponseEntity<Long> getAvailableCouponCount() {
                 return ResponseEntity.ok(
                                 couponService.getAvailableCouponCount());
+        }
+
+        @GetMapping("/coupons/available")
+        public ResponseEntity<List<Coupon>> getAvailableCoupons() {
+                return ResponseEntity.ok(
+                                couponService.getAvailableCoupons());
         }
 
 }
