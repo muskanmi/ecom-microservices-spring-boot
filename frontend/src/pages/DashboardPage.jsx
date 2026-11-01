@@ -2131,7 +2131,11 @@ const DashboardPage = () => {
                 : null
             }
             loading={ordersLoading}
-            onNavigate={() => navigate(ROUTES.orders)}
+            onNavigate={() => {
+              if (latestActiveOrder?.id) {
+                navigate(`/orders/${latestActiveOrder.id}`);
+              }
+            }}
             onShop={goToProducts}
           />
           <SavedForLaterCard
