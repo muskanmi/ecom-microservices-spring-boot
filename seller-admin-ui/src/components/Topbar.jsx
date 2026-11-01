@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Avatar,
   Badge,
@@ -19,9 +19,16 @@ import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+import ArrowForwardOutlinedIcon from "@mui/icons-material/ArrowForwardOutlined";
+import SearchOffOutlinedIcon from "@mui/icons-material/SearchOffOutlined";
 
 import { useNavigate } from "react-router-dom";
 import { currentUser } from "../services/authApi";
+import { getProducts } from "../services/productApi";
+import { getOrders } from "../services/orderApi";
+import { getProductImageUrl } from "../services/imageUtils";
 
 const COLORS = {
   ink: "#263331",
@@ -35,15 +42,112 @@ const COLORS = {
   dangerHover: "#F7ECE7",
 };
 
+const MAX_RESULTS_PER_GROUP = 5;
+
+function getProductId(product) {
+  return product?.id ?? product?.productId;
+}
+
+function getProductName(product) {
+  return product?.name || product?.productName || "Unnamed Product";
+}
+
+function getProductPrice(product) {
+  return product?.price ?? product?.sellingPrice ?? product?.mrp ?? 0;
+}
+
+function getProductCategory(product) {
+  return (
+    product?.categoryName ||
+    product?.category ||
+    product?.categoryId ||
+    "Uncategorized"
+  );
+}
+
+function getProductImage(product) {
+  const firstImage = Array.isArray(product?.images) ? product.images[0] : null;
+
+  const imageValue =
+    typeof firstImage === "string"
+      ? firstImage
+      : firstImage?.imageUrl ||
+        firstImage?.url ||
+        firstImage?.image ||
+        firstImage?.filePath ||
+        null;
+
+  return imageValue ? getProductImageUrl(imageValue) : "";
+}
+
+function getOrderId(order) {
+  return order?.id ?? order?.orderId;
+}
+
+function getOrderNumber(order) {
+  return order?.orderNumber || `ORD-${getOrderId(order)}`;
+}
+
+function getOrderTotal(order) {
+  return order?.totalAmount ?? order?.total ?? order?.grandTotal ?? 0;
+}
+
+function getOrderStatus(order) {
+  return order?.status || "PENDING";
+}
+
+function getPaymentStatus(order) {
+  return order?.paymentStatus || order?.payment?.status || "PENDING";
+}
+
+function getCustomerName(order) {
+  return order?.customerName || order?.userName || order?.customer?.name || "";
+}
+
+function getCustomerEmail(order) {
+  return order?.customerEmail || order?.email || order?.userEmail || "";
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
+function normalize(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
 function Topbar() {
   const navigate = useNavigate();
 
   const [accountAnchorEl, setAccountAnchorEl] = useState(null);
   const [user, setUser] = useState(null);
 
-  const accountMenuOpen = Boolean(accountAnchorEl);
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
+  const searchContainerRef = useRef(null);
+  const searchCacheLoadedRef = useRef(false);
+  const searchRequestRef = useRef(false);
+
+  const accountMenuOpen = Boolean(accountAnchorEl);
+  const normalizedQuery = normalize(searchQuery);
+  const shouldShowSearch = searchFocused && normalizedQuery.length > 0;
+
+  // Load the current seller.
   useEffect(() => {
+    let cancelled = false;
+
     const loadUser = async () => {
       const token = localStorage.getItem("token");
 
@@ -51,33 +155,225 @@ function Topbar() {
 
       try {
         const response = await currentUser(token);
-        setUser(response.data);
+
+        if (!cancelled) {
+          setUser(response.data);
+        }
       } catch (error) {
         console.error("Failed to load seller information:", error);
       }
     };
 
     loadUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleAccountClick = (event) => {
+  // Close search when clicking outside its container.
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target)
+      ) {
+        setSearchFocused(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  // Fetch products and orders only once, when the user starts searching.
+  // Subsequent keystrokes filter the cached results locally.
+  useEffect(() => {
+    if (normalizedQuery.length < 2 || searchCacheLoadedRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSearchData() {
+      // Prevent duplicate requests if the query changes while loading.
+      if (searchRequestRef.current) return;
+
+      searchRequestRef.current = true;
+      setSearchLoading(true);
+      setSearchError("");
+
+      try {
+        const [productsResult, ordersResult] = await Promise.allSettled([
+          getProducts(),
+          getOrders(),
+        ]);
+
+        if (cancelled) return;
+
+        const productRequestSucceeded = productsResult.status === "fulfilled";
+        const orderRequestSucceeded = ordersResult.status === "fulfilled";
+
+        if (productRequestSucceeded) {
+          setProducts(
+            Array.isArray(productsResult.value.data)
+              ? productsResult.value.data
+              : [],
+          );
+        } else {
+          console.error(
+            "Failed to load products for search:",
+            productsResult.reason,
+          );
+        }
+
+        if (orderRequestSucceeded) {
+          setOrders(
+            Array.isArray(ordersResult.value.data)
+              ? ordersResult.value.data
+              : [],
+          );
+        } else {
+          console.error(
+            "Failed to load orders for search:",
+            ordersResult.reason,
+          );
+        }
+
+        if (!productRequestSucceeded && !orderRequestSucceeded) {
+          setSearchError("Unable to load search results. Please try again.");
+        } else {
+          // Cache successful results. If either request failed, allow a
+          // later search to retry so results from that resource can load.
+          searchCacheLoadedRef.current =
+            productRequestSucceeded && orderRequestSucceeded;
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Search request failed:", error);
+          setSearchError("Unable to load search results. Please try again.");
+        }
+      } finally {
+        searchRequestRef.current = false;
+
+        if (!cancelled) {
+          setSearchLoading(false);
+        }
+      }
+    }
+
+    loadSearchData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedQuery]);
+
+  // Filter products and orders as the user types.
+  const matchingProducts =
+    normalizedQuery.length < 2
+      ? []
+      : products
+          .filter((product) => {
+            const searchableText = [
+              getProductName(product),
+              product?.description,
+              getProductCategory(product),
+              getProductId(product),
+            ]
+              .map(normalize)
+              .join(" ");
+
+            return searchableText.includes(normalizedQuery);
+          })
+          .slice(0, MAX_RESULTS_PER_GROUP);
+
+  const matchingOrders =
+    normalizedQuery.length < 2
+      ? []
+      : orders
+          .filter((order) => {
+            const searchableText = [
+              getOrderId(order),
+              getOrderNumber(order),
+              getCustomerName(order),
+              getCustomerEmail(order),
+              getOrderStatus(order),
+              getPaymentStatus(order),
+            ]
+              .map(normalize)
+              .join(" ");
+
+            return searchableText.includes(normalizedQuery);
+          })
+          .slice(0, MAX_RESULTS_PER_GROUP);
+
+  const hasResults = matchingProducts.length > 0 || matchingOrders.length > 0;
+
+  function handleSearchChange(event) {
+    setSearchQuery(event.target.value);
+    setSearchFocused(true);
+  }
+
+  function handleSearchKeyDown(event) {
+    if (event.key === "Escape") {
+      setSearchFocused(false);
+      event.currentTarget.blur();
+    }
+
+    if (event.key === "Enter") {
+      if (matchingProducts.length > 0) {
+        handleSearchNavigation(
+          `/admin/products/${getProductId(matchingProducts[0])}`,
+        );
+      } else if (matchingOrders.length > 0) {
+        handleSearchNavigation(
+          `/admin/orders/${getOrderId(matchingOrders[0])}`,
+        );
+      }
+    }
+  }
+
+  function handleSearchNavigation(path) {
+    setSearchFocused(false);
+    setSearchQuery("");
+    navigate(path);
+  }
+
+  function handleSearchRetry() {
+    searchCacheLoadedRef.current = false;
+    setSearchError("");
+
+    // Trigger the loading effect again, including when the query is unchanged.
+    setSearchQuery("");
+    setSearchFocused(true);
+
+    window.setTimeout(() => {
+      setSearchQuery((current) => current || "  ");
+    }, 0);
+  }
+
+  function handleAccountClick(event) {
     setAccountAnchorEl(event.currentTarget);
-  };
+  }
 
-  const handleAccountClose = () => {
+  function handleAccountClose() {
     setAccountAnchorEl(null);
-  };
+  }
 
-  const handleAccountNavigation = (path) => {
+  function handleAccountNavigation(path) {
     handleAccountClose();
     navigate(path);
-  };
+  }
 
-  const handleLogout = () => {
+  function handleLogout() {
     localStorage.removeItem("token");
     handleAccountClose();
     navigate("/login", { replace: true });
-  };
+  }
 
   const displayName = user?.name || "Seller";
   const role = user?.role || "SELLER";
@@ -135,24 +431,315 @@ function Topbar() {
 
   return (
     <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-[#E4DDCF] bg-[#FFFCF4] px-6 lg:px-8">
-      {/* Search */}
-      <div className="flex w-full max-w-[560px] items-center gap-3 rounded-[6px] bg-[#F3EEE4] px-4 py-2.5">
-        <SearchOutlinedIcon fontSize="small" sx={{ color: COLORS.muted }} />
+      {/* Search bar and autocomplete dropdown */}
+      <div
+        ref={searchContainerRef}
+        className="relative z-30 flex w-full max-w-[560px] items-center"
+      >
+        <div
+          className={`flex w-full items-center gap-3 rounded-t-[6px] px-4 py-2.5 transition-colors ${
+            shouldShowSearch ? "bg-white ring-1 ring-[#E4DDCF]" : "bg-[#F3EEE4]"
+          }`}
+        >
+          <SearchOutlinedIcon
+            fontSize="small"
+            sx={{ color: COLORS.muted, flexShrink: 0 }}
+          />
 
-        <InputBase
-          placeholder="Search products, orders..."
-          className="flex-1 text-sm"
-          sx={{
-            "& input": {
-              color: COLORS.ink,
-              fontSize: "14px",
-            },
-            "& input::placeholder": {
-              color: COLORS.muted,
-              opacity: 1,
-            },
-          }}
-        />
+          <InputBase
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onFocus={() => setSearchFocused(true)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Search products, orders..."
+            inputProps={{
+              "aria-label": "Search products and orders",
+              "aria-expanded": shouldShowSearch,
+              "aria-controls": "seller-search-results",
+              autoComplete: "off",
+            }}
+            className="flex-1 text-sm"
+            sx={{
+              "& input": {
+                color: COLORS.ink,
+                fontSize: "14px",
+              },
+              "& input::placeholder": {
+                color: COLORS.muted,
+                opacity: 1,
+              },
+            }}
+          />
+
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setSearchFocused(true);
+              }}
+              aria-label="Clear search"
+              className="text-xs font-medium text-[#858A82] hover:text-[#164E4A]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {shouldShowSearch && (
+          <div
+            id="seller-search-results"
+            className="absolute left-0 right-0 top-full max-h-[min(70vh,520px)] overflow-y-auto rounded-b-lg border border-t-0 border-[#E4DDCF] bg-white shadow-[0_14px_35px_rgba(38,51,49,0.15)]"
+          >
+            {/* Short queries */}
+            {normalizedQuery.length < 2 ? (
+              <div className="px-5 py-5 text-sm text-[#858A82]">
+                Type at least 2 characters to search products and orders.
+              </div>
+            ) : (
+              <>
+                {/* Loading */}
+                {searchLoading && (
+                  <div className="flex items-center gap-3 px-5 py-4 text-sm text-[#68706A]">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#E4DDCF] border-t-[#164E4A]" />
+                    Searching products and orders...
+                  </div>
+                )}
+
+                {/* Search errors */}
+                {!searchLoading && searchError && (
+                  <div className="px-5 py-4">
+                    <p className="text-sm text-[#A7443C]">{searchError}</p>
+
+                    <button
+                      type="button"
+                      onClick={handleSearchRetry}
+                      className="mt-2 text-sm font-semibold text-[#164E4A] hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
+
+                {/* Product results */}
+                {!searchLoading &&
+                  !searchError &&
+                  matchingProducts.length > 0 && (
+                    <section>
+                      <div className="flex items-center justify-between border-b border-[#EEE8DC] bg-[#FFFCF4] px-5 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#858A82]">
+                          Products
+                        </p>
+
+                        <span className="text-xs text-[#858A82]">
+                          {matchingProducts.length} found
+                        </span>
+                      </div>
+
+                      {matchingProducts.map((product) => {
+                        const productId = getProductId(product);
+                        const imageUrl = getProductImage(product);
+
+                        return (
+                          <button
+                            key={productId}
+                            type="button"
+                            onClick={() =>
+                              handleSearchNavigation(
+                                `/admin/products/${productId}`,
+                              )
+                            }
+                            className="group flex w-full items-center gap-3 border-b border-[#F1ECE3] px-4 py-3 text-left transition-colors hover:bg-[#F8F4EA]"
+                          >
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#E4DDCF] bg-[#F7F1E5]">
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={getProductName(product)}
+                                  className="h-full w-full object-contain p-1"
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <Inventory2OutlinedIcon
+                                  sx={{
+                                    fontSize: 22,
+                                    color: COLORS.teal,
+                                  }}
+                                />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-[#263331] group-hover:text-[#164E4A]">
+                                {getProductName(product)}
+                              </p>
+
+                              <p className="mt-1 truncate text-xs text-[#858A82]">
+                                {getProductCategory(product)}
+                                {productId != null ? ` · ID ${productId}` : ""}
+                              </p>
+
+                              <p className="mt-1 text-xs font-semibold text-[#164E4A]">
+                                {formatCurrency(getProductPrice(product))}
+                              </p>
+                            </div>
+
+                            <ArrowForwardOutlinedIcon
+                              sx={{
+                                fontSize: 17,
+                                color: "#A6A69C",
+                                transition: "transform 160ms ease",
+                                ".group:hover &": {
+                                  color: COLORS.teal,
+                                  transform: "translateX(3px)",
+                                },
+                              }}
+                            />
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSearchNavigation("/admin/products")
+                        }
+                        className="flex w-full items-center justify-center gap-2 border-b border-[#E4DDCF] bg-[#FFFCF4] px-4 py-3 text-xs font-semibold text-[#164E4A] transition hover:bg-[#F3EEE4]"
+                      >
+                        View product catalogue
+                        <ArrowForwardOutlinedIcon sx={{ fontSize: 15 }} />
+                      </button>
+                    </section>
+                  )}
+
+                {/* Order results */}
+                {!searchLoading &&
+                  !searchError &&
+                  matchingOrders.length > 0 && (
+                    <section>
+                      <div className="flex items-center justify-between border-b border-[#EEE8DC] bg-[#FFFCF4] px-5 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#858A82]">
+                          Orders
+                        </p>
+
+                        <span className="text-xs text-[#858A82]">
+                          {matchingOrders.length} found
+                        </span>
+                      </div>
+
+                      {matchingOrders.map((order) => {
+                        const orderId = getOrderId(order);
+
+                        return (
+                          <button
+                            key={orderId}
+                            type="button"
+                            onClick={() =>
+                              handleSearchNavigation(`/admin/orders/${orderId}`)
+                            }
+                            className="group flex w-full items-center gap-3 border-b border-[#F1ECE3] px-5 py-3 text-left transition-colors hover:bg-[#F8F4EA]"
+                          >
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[#E4DDCF] bg-[#F3EEE4]">
+                              <ShoppingBagOutlinedIcon
+                                sx={{ fontSize: 21, color: COLORS.teal }}
+                              />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-[#263331] group-hover:text-[#164E4A]">
+                                {getOrderNumber(order)}
+                              </p>
+
+                              <p className="mt-1 truncate text-xs text-[#858A82]">
+                                {getCustomerName(order) || "Customer"}
+                                {getCustomerEmail(order)
+                                  ? ` · ${getCustomerEmail(order)}`
+                                  : ""}
+                              </p>
+
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold text-[#164E4A]">
+                                  {formatCurrency(getOrderTotal(order))}
+                                </span>
+
+                                <span className="rounded-sm border border-[#E4DDCF] bg-[#FFFCF4] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#68706A]">
+                                  {String(getOrderStatus(order)).replace(
+                                    /_/g,
+                                    " ",
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+
+                            <ArrowForwardOutlinedIcon
+                              sx={{
+                                fontSize: 17,
+                                color: "#A6A69C",
+                                flexShrink: 0,
+                              }}
+                            />
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSearchNavigation("/admin/orders")}
+                        className="flex w-full items-center justify-center gap-2 bg-[#FFFCF4] px-4 py-3 text-xs font-semibold text-[#164E4A] transition hover:bg-[#F3EEE4]"
+                      >
+                        View all orders
+                        <ArrowForwardOutlinedIcon sx={{ fontSize: 15 }} />
+                      </button>
+                    </section>
+                  )}
+
+                {/* Empty state */}
+                {!searchLoading &&
+                  !searchError &&
+                  !hasResults &&
+                  normalizedQuery.length >= 2 && (
+                    <div className="flex flex-col items-center px-6 py-8 text-center">
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F3EEE4]">
+                        <SearchOffOutlinedIcon
+                          sx={{ fontSize: 24, color: COLORS.muted }}
+                        />
+                      </div>
+
+                      <p className="text-sm font-semibold text-[#263331]">
+                        No results found
+                      </p>
+
+                      <p className="mt-1 max-w-[280px] text-xs leading-5 text-[#858A82]">
+                        We couldn't find products or orders matching "
+                        {searchQuery.trim()}".
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSearchNavigation("/admin/products")
+                        }
+                        className="mt-4 text-xs font-semibold text-[#164E4A] hover:underline"
+                      >
+                        Browse product catalogue
+                      </button>
+                    </div>
+                  )}
+
+                {/* Search hint */}
+                {!searchLoading && !searchError && hasResults && (
+                  <div className="bg-[#FFFCF4] px-5 py-2.5">
+                    <p className="text-[10px] text-[#858A82]">
+                      Select a result to open its details. Press Esc to close.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right side */}
@@ -230,7 +817,7 @@ function Topbar() {
           </span>
         </button>
 
-        {/* Refined seller account dropdown */}
+        {/* Seller account dropdown */}
         <Menu
           anchorEl={accountAnchorEl}
           open={accountMenuOpen}
@@ -328,12 +915,7 @@ function Topbar() {
             </Box>
           </Box>
 
-          <Divider
-            sx={{
-              mx: 0.5,
-              borderColor: COLORS.border,
-            }}
-          />
+          <Divider sx={{ mx: 0.5, borderColor: COLORS.border }} />
 
           {/* Account navigation */}
           <Box sx={{ py: 0.8 }}>
@@ -365,12 +947,7 @@ function Topbar() {
             ))}
           </Box>
 
-          <Divider
-            sx={{
-              mx: 0.5,
-              borderColor: COLORS.border,
-            }}
-          />
+          <Divider sx={{ mx: 0.5, borderColor: COLORS.border }} />
 
           {/* Logout */}
           <Box sx={{ pt: 0.8, pb: 0.2 }}>
