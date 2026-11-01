@@ -3,8 +3,9 @@ import axios from "axios";
 const API_URL = `${import.meta.env.VITE_API_URL}/api/orders`;
 
 const getHeaders = (token, userId) => ({
-  ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  ...(userId ? { "X-User-Id": userId } : {}),
+  Authorization: `Bearer ${token}`,
+  "X-User-Id": String(userId),
+  "Content-Type": "application/json",
 });
 
 export const validateCoupon = (code, subtotal, token, userId) =>
@@ -12,10 +13,7 @@ export const validateCoupon = (code, subtotal, token, userId) =>
     `${API_URL}/coupons/validate`,
     { code, subtotal },
     {
-      headers: {
-        ...getHeaders(token, userId),
-        "Content-Type": "application/json",
-      },
+      headers: getHeaders(token, userId),
     },
   );
 

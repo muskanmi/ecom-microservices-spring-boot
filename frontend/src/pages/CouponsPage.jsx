@@ -18,10 +18,17 @@ import {
   LocalOfferOutlined,
   ShoppingBagOutlined,
   VerifiedOutlined,
+  ExpandMoreOutlined,
+  ExpandLessOutlined,
+  CalendarMonthOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getAvailableCouponCount, validateCoupon } from "../api/couponApi";
+import {
+  getAvailableCouponCount,
+  getAvailableCoupons,
+  validateCoupon,
+} from "../api/couponApi";
 
 const colors = {
   background: "#F7F2E8",
@@ -56,6 +63,63 @@ const getErrorMessage = (error) => {
   );
 };
 
+const getCouponArray = (responseData) => {
+  if (Array.isArray(responseData)) return responseData;
+  if (Array.isArray(responseData?.coupons)) return responseData.coupons;
+  if (Array.isArray(responseData?.data)) return responseData.data;
+  if (Array.isArray(responseData?.content)) return responseData.content;
+  if (Array.isArray(responseData?.data?.coupons)) {
+    return responseData.data.coupons;
+  }
+
+  return [];
+};
+
+const getCouponCode = (coupon) =>
+  coupon?.code || coupon?.couponCode || coupon?.name || "";
+
+const getDiscountLabel = (coupon) => {
+  const type = String(coupon?.discountType || coupon?.type || "").toUpperCase();
+
+  const value =
+    coupon?.discountValue ??
+    coupon?.discountAmount ??
+    coupon?.value ??
+    coupon?.discount;
+
+  if (value === undefined || value === null) return "";
+
+  if (
+    type.includes("PERCENT") ||
+    type.includes("PERCENTAGE") ||
+    type === "PERCENT"
+  ) {
+    return `${value}% off`;
+  }
+
+  if (type.includes("FIXED") || type.includes("FLAT")) {
+    return `${formatCurrency(value)} off`;
+  }
+
+  // If the API returns a numeric discount without a type,
+  // show the value without assuming it is a percentage.
+  return `${value} discount`;
+};
+
+const formatDate = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 export default function CouponsPage() {
   const navigate = useNavigate();
   const auth = useAuth();
@@ -67,6 +131,12 @@ export default function CouponsPage() {
   const [availableCount, setAvailableCount] = useState(null);
   const [countLoading, setCountLoading] = useState(true);
   const [countError, setCountError] = useState("");
+
+  const [showCoupons, setShowCoupons] = useState(false);
+  const [coupons, setCoupons] = useState([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [couponsError, setCouponsError] = useState("");
+  const [copiedCode, setCopiedCode] = useState("");
 
   const [code, setCode] = useState("");
   const [subtotal, setSubtotal] = useState("");
@@ -88,7 +158,6 @@ export default function CouponsPage() {
       const response = await getAvailableCouponCount(token, userId);
       const data = response?.data;
 
-      // Supports a plain numeric response or common object response shapes.
       const count =
         typeof data === "number"
           ? data
@@ -117,9 +186,40 @@ export default function CouponsPage() {
     }
   }, [token, userId]);
 
+  const loadAvailableCoupons = useCallback(async () => {
+    if (!token || !userId) {
+      setCouponsError("Please sign in again to view available coupons.");
+      return;
+    }
+
+    setCouponsLoading(true);
+    setCouponsError("");
+
+    try {
+      const response = await getAvailableCoupons(token, userId);
+      const list = getCouponArray(response?.data);
+
+      setCoupons(list);
+    } catch (error) {
+      setCoupons([]);
+      setCouponsError(getErrorMessage(error));
+    } finally {
+      setCouponsLoading(false);
+    }
+  }, [token, userId]);
+
   useEffect(() => {
     loadCouponCount();
   }, [loadCouponCount]);
+
+  const handleToggleCoupons = async () => {
+    const shouldOpen = !showCoupons;
+    setShowCoupons(shouldOpen);
+
+    if (shouldOpen) {
+      await loadAvailableCoupons();
+    }
+  };
 
   const handleValidate = async (event) => {
     event.preventDefault();
@@ -163,14 +263,12 @@ export default function CouponsPage() {
     }
   };
 
-  const handleCopyCode = async () => {
-    const result = validationResult;
-
-    const couponCode =
-      result?.code || result?.couponCode || code.trim().toUpperCase();
+  const handleCopyCode = async (couponCode) => {
+    if (!couponCode) return;
 
     try {
       await navigator.clipboard.writeText(String(couponCode));
+      setCopiedCode(couponCode);
     } catch {
       setValidationError(
         "Unable to copy automatically. Please select and copy the coupon code.",
@@ -214,6 +312,7 @@ export default function CouponsPage() {
           Back to shopping
         </Button>
 
+        {/* Page heading and clickable available-coupon count */}
         <Box
           sx={{
             display: "flex",
@@ -221,7 +320,7 @@ export default function CouponsPage() {
             alignItems: { xs: "flex-start", sm: "center" },
             flexDirection: { xs: "column", sm: "row" },
             gap: 2,
-            mb: 4,
+            mb: 3,
           }}
         >
           <Box>
@@ -247,7 +346,7 @@ export default function CouponsPage() {
                 color: colors.ink,
               }}
             >
-              Coupons & offers
+              Coupons &amp; offers
             </Typography>
 
             <Typography sx={{ mt: 1, color: colors.muted }}>
@@ -256,7 +355,20 @@ export default function CouponsPage() {
           </Box>
 
           <Paper
+            component="button"
+            type="button"
             elevation={0}
+            onClick={handleToggleCoupons}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleToggleCoupons();
+              }
+            }}
+            aria-expanded={showCoupons}
+            aria-label={
+              showCoupons ? "Hide available coupons" : "View available coupons"
+            }
             sx={{
               display: "flex",
               alignItems: "center",
@@ -266,6 +378,19 @@ export default function CouponsPage() {
               bgcolor: colors.surface,
               border: `1px solid ${colors.border}`,
               borderRadius: 3,
+              color: colors.ink,
+              textAlign: "left",
+              font: "inherit",
+              cursor: "pointer",
+              transition: "border-color 160ms ease, box-shadow 160ms ease",
+              "&:hover": {
+                borderColor: colors.gold,
+                boxShadow: "0 4px 14px rgba(32, 58, 55, 0.08)",
+              },
+              "&:focus-visible": {
+                outline: `2px solid ${colors.ink}`,
+                outlineOffset: 3,
+              },
             }}
           >
             <Box
@@ -283,7 +408,7 @@ export default function CouponsPage() {
               <ConfirmationNumberOutlined />
             </Box>
 
-            <Box>
+            <Box sx={{ flex: 1 }}>
               <Typography sx={{ color: colors.muted, fontSize: 13 }}>
                 Available coupons
               </Typography>
@@ -296,6 +421,8 @@ export default function CouponsPage() {
                 </Typography>
               )}
             </Box>
+
+            {showCoupons ? <ExpandLessOutlined /> : <ExpandMoreOutlined />}
           </Paper>
         </Box>
 
@@ -313,6 +440,235 @@ export default function CouponsPage() {
           </Alert>
         )}
 
+        {/* Coupon list is displayed when the count card is clicked */}
+        {showCoupons && (
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 4,
+              p: { xs: 2, md: 3 },
+              bgcolor: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 3,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Box>
+                <Typography
+                  component="h2"
+                  sx={{
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontSize: 25,
+                    fontWeight: 700,
+                  }}
+                >
+                  Available coupons
+                </Typography>
+                <Typography sx={{ mt: 0.5, color: colors.muted, fontSize: 14 }}>
+                  Copy a code and use it during checkout.
+                </Typography>
+              </Box>
+
+              <Button
+                size="small"
+                onClick={loadAvailableCoupons}
+                disabled={couponsLoading}
+                sx={{
+                  color: colors.ink,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                Refresh
+              </Button>
+            </Box>
+
+            <Divider sx={{ borderColor: colors.border, mb: 2 }} />
+
+            {couponsLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                <CircularProgress sx={{ color: colors.ink }} />
+              </Box>
+            ) : couponsError ? (
+              <Alert
+                severity="error"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={loadAvailableCoupons}
+                  >
+                    Retry
+                  </Button>
+                }
+              >
+                {couponsError}
+              </Alert>
+            ) : coupons.length === 0 ? (
+              <Box sx={{ py: 3, textAlign: "center" }}>
+                <ConfirmationNumberOutlined
+                  sx={{ fontSize: 38, color: colors.muted, mb: 1 }}
+                />
+                <Typography sx={{ fontWeight: 700 }}>
+                  No available coupons right now
+                </Typography>
+                <Typography sx={{ color: colors.muted, mt: 0.5 }}>
+                  Please check back later for new offers.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={2}>
+                {coupons.map((coupon, index) => {
+                  const couponCode = getCouponCode(coupon);
+                  const discountLabel = getDiscountLabel(coupon);
+
+                  const minimumOrder =
+                    coupon?.minOrderAmount ??
+                    coupon?.minimumOrderAmount ??
+                    coupon?.minimumSubtotal;
+
+                  const expiry =
+                    coupon?.expiresAt ?? coupon?.expiryDate ?? coupon?.endDate;
+
+                  const description =
+                    coupon?.description ?? coupon?.terms ?? coupon?.details;
+
+                  return (
+                    <Paper
+                      key={coupon?.id ?? couponCode ?? index}
+                      elevation={0}
+                      sx={{
+                        p: { xs: 2, sm: 2.5 },
+                        border: `1px dashed ${colors.border}`,
+                        borderRadius: 2.5,
+                        bgcolor: colors.white,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: { xs: "flex-start", sm: "center" },
+                          flexDirection: { xs: "column", sm: "row" },
+                          gap: 2,
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 1,
+                              mb: 1,
+                            }}
+                          >
+                            <Typography
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: 18,
+                                letterSpacing: 0.6,
+                                overflowWrap: "anywhere",
+                              }}
+                            >
+                              {couponCode || "Coupon"}
+                            </Typography>
+
+                            {discountLabel && (
+                              <Box
+                                sx={{
+                                  px: 1,
+                                  py: 0.4,
+                                  bgcolor: colors.paleGold,
+                                  color: "#805708",
+                                  borderRadius: 1,
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {discountLabel}
+                              </Box>
+                            )}
+                          </Box>
+
+                          {description && (
+                            <Typography
+                              sx={{
+                                color: colors.muted,
+                                fontSize: 14,
+                                mb: 1,
+                              }}
+                            >
+                              {description}
+                            </Typography>
+                          )}
+
+                          {minimumOrder !== undefined &&
+                            minimumOrder !== null && (
+                              <Typography
+                                sx={{ color: colors.muted, fontSize: 13 }}
+                              >
+                                Minimum order: {formatCurrency(minimumOrder)}
+                              </Typography>
+                            )}
+
+                          {expiry && (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.75,
+                                mt: 1,
+                                color: colors.muted,
+                              }}
+                            >
+                              <CalendarMonthOutlined sx={{ fontSize: 16 }} />
+                              <Typography sx={{ fontSize: 13 }}>
+                                Expires: {formatDate(expiry)}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+
+                        <Button
+                          variant="outlined"
+                          startIcon={<ContentCopyOutlined />}
+                          disabled={!couponCode}
+                          onClick={() => handleCopyCode(couponCode)}
+                          sx={{
+                            minWidth: 125,
+                            borderRadius: 2,
+                            borderColor: colors.border,
+                            color: colors.ink,
+                            textTransform: "none",
+                            fontWeight: 700,
+                            flexShrink: 0,
+                            "&:hover": {
+                              borderColor: colors.ink,
+                              bgcolor: "#F7F2E8",
+                            },
+                          }}
+                        >
+                          {copiedCode === couponCode ? "Copied" : "Copy code"}
+                        </Button>
+                      </Box>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            )}
+          </Paper>
+        )}
+
         <Box
           sx={{
             display: "grid",
@@ -324,6 +680,7 @@ export default function CouponsPage() {
             alignItems: "start",
           }}
         >
+          {/* Validate coupon form */}
           <Paper
             component="form"
             onSubmit={handleValidate}
@@ -455,7 +812,13 @@ export default function CouponsPage() {
                     <Button
                       size="small"
                       startIcon={<ContentCopyOutlined />}
-                      onClick={handleCopyCode}
+                      onClick={() =>
+                        handleCopyCode(
+                          validationResult?.code ||
+                            validationResult?.couponCode ||
+                            code.trim().toUpperCase(),
+                        )
+                      }
                       sx={{
                         mt: 1,
                         color: colors.ink,
@@ -499,6 +862,7 @@ export default function CouponsPage() {
             </Stack>
           </Paper>
 
+          {/* Right-hand information panel */}
           <Stack spacing={3}>
             <Paper
               elevation={0}
