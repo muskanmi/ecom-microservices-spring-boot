@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
-
 import {
   Avatar,
   Badge,
@@ -20,8 +19,8 @@ import {
   Select,
   Typography,
 } from "@mui/material";
-
 import {
+  ArrowForward,
   ChevronRight,
   Close,
   ConfirmationNumberOutlined,
@@ -43,11 +42,9 @@ import {
   ShoppingCartOutlined,
   StarOutlined,
 } from "@mui/icons-material";
-
 /* -------------------------------------------------------------------------- */
-/*  Config – edit these to match your router and catalogue                    */
+/*  Configuration                                                             */
 /* -------------------------------------------------------------------------- */
-
 const ROUTES = {
   home: "/dashboard",
   cart: "/cart",
@@ -57,7 +54,6 @@ const ROUTES = {
   search: "/search",
   category: (name) => `/products?category=${encodeURIComponent(name)}`,
 };
-
 const NAV_CATEGORIES = [
   "Fashion",
   "Electronics",
@@ -70,15 +66,12 @@ const NAV_CATEGORIES = [
   "Toys & Games",
   "Sports",
 ];
-
 const MORE_CATEGORIES = [
   "Jewellery",
   "Health & Wellness",
   "Automotive",
   "Pet Supplies",
 ];
-
-// Everything that used to live in the sidebar.
 const ACCOUNT_LINKS = [
   { label: "My Profile", icon: PersonOutlined, path: "/profile" },
   { label: "Orders", icon: Inventory2Outlined, path: "/orders" },
@@ -97,16 +90,13 @@ const ACCOUNT_LINKS = [
     path: "/notifications",
   },
 ];
-
 const HELP_LINKS = [
   { label: "Account Settings", icon: SettingsOutlined, path: "/settings" },
   { label: "Help & Support", icon: HelpOutlined, path: "/support" },
 ];
-
 /* -------------------------------------------------------------------------- */
-/*  Tokens                                                                    */
+/*  Theme                                                                     */
 /* -------------------------------------------------------------------------- */
-
 const c = {
   ink: "#173F3D",
   inkDeep: "#0F2E2D",
@@ -119,13 +109,70 @@ const c = {
   danger: "#A7443C",
   flame: "#FF9A3C",
 };
-
 const serif = '"Georgia", "Times New Roman", serif';
-
+const API_URL = import.meta.env.VITE_API_URL;
+const getProductName = (product) =>
+  String(product.name || product.title || "Unnamed product");
+const getProductCategory = (product) => {
+  if (typeof product.category === "string") {
+    return product.category;
+  }
+  if (product.category && typeof product.category === "object") {
+    return (
+      product.category.name ||
+      product.category.categoryName ||
+      product.categoryName ||
+      "Other"
+    );
+  }
+  return product.categoryName || "Other";
+};
+const getProductId = (product) => product.id ?? product.productId;
+const getProductPrice = (product) => {
+  const rawPrice = product.sellingPrice ?? product.price;
+  const price = Number(rawPrice);
+  if (!Number.isFinite(price)) {
+    return null;
+  }
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(price);
+};
+const getProductImage = (product) => {
+  const firstImage = Array.isArray(product.images)
+    ? product.images[0]
+    : undefined;
+  if (typeof firstImage === "string") {
+    return firstImage;
+  }
+  if (firstImage && typeof firstImage === "object") {
+    return (
+      firstImage.imageUrl ||
+      firstImage.url ||
+      firstImage.image ||
+      product.imageUrl ||
+      product.image ||
+      ""
+    );
+  }
+  return product.imageUrl || product.image || "";
+};
+const resolveImageUrl = (image) => {
+  if (!image) return "";
+  if (
+    image.startsWith("http://") ||
+    image.startsWith("https://") ||
+    image.startsWith("data:")
+  ) {
+    return image;
+  }
+  return `${API_URL}${image.startsWith("/") ? "" : "/"}${image}`;
+};
 /* -------------------------------------------------------------------------- */
-/*  Small building blocks                                                     */
+/*  Navigation button                                                         */
 /* -------------------------------------------------------------------------- */
-
 const NavButton = ({ active, icon, endIcon, onClick, children }) => (
   <ButtonBase
     onClick={onClick}
@@ -158,7 +205,9 @@ const NavButton = ({ active, icon, endIcon, onClick, children }) => (
     {endIcon}
   </ButtonBase>
 );
-
+/* -------------------------------------------------------------------------- */
+/*  Header action                                                             */
+/* -------------------------------------------------------------------------- */
 const HeaderAction = ({ icon, label, count, ariaLabel, onClick }) => (
   <ButtonBase
     onClick={onClick}
@@ -189,6 +238,7 @@ const HeaderAction = ({ icon, label, count, ariaLabel, onClick }) => (
     >
       {icon}
     </Badge>
+
     <Typography
       sx={{
         fontSize: 13.5,
@@ -200,7 +250,9 @@ const HeaderAction = ({ icon, label, count, ariaLabel, onClick }) => (
     </Typography>
   </ButtonBase>
 );
-
+/* -------------------------------------------------------------------------- */
+/*  Drawer components                                                         */
+/* -------------------------------------------------------------------------- */
 const DrawerSection = ({ title, children }) => (
   <Box sx={{ py: 1 }}>
     <Typography
@@ -216,10 +268,10 @@ const DrawerSection = ({ title, children }) => (
     >
       {title}
     </Typography>
+
     {children}
   </Box>
 );
-
 const DrawerLink = ({ icon, active, onClick, children }) => (
   <ButtonBase
     onClick={onClick}
@@ -248,68 +300,201 @@ const DrawerLink = ({ icon, active, onClick, children }) => (
         {icon}
       </Box>
     )}
-    <Typography sx={{ flex: 1, fontSize: 14, fontWeight: active ? 700 : 500 }}>
+
+    <Typography
+      sx={{
+        flex: 1,
+        fontSize: 14,
+        fontWeight: active ? 700 : 500,
+      }}
+    >
       {children}
     </Typography>
+
     <ChevronRight sx={{ fontSize: 20, color: c.muted }} />
   </ButtonBase>
 );
-
 /* -------------------------------------------------------------------------- */
-/*  Layout                                                                    */
+/*  Main layout                                                               */
 /* -------------------------------------------------------------------------- */
-
 const MainLayout = () => {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItemCount } = useCart();
   const { wishlistItemCount } = useWishlist();
-
   const [accountAnchor, setAccountAnchor] = useState(null);
   const [moreAnchor, setMoreAnchor] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [searchCategory, setSearchCategory] = useState("All Categories");
-
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsLoadFailed, setProductsLoadFailed] = useState(false);
+  const searchContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
   const activeCategory = useMemo(
     () => new URLSearchParams(location.search).get("category"),
     [location.search],
   );
-
   const accountOpen = Boolean(accountAnchor);
-
+  const searchDropdownOpen = searchFocused && searchText.trim().length > 0;
+  /* ---------------------------- Load catalogue ---------------------------- */
+  useEffect(() => {
+    let cancelled = false;
+    const loadProducts = async () => {
+      setProductsLoading(true);
+      setProductsLoadFailed(false);
+      try {
+        const response = await fetch(`${API_URL}/api/products`);
+        if (!response.ok) {
+          throw new Error(`Product request failed: ${response.status}`);
+        }
+        const data = await response.json();
+        const productList = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.content)
+            ? data.content
+            : Array.isArray(data?.products)
+              ? data.products
+              : Array.isArray(data?.data)
+                ? data.data
+                : [];
+        if (!cancelled) {
+          setProducts(productList);
+        }
+      } catch (error) {
+        console.error("Failed to load products for search suggestions:", error);
+        if (!cancelled) {
+          setProducts([]);
+          setProductsLoadFailed(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setProductsLoading(false);
+        }
+      }
+    };
+    loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  /* ----------------------- Close suggestions outside ---------------------- */
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target)
+      ) {
+        setSearchFocused(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+  /* -------------------------- Search suggestions -------------------------- */
+  const availableCategories = useMemo(() => {
+    const productCategories = products
+      .map((product) => getProductCategory(product))
+      .filter((category) => category && category !== "Other");
+    return Array.from(
+      new Set([...NAV_CATEGORIES, ...MORE_CATEGORIES, ...productCategories]),
+    );
+  }, [products]);
+  const normalizedSearch = searchText.trim().toLowerCase();
+  const matchingProducts = useMemo(() => {
+    if (!normalizedSearch) return [];
+    return products
+      .filter((product) => {
+        const category = getProductCategory(product);
+        if (
+          searchCategory !== "All Categories" &&
+          category.toLowerCase() !== searchCategory.toLowerCase()
+        ) {
+          return false;
+        }
+        const searchableText = [
+          getProductName(product),
+          product.brand || "",
+          product.description || "",
+          category,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return searchableText.includes(normalizedSearch);
+      })
+      .slice(0, 5);
+  }, [products, normalizedSearch, searchCategory]);
+  const matchingCategories = useMemo(() => {
+    if (!normalizedSearch || searchCategory !== "All Categories") {
+      return [];
+    }
+    return availableCategories
+      .filter((category) => category.toLowerCase().includes(normalizedSearch))
+      .slice(0, 4);
+  }, [availableCategories, normalizedSearch, searchCategory]);
   const go = (path) => {
     setAccountAnchor(null);
     setMoreAnchor(null);
     setDrawerOpen(false);
+    setSearchFocused(false);
     navigate(path);
   };
-
   const handleLogout = () => {
     setAccountAnchor(null);
     setDrawerOpen(false);
     logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
-
   const handleSearch = (event) => {
     event.preventDefault();
-
     const query = searchText.trim();
     const params = new URLSearchParams();
-
-    if (query) params.set("q", query);
+    if (query) {
+      params.set("q", query);
+    }
     if (searchCategory !== "All Categories") {
       params.set("category", searchCategory);
     }
-    if ([...params.keys()].length === 0) return;
-
+    if ([...params.keys()].length === 0) {
+      setSearchFocused(true);
+      searchInputRef.current?.focus();
+      return;
+    }
+    setSearchFocused(false);
     navigate(`${ROUTES.search}?${params.toString()}`);
   };
-
-  /* ------------------------------ guard states ----------------------------- */
-
+  const handleProductSuggestion = (product) => {
+    const params = new URLSearchParams();
+    params.set("q", getProductName(product));
+    if (searchCategory !== "All Categories") {
+      params.set("category", searchCategory);
+    }
+    setSearchFocused(false);
+    navigate(`${ROUTES.search}?${params.toString()}`);
+  };
+  const handleCategorySuggestion = (category) => {
+    setSearchCategory(category);
+    setSearchFocused(false);
+    navigate(ROUTES.category(category));
+  };
+  const handleClearSearch = () => {
+    setSearchText("");
+    setSearchFocused(true);
+    searchInputRef.current?.focus();
+  };
+  /* ------------------------------ Guard states ---------------------------- */
   if (loading) {
     return (
       <Box
@@ -324,28 +509,22 @@ const MainLayout = () => {
         }}
       >
         <CircularProgress size={28} sx={{ color: c.ink }} />
+
         <Typography sx={{ fontSize: 13, color: c.muted }}>
           Loading marketplace…
         </Typography>
       </Box>
     );
   }
-
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-
-  const avatarSrc = user.avatarUrl
-    ? `${import.meta.env.VITE_API_URL}${user.avatarUrl}`
-    : undefined;
+  const avatarSrc = user.avatarUrl ? `${API_URL}${user.avatarUrl}` : undefined;
   const initial = (user.name || "U").slice(0, 1).toUpperCase();
   const firstName = (user.name || "there").split(" ")[0];
-
-  // Adjust to whatever address fields your user object actually has.
   const deliverTo = user.pincode
     ? [user.city, user.pincode].filter(Boolean).join(" ")
     : "Select address";
-
   const renderMenuLink = ({ label, icon: Icon, path }) => (
     <MenuItem
       key={label}
@@ -368,7 +547,6 @@ const MainLayout = () => {
       {label}
     </MenuItem>
   );
-
   return (
     <Box
       sx={{
@@ -379,11 +557,13 @@ const MainLayout = () => {
         flexDirection: "column",
       }}
     >
-      {/* ==================================================================
-          HEADER
-      ================================================================== */}
+      {/* ================================================================== */}
+      {/* HEADER                                                             */}
+      {/* ================================================================== */}
+
       <Box component="header" sx={{ position: "sticky", top: 0, zIndex: 1100 }}>
         {/* ---------------------------- Top bar ---------------------------- */}
+
         <Box
           sx={{
             bgcolor: c.paper,
@@ -404,6 +584,7 @@ const MainLayout = () => {
             }}
           >
             {/* Logo */}
+
             <ButtonBase
               onClick={() => go(ROUTES.home)}
               aria-label="Marketplace home"
@@ -427,6 +608,7 @@ const MainLayout = () => {
               >
                 <ShoppingBagOutlined sx={{ color: "#fff", fontSize: 22 }} />
               </Box>
+
               <Typography
                 sx={{
                   display: { xs: "none", sm: "block" },
@@ -442,6 +624,7 @@ const MainLayout = () => {
             </ButtonBase>
 
             {/* Deliver to */}
+
             <ButtonBase
               onClick={() => go(ROUTES.addresses)}
               sx={{
@@ -458,12 +641,14 @@ const MainLayout = () => {
               }}
             >
               <LocationOnOutlined sx={{ color: c.ink }} />
+
               <Box sx={{ maxWidth: 150 }}>
                 <Typography
                   sx={{ fontSize: 11, color: c.muted, lineHeight: 1.2 }}
                 >
                   Deliver to
                 </Typography>
+
                 <Typography
                   sx={{
                     fontSize: 13.5,
@@ -476,90 +661,449 @@ const MainLayout = () => {
                   {deliverTo}
                 </Typography>
               </Box>
+
               <KeyboardArrowDown sx={{ fontSize: 18, color: c.ink }} />
             </ButtonBase>
 
-            {/* Search */}
+            {/* Search bar and live suggestions */}
+
             <Box
-              component="form"
-              role="search"
-              onSubmit={handleSearch}
+              ref={searchContainerRef}
               sx={{
                 order: { xs: 4, md: 3 },
+                position: "relative",
                 flex: { xs: "1 1 100%", md: "1 1 auto" },
                 maxWidth: { md: 760 },
                 minWidth: 0,
-                height: 46,
-                display: "flex",
-                alignItems: "stretch",
-                bgcolor: "#fff",
-                border: `1px solid ${c.border}`,
-                borderRadius: 2,
-                overflow: "hidden",
-                transition: "border-color .2s, box-shadow .2s",
-                "&:focus-within": {
-                  borderColor: c.ink,
-                  boxShadow: "0 0 0 3px rgba(23,63,61,.12)",
-                },
+                zIndex: searchDropdownOpen ? 1300 : "auto",
               }}
             >
-              <Select
-                value={searchCategory}
-                onChange={(event) => setSearchCategory(event.target.value)}
-                variant="standard"
-                inputProps={{ "aria-label": "Search category" }}
+              <Box
+                component="form"
+                role="search"
+                onSubmit={handleSearch}
                 sx={{
-                  display: { xs: "none", sm: "flex" },
-                  alignItems: "center",
-                  width: 172,
-                  flexShrink: 0,
-                  px: 1.5,
-                  bgcolor: c.tint,
-                  borderRight: `1px solid ${c.border}`,
-                  fontSize: 13,
-                  color: c.muted,
-                  "&:before, &:after": { display: "none" },
-                  "& .MuiSelect-select": {
-                    py: 0,
-                    background: "transparent",
-                    "&:focus": { background: "transparent" },
-                  },
+                  height: 46,
+                  display: "flex",
+                  alignItems: "stretch",
+                  bgcolor: "#fff",
+                  border: `1px solid ${searchFocused ? c.ink : c.border}`,
+                  borderRadius: searchDropdownOpen ? "8px 8px 0 0" : 2,
+                  overflow: "hidden",
+                  transition: "border-color .2s, box-shadow .2s",
+                  boxShadow: searchFocused
+                    ? "0 0 0 3px rgba(23,63,61,.08)"
+                    : "none",
                 }}
               >
-                {["All Categories", ...NAV_CATEGORIES].map((name) => (
-                  <MenuItem key={name} value={name} sx={{ fontSize: 13 }}>
-                    {name}
-                  </MenuItem>
-                ))}
-              </Select>
+                <Select
+                  value={searchCategory}
+                  onChange={(event) => setSearchCategory(event.target.value)}
+                  variant="standard"
+                  inputProps={{ "aria-label": "Search category" }}
+                  sx={{
+                    display: { xs: "none", sm: "flex" },
+                    alignItems: "center",
+                    width: 172,
+                    flexShrink: 0,
+                    px: 1.5,
+                    bgcolor: c.tint,
+                    borderRight: `1px solid ${c.border}`,
+                    fontSize: 13,
+                    color: c.muted,
+                    "&:before, &:after": { display: "none" },
+                    "& .MuiSelect-select": {
+                      py: 0,
+                      background: "transparent",
+                      "&:focus": { background: "transparent" },
+                    },
+                  }}
+                >
+                  {["All Categories", ...availableCategories].map((name) => (
+                    <MenuItem key={name} value={name} sx={{ fontSize: 13 }}>
+                      {name}
+                    </MenuItem>
+                  ))}
+                </Select>
 
-              <InputBase
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-                placeholder="Search for products, brands and more..."
-                inputProps={{ "aria-label": "Search products" }}
-                startAdornment={
-                  <Search sx={{ fontSize: 20, color: c.muted, mr: 1 }} />
-                }
-                sx={{ flex: 1, px: 1.75, fontSize: 14, minWidth: 0 }}
-              />
+                <InputBase
+                  inputRef={searchInputRef}
+                  value={searchText}
+                  onFocus={() => setSearchFocused(true)}
+                  onChange={(event) => {
+                    setSearchText(event.target.value);
+                    setSearchFocused(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setSearchFocused(false);
+                    }
+                  }}
+                  placeholder="Search for products, brands and more..."
+                  inputProps={{
+                    "aria-label": "Search products",
+                    autoComplete: "off",
+                  }}
+                  startAdornment={
+                    <Search sx={{ fontSize: 20, color: c.muted, mr: 1 }} />
+                  }
+                  sx={{
+                    flex: 1,
+                    px: 1.75,
+                    fontSize: 14,
+                    minWidth: 0,
+                    color: c.ink,
+                  }}
+                />
 
-              <ButtonBase
-                type="submit"
-                aria-label="Search"
-                sx={{
-                  width: 56,
-                  flexShrink: 0,
-                  bgcolor: c.ink,
-                  color: "#fff",
-                  "&:hover": { bgcolor: c.inkDeep },
-                }}
-              >
-                <Search />
-              </ButtonBase>
+                {searchText && (
+                  <ButtonBase
+                    type="button"
+                    onClick={handleClearSearch}
+                    aria-label="Clear search"
+                    sx={{
+                      px: 1,
+                      flexShrink: 0,
+                      color: c.muted,
+                      fontSize: 12,
+                      "&:hover": { color: c.ink },
+                    }}
+                  >
+                    Clear
+                  </ButtonBase>
+                )}
+
+                <ButtonBase
+                  type="submit"
+                  aria-label="Search"
+                  sx={{
+                    width: 56,
+                    flexShrink: 0,
+                    bgcolor: c.ink,
+                    color: "#fff",
+                    "&:hover": { bgcolor: c.inkDeep },
+                  }}
+                >
+                  <Search />
+                </ButtonBase>
+              </Box>
+
+              {/* Suggestions dropdown */}
+
+              {searchDropdownOpen && (
+                <Box
+                  role="listbox"
+                  aria-label="Search suggestions"
+                  sx={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    bgcolor: c.paper,
+                    color: c.ink,
+                    border: `1px solid ${c.border}`,
+                    borderTop: "none",
+                    borderRadius: "0 0 10px 10px",
+                    boxShadow: "0 14px 35px rgba(23,63,61,.16)",
+                    overflow: "hidden",
+                    maxHeight: 470,
+                    overflowY: "auto",
+                    zIndex: 1400,
+                  }}
+                >
+                  {/* Product results heading */}
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      px: 2,
+                      py: 1.25,
+                      bgcolor: "#FBF8F0",
+                      borderBottom: `1px solid ${c.border}`,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        letterSpacing: ".18em",
+                        color: "#8A8F89",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Products
+                    </Typography>
+
+                    <Typography sx={{ fontSize: 11, color: c.muted }}>
+                      {productsLoading
+                        ? "Loading…"
+                        : `${matchingProducts.length} found`}
+                    </Typography>
+                  </Box>
+
+                  {matchingProducts.map((product, index) => {
+                    const image = resolveImageUrl(getProductImage(product));
+                    const name = getProductName(product);
+                    const category = getProductCategory(product);
+                    const price = getProductPrice(product);
+                    return (
+                      <ButtonBase
+                        key={getProductId(product) ?? `${name}-${index}`}
+                        role="option"
+                        aria-selected={false}
+                        onClick={() => handleProductSuggestion(product)}
+                        sx={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.5,
+                          px: 1.5,
+                          py: 1.25,
+                          textAlign: "left",
+                          borderBottom: `1px solid ${c.border}`,
+                          bgcolor: "#fff",
+                          "&:hover": { bgcolor: "#F8F4EA" },
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 52,
+                            height: 52,
+                            flexShrink: 0,
+                            display: "grid",
+                            placeItems: "center",
+                            bgcolor: c.tint,
+                            border: `1px solid ${c.border}`,
+                            borderRadius: "7px",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {image ? (
+                            <Box
+                              component="img"
+                              src={image}
+                              alt={name}
+                              loading="lazy"
+                              sx={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "contain",
+                                p: 0.5,
+                              }}
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <ShoppingBagOutlined
+                              sx={{ fontSize: 24, color: c.ink }}
+                            />
+                          )}
+                        </Box>
+
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            sx={{
+                              fontSize: 13.5,
+                              fontWeight: 700,
+                              color: "#263331",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {name}
+                          </Typography>
+
+                          <Typography
+                            sx={{
+                              mt: 0.25,
+                              fontSize: 12,
+                              color: "#858A82",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {category}
+                            {getProductId(product) != null
+                              ? ` · ID ${getProductId(product)}`
+                              : ""}
+                          </Typography>
+
+                          {price && (
+                            <Typography
+                              sx={{
+                                mt: 0.25,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                color: c.ink,
+                              }}
+                            >
+                              {price}
+                            </Typography>
+                          )}
+                        </Box>
+
+                        <ArrowForward
+                          sx={{
+                            fontSize: 18,
+                            color: "#A7A79B",
+                            flexShrink: 0,
+                          }}
+                        />
+                      </ButtonBase>
+                    );
+                  })}
+
+                  {/* Category suggestions */}
+
+                  {matchingCategories.length > 0 && (
+                    <Box sx={{ borderBottom: `1px solid ${c.border}` }}>
+                      <Box
+                        sx={{
+                          px: 2,
+                          py: 1.1,
+                          bgcolor: "#FBF8F0",
+                          borderBottom: `1px solid ${c.border}`,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontSize: 10,
+                            fontWeight: 800,
+                            letterSpacing: ".18em",
+                            color: "#8A8F89",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Categories
+                        </Typography>
+                      </Box>
+
+                      {matchingCategories.map((category) => (
+                        <ButtonBase
+                          key={category}
+                          onClick={() => handleCategorySuggestion(category)}
+                          sx={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.25,
+                            px: 2,
+                            py: 1.25,
+                            textAlign: "left",
+                            "&:hover": { bgcolor: "#F8F4EA" },
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              display: "grid",
+                              placeItems: "center",
+                              bgcolor: "#E7F0EC",
+                              borderRadius: "7px",
+                              color: c.ink,
+                            }}
+                          >
+                            <ShoppingBagOutlined sx={{ fontSize: 19 }} />
+                          </Box>
+
+                          <Typography
+                            sx={{
+                              flex: 1,
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {category}
+                          </Typography>
+
+                          <ArrowForward
+                            sx={{ fontSize: 17, color: "#A7A79B" }}
+                          />
+                        </ButtonBase>
+                      ))}
+                    </Box>
+                  )}
+
+                  {/* No results */}
+
+                  {!productsLoading &&
+                    matchingProducts.length === 0 &&
+                    matchingCategories.length === 0 && (
+                      <Box sx={{ px: 2, py: 3, textAlign: "center" }}>
+                        <Search
+                          sx={{ fontSize: 26, color: "#A7A79B", mb: 0.5 }}
+                        />
+
+                        <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
+                          No matching products found
+                        </Typography>
+
+                        <Typography
+                          sx={{ mt: 0.5, fontSize: 12, color: c.muted }}
+                        >
+                          Try another name or choose a different category.
+                        </Typography>
+
+                        {productsLoadFailed && (
+                          <Typography
+                            sx={{
+                              mt: 1,
+                              fontSize: 11,
+                              color: c.danger,
+                            }}
+                          >
+                            Could not load the catalogue. You can still press
+                            Enter to search.
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
+                  {/* View all search results */}
+
+                  <ButtonBase
+                    onClick={handleSearch}
+                    sx={{
+                      width: "100%",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: 1,
+                      py: 1.4,
+                      bgcolor: "#FBF8F0",
+                      color: c.ink,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      "&:hover": { bgcolor: c.tint },
+                    }}
+                  >
+                    View all search results
+                    <ArrowForward sx={{ fontSize: 17 }} />
+                  </ButtonBase>
+
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 0.9,
+                      borderTop: `1px solid ${c.border}`,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 10, color: "#8A8F89" }}>
+                      Select a result or press Enter to view all results.
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
             </Box>
 
-            {/* Actions */}
+            {/* Header actions */}
+
             <Box
               sx={{
                 order: { xs: 3, md: 4 },
@@ -577,6 +1121,7 @@ const MainLayout = () => {
                 count={wishlistItemCount}
                 onClick={() => go(ROUTES.wishlist)}
               />
+
               <HeaderAction
                 icon={<ShoppingCartOutlined />}
                 label="Cart"
@@ -614,6 +1159,7 @@ const MainLayout = () => {
                 >
                   {initial}
                 </Avatar>
+
                 <Box
                   sx={{ display: { xs: "none", md: "block" }, maxWidth: 130 }}
                 >
@@ -628,12 +1174,14 @@ const MainLayout = () => {
                   >
                     {user.name}
                   </Typography>
+
                   <Typography
                     sx={{ fontSize: 11, color: c.muted, lineHeight: 1.25 }}
                   >
                     Account &amp; Lists
                   </Typography>
                 </Box>
+
                 <KeyboardArrowDown
                   sx={{
                     display: { xs: "none", md: "block" },
@@ -649,6 +1197,7 @@ const MainLayout = () => {
         </Box>
 
         {/* ------------------------- Category nav bar ---------------------- */}
+
         <Box
           component="nav"
           aria-label="Categories"
@@ -712,7 +1261,8 @@ const MainLayout = () => {
         </Box>
       </Box>
 
-      {/* "More" categories menu */}
+      {/* ------------------------- More categories ------------------------- */}
+
       <Menu
         anchorEl={moreAnchor}
         open={Boolean(moreAnchor)}
@@ -742,7 +1292,8 @@ const MainLayout = () => {
         ))}
       </Menu>
 
-      {/* Account dropdown */}
+      {/* --------------------------- Account menu -------------------------- */}
+
       <Menu
         anchorEl={accountAnchor}
         open={accountOpen}
@@ -787,6 +1338,7 @@ const MainLayout = () => {
           >
             {initial}
           </Avatar>
+
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
               sx={{ fontSize: 15, fontWeight: 700, color: c.ink }}
@@ -794,6 +1346,7 @@ const MainLayout = () => {
             >
               {user.name}
             </Typography>
+
             <Typography sx={{ fontSize: 12, color: c.muted }}>
               Customer account
             </Typography>
@@ -816,6 +1369,7 @@ const MainLayout = () => {
         >
           Your account
         </Typography>
+
         {ACCOUNT_LINKS.map(renderMenuLink)}
 
         <Divider sx={{ borderColor: c.border, my: 0.5 }} />
@@ -843,7 +1397,8 @@ const MainLayout = () => {
         </MenuItem>
       </Menu>
 
-      {/* All Categories drawer (also the mobile menu) */}
+      {/* ------------------------ Categories drawer ------------------------ */}
+
       <Drawer
         anchor="left"
         open={drawerOpen}
@@ -878,9 +1433,11 @@ const MainLayout = () => {
           >
             {initial}
           </Avatar>
+
           <Typography sx={{ fontSize: 17, fontWeight: 700 }} noWrap>
             Hello, {firstName}
           </Typography>
+
           <IconButton
             onClick={() => setDrawerOpen(false)}
             aria-label="Close menu"
@@ -899,6 +1456,7 @@ const MainLayout = () => {
             >
               Today&apos;s Deals
             </DrawerLink>
+
             {[...NAV_CATEGORIES, ...MORE_CATEGORIES].map((name) => (
               <DrawerLink
                 key={name}
@@ -962,14 +1520,12 @@ const MainLayout = () => {
         </Box>
       </Drawer>
 
-      {/* ==================================================================
-          PAGE CONTENT
-      ================================================================== */}
+      {/* ---------------------------- Page content ------------------------- */}
+
       <Box component="main" sx={{ flex: 1, width: "100%", minWidth: 0 }}>
         <Outlet />
       </Box>
     </Box>
   );
 };
-
 export default MainLayout;
