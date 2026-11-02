@@ -475,15 +475,19 @@ const MainLayout = () => {
     setSearchFocused(false);
     navigate(`${ROUTES.search}?${params.toString()}`);
   };
+
   const handleProductSuggestion = (product) => {
-    const params = new URLSearchParams();
-    params.set("q", getProductName(product));
-    if (searchCategory !== "All Categories") {
-      params.set("category", searchCategory);
+    const productId = getProductId(product);
+
+    if (productId == null) {
+      console.error("Cannot open product: product ID is missing.", product);
+      return;
     }
+
     setSearchFocused(false);
-    navigate(`${ROUTES.search}?${params.toString()}`);
+    navigate(`/products/${encodeURIComponent(productId)}`);
   };
+
   const handleCategorySuggestion = (category) => {
     setSearchCategory(category);
     setSearchFocused(false);
