@@ -478,7 +478,7 @@ const MainLayout = () => {
 
   const handleProductSuggestion = (product) => {
     const productId = getProductId(product);
-    console.log(product, productId);
+    console.log(product, productId, "lllllll");
 
     if (productId == null) {
       console.error("Cannot open product: product ID is missing.", product);
