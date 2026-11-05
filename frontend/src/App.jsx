@@ -16,6 +16,7 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentCancelPage from "./pages/PaymentCancelPage";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
 import CouponsPage from "./pages/CouponsPage";
+import ProductsPage from "./pages/ProductsPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -39,7 +40,9 @@ const App = () => {
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
 
-                <Route
+                <Route path="/products" element={<ProductsPage />} />
+
+                <Routegit
                   path="/products/:productId"
                   element={<ProductDetailsPage />}
                 />
