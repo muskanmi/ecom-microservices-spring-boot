@@ -127,6 +127,11 @@ const getProductCategory = (product) => {
   }
   return product.categoryName || "Other";
 };
+const getParentCategory = (product) =>
+  product.parentCategoryName ||
+  product.parentCategory?.name ||
+  product.parentCategory ||
+  "";
 const getProductId = (product) => product.id ?? product.productId;
 const getProductPrice = (product) => {
   const rawPrice = product.sellingPrice ?? product.price;
@@ -415,23 +420,31 @@ const MainLayout = () => {
   const normalizedSearch = searchText.trim().toLowerCase();
   const matchingProducts = useMemo(() => {
     if (!normalizedSearch) return [];
+
     return products
       .filter((product) => {
         const category = getProductCategory(product);
-        if (
-          searchCategory !== "All Categories" &&
-          category.toLowerCase() !== searchCategory.toLowerCase()
-        ) {
+        const parentCategory = getParentCategory(product);
+
+        const matchesCategory =
+          searchCategory === "All Categories" ||
+          category.toLowerCase() === searchCategory.toLowerCase() ||
+          parentCategory.toLowerCase() === searchCategory.toLowerCase();
+
+        if (!matchesCategory) {
           return false;
         }
+
         const searchableText = [
           getProductName(product),
           product.brand || "",
           product.description || "",
           category,
+          parentCategory,
         ]
           .join(" ")
           .toLowerCase();
+
         return searchableText.includes(normalizedSearch);
       })
       .slice(0, 5);

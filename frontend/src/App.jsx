@@ -1,5 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
+import { WishlistProvider } from "./context/WishlistContext";
+
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -7,9 +11,6 @@ import ProfilePage from "./pages/ProfilePage";
 import WishlistPage from "./pages/WishlistPage";
 import CartPage from "./pages/CartPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
-import MainLayout from "./components/MainLayout";
-import { CartProvider } from "./context/CartContext";
-import { WishlistProvider } from "./context/WishlistContext";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -17,15 +18,9 @@ import PaymentCancelPage from "./pages/PaymentCancelPage";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
 import CouponsPage from "./pages/CouponsPage";
 import ProductsPage from "./pages/ProductsPage";
+import DealsPage from "./pages/DealsPage";
 
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) return <p className="text-white text-center mt-20">Loading…</p>;
-  if (!user) return <Navigate to="/login" replace />;
-
-  return children;
-};
+import MainLayout from "./components/MainLayout";
 
 const App = () => {
   return (
@@ -34,40 +29,60 @@ const App = () => {
         <CartProvider>
           <WishlistProvider>
             <Routes>
+              {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+
               {/* Marketplace layout */}
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
 
+                {/* Product listing and search */}
                 <Route path="/products" element={<ProductsPage />} />
 
-                <Routegit
+                <Route path="/search" element={<ProductsPage />} />
+
+                {/* Product details */}
+                <Route
                   path="/products/:productId"
                   element={<ProductDetailsPage />}
                 />
 
+                {/* Today's deals */}
+                <Route path="/deals" element={<DealsPage />} />
+
+                {/* Wishlist and cart */}
                 <Route path="/wishlist" element={<WishlistPage />} />
 
                 <Route path="/cart" element={<CartPage />} />
 
-                {/* <Route path="/orders" element={<OrdersPage />} /> */}
-
+                {/* User profile */}
                 <Route path="/profile" element={<ProfilePage />} />
 
+                {/* Checkout and orders */}
                 <Route path="/checkout" element={<CheckoutPage />} />
 
                 <Route path="/orders" element={<OrdersPage />} />
+
+                <Route path="/orders/:orderId" element={<OrderDetailsPage />} />
+
+                {/* Coupons */}
                 <Route path="/coupons" element={<CouponsPage />} />
+
+                {/* Payment */}
                 <Route
                   path="/payment/success"
                   element={<PaymentSuccessPage />}
                 />
 
                 <Route path="/payment/cancel" element={<PaymentCancelPage />} />
-
-                <Route path="/orders/:orderId" element={<OrderDetailsPage />} />
               </Route>
+
+              {/* Default route */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              {/* Unknown routes */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </WishlistProvider>
         </CartProvider>

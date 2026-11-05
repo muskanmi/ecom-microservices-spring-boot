@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
 import {
   Alert,
   Box,
@@ -15,11 +16,12 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+
 import { Search, ShoppingBagOutlined, ArrowBack } from "@mui/icons-material";
 
 import { getProducts } from "../api/productApi";
 
-const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 const COLORS = {
   teal: "#173F3D",
@@ -81,7 +83,9 @@ const getProductImage = (product) => {
 const formatPrice = (price) => {
   const amount = Number(price);
 
-  if (!Number.isFinite(amount)) return "Price unavailable";
+  if (!Number.isFinite(amount)) {
+    return "Price unavailable";
+  }
 
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -104,10 +108,12 @@ const ProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Keep the search input in sync with the URL.
   useEffect(() => {
     setSearchText(searchParams.get("q") || "");
   }, [searchParams]);
 
+  // Fetch products whenever the selected category changes.
   useEffect(() => {
     let active = true;
 
@@ -116,7 +122,12 @@ const ProductsPage = () => {
         setLoading(true);
         setError("");
 
-        const response = await getProducts();
+        // IMPORTANT:
+        // Send the selected category to the backend.
+        // Example: GET /api/products?category=Electronics
+        const response = await getProducts({
+          category: selectedCategory || undefined,
+        });
 
         const data = response.data;
 
@@ -141,6 +152,7 @@ const ProductsPage = () => {
             err.response?.data?.message ||
               "Unable to load products. Please try again.",
           );
+          setProducts([]);
         }
       } finally {
         if (active) {
@@ -154,8 +166,9 @@ const ProductsPage = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCategory]);
 
+  // Build category chips from the products returned by the API.
   const categories = useMemo(() => {
     const values = products.flatMap((product) => [
       getParentCategory(product),
@@ -167,9 +180,10 @@ const ProductsPage = () => {
     );
   }, [products]);
 
+  // Apply the text search locally.
+  // Category filtering is already handled by the backend.
   const filteredProducts = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    const category = selectedCategory.trim().toLowerCase();
 
     return products.filter((product) => {
       const name = getProductName(product).toLowerCase();
@@ -179,11 +193,6 @@ const ProductsPage = () => {
       const productCategory = getProductCategory(product).toLowerCase();
       const parentCategory = getParentCategory(product).toLowerCase();
 
-      const matchesCategory =
-        !category ||
-        productCategory === category ||
-        parentCategory === category;
-
       const matchesSearch =
         !query ||
         name.includes(query) ||
@@ -192,9 +201,9 @@ const ProductsPage = () => {
         productCategory.includes(query) ||
         parentCategory.includes(query);
 
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
     });
-  }, [products, selectedCategory, searchText]);
+  }, [products, searchText]);
 
   const handleCategoryChange = (category) => {
     const params = new URLSearchParams(searchParams);
@@ -210,6 +219,11 @@ const ProductsPage = () => {
 
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
+  };
+
+  const handleClearFilters = () => {
+    setSearchText("");
+    setSearchParams({});
   };
 
   const openProduct = (product) => {
@@ -237,6 +251,7 @@ const ProductsPage = () => {
         }}
       >
         <CircularProgress sx={{ color: COLORS.teal }} />
+
         <Typography color={COLORS.muted}>Loading products...</Typography>
       </Box>
     );
@@ -265,6 +280,7 @@ const ProductsPage = () => {
           Back to shopping
         </Button>
 
+        {/* Page heading */}
         <Box
           sx={{
             display: "flex",
@@ -316,6 +332,7 @@ const ProductsPage = () => {
           </Typography>
         </Box>
 
+        {/* Product search */}
         <Paper
           elevation={0}
           sx={{
@@ -357,6 +374,7 @@ const ProductsPage = () => {
           />
         </Paper>
 
+        {/* Category filters */}
         {categories.length > 0 && (
           <Box
             sx={{
@@ -400,12 +418,14 @@ const ProductsPage = () => {
           </Box>
         )}
 
+        {/* API error */}
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
 
+        {/* Empty state */}
         {!error && filteredProducts.length === 0 && (
           <Paper
             elevation={0}
@@ -437,10 +457,7 @@ const ProductsPage = () => {
             </Typography>
 
             <Button
-              onClick={() => {
-                setSearchText("");
-                handleCategoryChange("");
-              }}
+              onClick={handleClearFilters}
               sx={{
                 mt: 2,
                 color: COLORS.teal,
@@ -453,12 +470,16 @@ const ProductsPage = () => {
           </Paper>
         )}
 
+        {/* Product cards */}
         <Grid container spacing={2.5}>
           {filteredProducts.map((product) => {
             const price = Number(product.price ?? product.sellingPrice ?? 0);
+
             const mrp = Number(product.mrp ?? product.originalPrice ?? price);
+
             const discount =
               mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+
             const stock = getStock(product);
             const image = getProductImage(product);
 
@@ -517,7 +538,10 @@ const ProductsPage = () => {
                         }}
                       >
                         <ShoppingBagOutlined
-                          sx={{ fontSize: 48, color: COLORS.muted }}
+                          sx={{
+                            fontSize: 48,
+                            color: COLORS.muted,
+                          }}
                         />
                       </Box>
                     )}
