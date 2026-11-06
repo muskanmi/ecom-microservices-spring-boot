@@ -10,6 +10,10 @@ import {
   Button,
   ButtonBase,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Drawer,
   IconButton,
@@ -17,14 +21,18 @@ import {
   Menu,
   MenuItem,
   Select,
+  TextField,
   Typography,
 } from "@mui/material";
 import {
+  Add,
   ArrowForward,
   ChevronRight,
   Close,
   ConfirmationNumberOutlined,
   CreditCardOutlined,
+  DeleteOutlined,
+  EditOutlined,
   FavoriteBorder,
   HelpOutlined,
   Inventory2Outlined,
@@ -337,6 +345,20 @@ const MainLayout = () => {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsLoadFailed, setProductsLoadFailed] = useState(false);
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [editingAddressId, setEditingAddressId] = useState(null);
+  const [addressForm, setAddressForm] = useState({
+    fullName: user?.name || "",
+    phone: "",
+    pincode: "",
+    city: "",
+    state: "",
+    addressLine: "",
+    landmark: "",
+    addressType: "Home",
+  });
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
   const activeCategory = useMemo(
@@ -345,6 +367,135 @@ const MainLayout = () => {
   );
   const accountOpen = Boolean(accountAnchor);
   const searchDropdownOpen = searchFocused && searchText.trim().length > 0;
+  const addressStorageKey = `marketplace_addresses_${user?.id ?? user?.userId ?? user?.email ?? user?.name ?? "guest"}`;
+  const selectedAddress = savedAddresses.find(
+    (address) => String(address.id) === String(selectedAddressId),
+  );
+
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      const storedAddresses = JSON.parse(
+        localStorage.getItem(addressStorageKey) || "[]",
+      );
+      const addressList = Array.isArray(storedAddresses) ? storedAddresses : [];
+      const storedSelectedId = localStorage.getItem(
+        `${addressStorageKey}_selected`,
+      );
+
+      setSavedAddresses(addressList);
+      setSelectedAddressId(
+        addressList.some(
+          (address) => String(address.id) === String(storedSelectedId),
+        )
+          ? String(storedSelectedId)
+          : addressList[0]
+            ? String(addressList[0].id)
+            : "",
+      );
+    } catch (error) {
+      console.error("Could not load saved addresses:", error);
+      setSavedAddresses([]);
+      setSelectedAddressId("");
+    }
+  }, [addressStorageKey, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      localStorage.setItem(addressStorageKey, JSON.stringify(savedAddresses));
+      if (selectedAddressId) {
+        localStorage.setItem(
+          `${addressStorageKey}_selected`,
+          String(selectedAddressId),
+        );
+      } else {
+        localStorage.removeItem(`${addressStorageKey}_selected`);
+      }
+    } catch (error) {
+      console.error("Could not save addresses:", error);
+    }
+  }, [addressStorageKey, savedAddresses, selectedAddressId, user]);
+
+  const openAddressDialog = () => {
+    setEditingAddressId(null);
+    setAddressForm({
+      fullName: user?.name || "",
+      phone: "",
+      pincode: "",
+      city: "",
+      state: "",
+      addressLine: "",
+      landmark: "",
+      addressType: "Home",
+    });
+    setAddressDialogOpen(true);
+  };
+
+  const handleAddressFormChange = (event) => {
+    const { name, value } = event.target;
+    setAddressForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSaveAddress = (event) => {
+    event.preventDefault();
+
+    const address = {
+      ...addressForm,
+      id: editingAddressId || Date.now(),
+    };
+
+    setSavedAddresses((current) => {
+      const updated = editingAddressId
+        ? current.map((item) =>
+            String(item.id) === String(editingAddressId) ? address : item,
+          )
+        : [...current, address];
+      return updated;
+    });
+    setSelectedAddressId(String(address.id));
+    setAddressDialogOpen(false);
+    setEditingAddressId(null);
+  };
+
+  const handleEditAddress = (address) => {
+    setEditingAddressId(address.id);
+    setAddressForm({
+      fullName: address.fullName || "",
+      phone: address.phone || "",
+      pincode: address.pincode || "",
+      city: address.city || "",
+      state: address.state || "",
+      addressLine: address.addressLine || "",
+      landmark: address.landmark || "",
+      addressType: address.addressType || "Home",
+    });
+  };
+
+  const handleDeleteAddress = (addressId) => {
+    const updatedAddresses = savedAddresses.filter(
+      (address) => String(address.id) !== String(addressId),
+    );
+
+    setSavedAddresses(updatedAddresses);
+
+    if (String(selectedAddressId) === String(addressId)) {
+      setSelectedAddressId(
+        updatedAddresses[0] ? String(updatedAddresses[0].id) : "",
+      );
+    }
+
+    if (String(editingAddressId) === String(addressId)) {
+      setEditingAddressId(null);
+    }
+  };
+
+  const handleSelectAddress = (addressId) => {
+    setSelectedAddressId(String(addressId));
+    setAddressDialogOpen(false);
+  };
   /* ---------------------------- Load catalogue ---------------------------- */
   useEffect(() => {
     let cancelled = false;
@@ -539,9 +690,11 @@ const MainLayout = () => {
   const avatarSrc = user.avatarUrl ? `${API_URL}${user.avatarUrl}` : undefined;
   const initial = (user.name || "U").slice(0, 1).toUpperCase();
   const firstName = (user.name || "there").split(" ")[0];
-  const deliverTo = user.pincode
-    ? [user.city, user.pincode].filter(Boolean).join(" ")
-    : "Select address";
+  const deliverTo = selectedAddress
+    ? [selectedAddress.city, selectedAddress.pincode].filter(Boolean).join(" ")
+    : user.pincode
+      ? [user.city, user.pincode].filter(Boolean).join(" ")
+      : "Select address";
   const renderMenuLink = ({ label, icon: Icon, path }) => (
     <MenuItem
       key={label}
@@ -643,10 +796,10 @@ const MainLayout = () => {
             {/* Deliver to */}
 
             <ButtonBase
-              onClick={() => go(ROUTES.addresses)}
+              onClick={() => setAddressDialogOpen(true)}
               sx={{
                 order: 2,
-                display: { xs: "none", lg: "flex" },
+                display: { xs: "none", sm: "flex" },
                 alignItems: "center",
                 gap: 0.75,
                 flexShrink: 0,
@@ -1277,6 +1430,326 @@ const MainLayout = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* --------------------------- Address dialog ------------------------ */}
+
+      <Dialog
+        open={addressDialogOpen}
+        onClose={() => {
+          setAddressDialogOpen(false);
+          setEditingAddressId(null);
+        }}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            bgcolor: c.paper,
+            border: `1px solid ${c.border}`,
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            color: c.ink,
+            fontFamily: serif,
+            fontSize: 23,
+            fontWeight: 700,
+            pb: 1,
+          }}
+        >
+          Deliver to
+          <IconButton
+            onClick={() => {
+              setAddressDialogOpen(false);
+              setEditingAddressId(null);
+            }}
+            aria-label="Close address dialog"
+            size="small"
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ borderColor: c.border }}>
+          {savedAddresses.length > 0 && (
+            <Box sx={{ mb: 2.5 }}>
+              <Typography
+                sx={{
+                  mb: 1.25,
+                  color: c.muted,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: ".12em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Saved addresses
+              </Typography>
+
+              <Box sx={{ display: "grid", gap: 1 }}>
+                {savedAddresses.map((address) => {
+                  const isSelected =
+                    String(selectedAddressId) === String(address.id);
+
+                  return (
+                    <Box
+                      key={address.id}
+                      sx={{
+                        p: 1.5,
+                        border: `1px solid ${isSelected ? c.ink : c.border}`,
+                        borderRadius: 2,
+                        bgcolor: isSelected ? "#F0F4EF" : "#fff",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <Typography sx={{ color: c.ink, fontWeight: 800 }}>
+                              {address.fullName}
+                            </Typography>
+                            <Box
+                              sx={{
+                                px: 0.8,
+                                py: 0.2,
+                                borderRadius: 1,
+                                bgcolor: c.tint,
+                                color: c.muted,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {address.addressType}
+                            </Box>
+                            {isSelected && (
+                              <Typography
+                                sx={{
+                                  color: c.ink,
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                }}
+                              >
+                                SELECTED
+                              </Typography>
+                            )}
+                          </Box>
+                          <Typography
+                            sx={{ mt: 0.5, color: c.muted, fontSize: 13 }}
+                          >
+                            {address.addressLine}
+                            {address.landmark ? `, ${address.landmark}` : ""}
+                          </Typography>
+                          <Typography sx={{ color: c.muted, fontSize: 13 }}>
+                            {[address.city, address.state, address.pincode]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </Typography>
+                          <Typography sx={{ color: c.muted, fontSize: 12 }}>
+                            {address.phone}
+                          </Typography>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.25,
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            aria-label="Edit address"
+                            onClick={() => handleEditAddress(address)}
+                          >
+                            <EditOutlined fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            aria-label="Delete address"
+                            onClick={() => handleDeleteAddress(address.id)}
+                            sx={{ color: c.danger }}
+                          >
+                            <DeleteOutlined fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Box>
+
+                      <Button
+                        size="small"
+                        variant={isSelected ? "contained" : "outlined"}
+                        onClick={() => handleSelectAddress(address.id)}
+                        sx={{
+                          mt: 1.25,
+                          textTransform: "none",
+                          bgcolor: isSelected ? c.ink : "transparent",
+                          borderColor: c.ink,
+                          color: isSelected ? "#fff" : c.ink,
+                          "&:hover": {
+                            bgcolor: isSelected ? c.inkDeep : c.tint,
+                            borderColor: c.ink,
+                          },
+                        }}
+                      >
+                        {isSelected ? "Delivering here" : "Deliver here"}
+                      </Button>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+
+          <Divider sx={{ borderColor: c.border, mb: 2 }} />
+
+          <Typography
+            sx={{
+              mb: 1.5,
+              color: c.ink,
+              fontWeight: 800,
+              fontSize: 13,
+            }}
+          >
+            {editingAddressId ? "Edit address" : "Add a new address"}
+          </Typography>
+
+          <Box
+            component="form"
+            id="address-form"
+            onSubmit={handleSaveAddress}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: 1.5,
+            }}
+          >
+            <TextField
+              name="fullName"
+              label="Full name"
+              value={addressForm.fullName}
+              onChange={handleAddressFormChange}
+              required
+              size="small"
+              fullWidth
+            />
+            <TextField
+              name="phone"
+              label="Phone number"
+              value={addressForm.phone}
+              onChange={handleAddressFormChange}
+              required
+              size="small"
+              fullWidth
+              inputProps={{ inputMode: "tel", maxLength: 15 }}
+            />
+            <TextField
+              name="pincode"
+              label="PIN code"
+              value={addressForm.pincode}
+              onChange={handleAddressFormChange}
+              required
+              size="small"
+              fullWidth
+              inputProps={{ inputMode: "numeric", maxLength: 10 }}
+            />
+            <TextField
+              name="city"
+              label="City"
+              value={addressForm.city}
+              onChange={handleAddressFormChange}
+              required
+              size="small"
+              fullWidth
+            />
+            <TextField
+              name="state"
+              label="State"
+              value={addressForm.state}
+              onChange={handleAddressFormChange}
+              required
+              size="small"
+              fullWidth
+            />
+            <TextField
+              name="addressType"
+              label="Address type (Home / Work)"
+              value={addressForm.addressType}
+              onChange={handleAddressFormChange}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              name="addressLine"
+              label="Flat, house no., street"
+              value={addressForm.addressLine}
+              onChange={handleAddressFormChange}
+              required
+              size="small"
+              fullWidth
+              sx={{ gridColumn: { sm: "1 / -1" } }}
+            />
+            <TextField
+              name="landmark"
+              label="Landmark (optional)"
+              value={addressForm.landmark}
+              onChange={handleAddressFormChange}
+              size="small"
+              fullWidth
+              sx={{ gridColumn: { sm: "1 / -1" } }}
+            />
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2, justifyContent: "space-between" }}>
+          <Button
+            startIcon={<Add />}
+            onClick={openAddressDialog}
+            sx={{ color: c.ink, textTransform: "none" }}
+          >
+            Add new
+          </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              onClick={() => {
+                setAddressDialogOpen(false);
+                setEditingAddressId(null);
+              }}
+              sx={{ color: c.muted, textTransform: "none" }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="address-form"
+              variant="contained"
+              sx={{
+                bgcolor: c.ink,
+                color: "#fff",
+                textTransform: "none",
+                "&:hover": { bgcolor: c.inkDeep },
+              }}
+            >
+              {editingAddressId ? "Update address" : "Save address"}
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
 
       {/* ------------------------- More categories ------------------------- */}
 
