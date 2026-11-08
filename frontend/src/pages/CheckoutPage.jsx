@@ -46,6 +46,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
 
   const { user } = useAuth();
+  console.log(user, "u");
+
   const { cart } = useCart();
 
   const [form, setForm] = useState({
