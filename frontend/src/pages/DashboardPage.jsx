@@ -252,6 +252,8 @@ const STATUS_STYLE = {
   REFUNDED: { bg: "#EEF4FF", fg: "#3267C8" },
 };
 
+console.log(STATUS_STYLE, "sssssss");
+
 const getStatusStyle = (status) =>
   STATUS_STYLE[status] || { bg: "#F3EFE7", fg: c.muted };
 
