@@ -32,6 +32,8 @@ const DealsPage = () => {
         setError("");
 
         const response = await getProducts();
+        console.log(response, "response");
+
         const allProducts = Array.isArray(response.data) ? response.data : [];
 
         const discountedProducts = allProducts.filter((product) => {
