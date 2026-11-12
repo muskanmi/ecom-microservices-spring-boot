@@ -111,6 +111,8 @@ export default function OrderDetailsPage() {
       }
     };
 
+    console.log(fetchOrder, "fetchorder");
+
     fetchOrder();
   }, [orderId, user?.id]);
 
