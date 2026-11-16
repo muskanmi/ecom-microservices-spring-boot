@@ -125,7 +125,6 @@ export default function CouponsPage() {
   const auth = useAuth();
 
   const user = auth?.user;
-  console.log(user, "uuuuuuuu");
 
   const token = auth?.token || user?.token;
   const userId = user?.id ?? user?.userId ?? user?.user_id;
