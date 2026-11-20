@@ -85,6 +85,9 @@ public class SecurityConfig {
                 "X-Requested-With",
                 "X-User-Id"));
 
+        // Lets browser code read the correlation ID to quote it in bug reports.
+        configuration.setExposedHeaders(List.of("X-Correlation-Id"));
+
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
