@@ -35,6 +35,8 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { addToWishlist, removeFromWishlist } from "../api/wishlistApi";
+import RecentlyViewed from "../components/RecentlyViewed";
+import { trackProductView } from "../utils/recentlyViewed";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -72,6 +74,7 @@ const ProductDetailsPage = () => {
 
         setProduct(response.data);
         setSelectedImageIndex(0);
+        trackProductView(response.data);
       } catch (error) {
         console.error("Failed to fetch product:", error);
         setProduct(null);
@@ -1066,6 +1069,9 @@ const ProductDetailsPage = () => {
             </Box>
           )}
         </Box>
+
+        {/* Products the shopper looked at before this one */}
+        <RecentlyViewed key={productId} excludeId={product.id} />
 
         {/* =========================================================
             YOU MAY ALSO LIKE
