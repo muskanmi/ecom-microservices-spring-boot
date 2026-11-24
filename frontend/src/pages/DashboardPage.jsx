@@ -56,6 +56,7 @@ import smartwatch from "../assets/ecommerce/smartwatch.png";
 import runningShoes from "../assets/ecommerce/running-shoes.png";
 import blackHandbag from "../assets/ecommerce/black-handbag.png";
 import plant from "../assets/ecommerce/plant.png";
+import RecentlyViewed from "../components/RecentlyViewed";
 
 /* -------------------------------------------------------------------------- */
 /*  Config                                                                    */
@@ -2291,6 +2292,9 @@ const DashboardPage = () => {
       )}
 
       {/* Recommended – full width, below the grid */}
+      {/* Shown only once the shopper has viewed at least one product */}
+      <RecentlyViewed />
+
       <Box component="section">
         <SectionHeader
           title="Recommended for you"
