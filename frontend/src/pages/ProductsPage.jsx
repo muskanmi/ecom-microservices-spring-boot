@@ -12,6 +12,7 @@ import {
   CircularProgress,
   Grid,
   InputAdornment,
+  MenuItem,
   Paper,
   TextField,
   Typography,
@@ -80,6 +81,43 @@ const getProductImage = (product) => {
   return `${API_URL}${image.startsWith("/") ? "" : "/"}${image}`;
 };
 
+// Sorting options for the product list. "relevance" keeps the API order.
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Relevance" },
+  { value: "price-asc", label: "Price: Low to High" },
+  { value: "price-desc", label: "Price: High to Low" },
+  { value: "discount", label: "Biggest Discount" },
+  { value: "name", label: "Name: A to Z" },
+];
+
+const getSellingPrice = (product) =>
+  Number(product?.price ?? product?.sellingPrice ?? 0);
+
+const getDiscountPercent = (product) => {
+  const price = getSellingPrice(product);
+  const mrp = Number(product?.mrp ?? product?.originalPrice ?? price);
+  return mrp > price ? ((mrp - price) / mrp) * 100 : 0;
+};
+
+const sortProducts = (list, sortBy) => {
+  const sorted = [...list];
+
+  switch (sortBy) {
+    case "price-asc":
+      return sorted.sort((a, b) => getSellingPrice(a) - getSellingPrice(b));
+    case "price-desc":
+      return sorted.sort((a, b) => getSellingPrice(b) - getSellingPrice(a));
+    case "discount":
+      return sorted.sort((a, b) => getDiscountPercent(b) - getDiscountPercent(a));
+    case "name":
+      return sorted.sort((a, b) =>
+        String(a?.name ?? "").localeCompare(String(b?.name ?? "")),
+      );
+    default:
+      return list;
+  }
+};
+
 const formatPrice = (price) => {
   const amount = Number(price);
 
@@ -105,6 +143,7 @@ const ProductsPage = () => {
 
   const [products, setProducts] = useState([]);
   const [searchText, setSearchText] = useState(initialSearch);
+  const [sortBy, setSortBy] = useState("relevance");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -185,7 +224,7 @@ const ProductsPage = () => {
   const filteredProducts = useMemo(() => {
     const query = searchText.trim().toLowerCase();
 
-    return products.filter((product) => {
+    const matching = products.filter((product) => {
       const name = getProductName(product).toLowerCase();
       const description = String(product?.description || "").toLowerCase();
       const brand = String(product?.brand || "").toLowerCase();
@@ -203,7 +242,9 @@ const ProductsPage = () => {
 
       return matchesSearch;
     });
-  }, [products, searchText]);
+
+    return sortProducts(matching, sortBy);
+  }, [products, searchText, sortBy]);
 
   const handleCategoryChange = (category) => {
     const params = new URLSearchParams(searchParams);
@@ -217,12 +258,17 @@ const ProductsPage = () => {
     setSearchParams(params);
   };
 
+  const handleSortChange = (event) => {
+    setSortBy(event.target.value);
+  };
+
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
   const handleClearFilters = () => {
     setSearchText("");
+    setSortBy("relevance");
     setSearchParams({});
   };
 
@@ -321,15 +367,32 @@ const ProductsPage = () => {
             </Typography>
           </Box>
 
-          <Typography
-            sx={{
-              color: COLORS.teal,
-              fontSize: 14,
-              fontWeight: 700,
-            }}
-          >
-            {filteredProducts.length} products found
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography
+              sx={{
+                color: COLORS.teal,
+                fontSize: 14,
+                fontWeight: 700,
+              }}
+            >
+              {filteredProducts.length} products found
+            </Typography>
+
+            <TextField
+              select
+              size="small"
+              label="Sort by"
+              value={sortBy}
+              onChange={handleSortChange}
+              sx={{ minWidth: 190, bgcolor: "#FFFFFF" }}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
         </Box>
 
         {/* Product search */}
